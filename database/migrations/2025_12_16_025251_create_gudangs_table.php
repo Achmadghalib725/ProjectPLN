@@ -6,26 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('items', function (Blueprint $table) {
+        Schema::create('gudangs', function (Blueprint $table) {
             $table->id();
             $table->string('kode')->unique();
             $table->string('nama');
-            $table->string('satuan'); // pcs, set, unit
-            $table->string('kategori'); // Tools, Sparepart
-            $table->text('deskripsi')->nullable();
-            $table->string('gambar_path')->nullable();
+            $table->string('alamat')->nullable();
+            $table->string('telepon')->nullable();
             $table->timestamps();
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('gudangs');
