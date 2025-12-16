@@ -1,32 +1,51 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
-        </h2>
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-white leading-tight">
+                {{ __('Dashboard') }}
+            </h2>
+            <span class="bg-[#ffff00] text-[#035b71] text-xs font-bold px-3 py-1 rounded-full uppercase">
+                ROLE: {{ Auth::user()->role }}
+            </span>
+        </div>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-bold">Halo, {{ Auth::user()->name }}!</h3>
-                    <p class="mb-4">
-                        Status: <span class="badge bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ ucfirst(Auth::user()->role) }}</span>
-                        | Gudang: <strong>{{ Auth::user()->gudang ? Auth::user()->gudang->nama : 'Pusat/Global' }}</strong>
-                    </p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                        <div class="border p-4 rounded hover:bg-gray-50 cursor-pointer">
-                            <h4 class="font-bold">📦 Data Barang</h4>
-                            <p class="text-sm text-gray-500">Lihat stok dan item</p>
-                        </div>
-                        <div class="border p-4 rounded hover:bg-gray-50 cursor-pointer">
-                            <h4 class="font-bold">🚚 Peminjaman</h4>
-                            <p class="text-sm text-gray-500">Kelola peminjaman barang</p>
-                        </div>
+            
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6 border-l-4 border-[#035b71]">
+                <div class="p-6 text-gray-900 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-[#035b71]">Selamat Datang, {{ Auth::user()->name }}!</h3>
+                        <p class="text-sm text-gray-500">
+                            Lokasi Tugas: 
+                            <strong class="text-gray-800">
+                                {{ Auth::user()->gudang ? Auth::user()->gudang->nama : 'Kantor Pusat / Global' }}
+                            </strong>
+                        </p>
+                    </div>
+                    <div class="text-right text-xs text-gray-400">
+                        {{ now()->format('l, d F Y') }}
                     </div>
                 </div>
             </div>
+
+            @if(Auth::user()->role === 'admin')
+                @include('dashboard.admin')
+            
+            @elseif(Auth::user()->role === 'operator_gudang')
+                @include('dashboard.operator')
+            
+            @elseif(Auth::user()->role === 'security')
+                @include('dashboard.security')
+            
+            @else
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                    <strong class="font-bold">Error!</strong>
+                    <span class="block sm:inline">Role akun Anda tidak dikenali. Hubungi Admin IT.</span>
+                </div>
+            @endif
+
         </div>
     </div>
 </x-app-layout>

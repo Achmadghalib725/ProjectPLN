@@ -37,6 +37,15 @@ class DatabaseSeeder extends Seeder
             'gudang_id' => $gudangPusat->id,
         ]);
 
+        User::create([
+            'name' => 'Danru Security',
+            'email' => 'security@pln.co.id',
+            'password' => Hash::make('password123'),
+            'role' => 'security',
+            'gudang_id' => $gudangPusat->id, // Security bertugas di Gudang Pusat
+            'jabatan' => 'Komandan Regu'
+        ]);
+
         // 3. Buat Item Dummy
         $item1 = Item::create([
             'kode' => 'KBL-001', 'nama' => 'Kabel NYA 1.5mm', 'satuan' => 'roll', 'kategori' => 'Sparepart'
