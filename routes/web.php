@@ -7,9 +7,7 @@ use App\Models\User;
 use App\Models\Item;
 use App\Models\Gudang;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', '/login');
 
 // === UPDATE ROUTE DASHBOARD ===
 Route::get('/dashboard', function () {
