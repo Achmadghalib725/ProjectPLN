@@ -14,6 +14,15 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            // Update Warna Sesuai Request
+            colors: {
+                pln: {
+                    primary: '#035b71',    // "Biru Profesional" (Warna dasar gelap)
+                    light: '#00aff0',      // "Merah" di request Anda (Hex ini adalah Biru Laut/Cyan PLN)
+                    red: '#ff0000',        // "Biru" di request Anda (Hex ini adalah Merah)
+                    yellow: '#ffff00',     // Kuning terang
+                }
+            }
         },
     },
 
