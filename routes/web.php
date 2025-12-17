@@ -38,8 +38,9 @@ Route::middleware('auth')->group(function () {
     
     // 1. AREA ADMIN
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/users', function() { return "Halaman Kelola User"; })->name('users.index');
+        Route::resource('users', App\Http\Controllers\Admin\UserController::class);
         Route::get('/items', function() { return "Halaman Master Barang"; })->name('items.index');
+        Route::get('/gudangs', function() { return "Halaman Kelola Gudang"; })->name('gudangs.index');
     });
 
     // ... (Area Operator & Security tetap sama)
