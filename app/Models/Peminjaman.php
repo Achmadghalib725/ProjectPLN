@@ -9,6 +9,8 @@ class Peminjaman extends Model
 {
     use HasFactory;
 
+    protected $table = 'peminjamans';
+
     protected $guarded = ['id'];
 
     // Relasi ke Item Detail Peminjaman
