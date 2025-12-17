@@ -1,21 +1,31 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StokController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
 use App\Models\Item;
 use App\Models\Gudang;
+use App\Models\ItemStock;
+use Illuminate\Support\Facades\Auth;
 
 Route::redirect('/', '/login');
 
 // === UPDATE ROUTE DASHBOARD ===
 Route::get('/dashboard', function () {
+    $user = Auth::user();
+    $gudangId = $user->gudang_id;
+
     // Mengambil data real dari database
     $data = [
         'totalUsers'   => User::count(),
         'totalItems'   => Item::count(),
         'totalGudangs' => Gudang::count(),
+        'totalStockItems' => $gudangId ? ItemStock::where('gudang_id', $gudangId)->count() : 0,
+        'lowStockCount' => $gudangId ? ItemStock::where('gudang_id', $gudangId)
+            ->whereColumn('jumlah', '<', 'stok_minimum')
+            ->count() : 0
     ];
 
     // Mengirim variabel $data ke view dashboard
@@ -35,7 +45,7 @@ Route::middleware('auth')->group(function () {
     // ... (Area Operator & Security tetap sama)
     
     Route::middleware('role:operator_gudang,admin')->prefix('gudang')->name('gudang.')->group(function () {
-        Route::get('/stok', function() { return "Halaman Stok Barang"; })->name('stok.index');
+        Route::resource('stok', StokController::class);
         Route::get('/surat-jalan/create', function() { return "Form Buat Surat Jalan"; })->name('surat-jalan.create');
         Route::get('/surat-jalan/cetak/{id}', function() { return "Cetak PDF"; })->name('surat-jalan.print');
         Route::post('/terima-barang/{id}', function() { return "Proses Terima"; })->name('barang.terima');

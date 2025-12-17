@@ -1,7 +1,18 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <a href="{{ route('gudang.stok.index') }}" class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-[#00aff0] transition">
-        <div class="text-[#035b71] font-bold text-lg">📦 Inventaris Saya</div>
-        <p class="text-sm text-gray-500 mt-1">Cek stok barang di gudang ini</p>
+        <div class="flex justify-between items-center">
+            <div class="text-[#035b71] font-bold text-lg">📦 Inventaris Saya</div>
+            @if(isset($lowStockCount) && $lowStockCount > 0)
+                <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{{ $lowStockCount }} Rendah</span>
+            @endif
+        </div>
+        <p class="text-sm text-gray-500 mt-1">
+            @if(isset($totalStockItems))
+                {{ $totalStockItems }} item terdaftar
+            @else
+                Cek stok barang di gudang ini
+            @endif
+        </p>
     </a>
     
     <div class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-green-500 transition cursor-pointer">

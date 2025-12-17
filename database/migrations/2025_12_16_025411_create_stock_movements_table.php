@@ -23,7 +23,7 @@ return new class extends Migration
             $table->unsignedBigInteger('referensi_id')->nullable();
             $table->foreignId('created_by')->constrained('users');
             $table->text('keterangan')->nullable();
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamps(); // created_at & updated_at
         });
     }
 
