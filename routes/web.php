@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StokController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\SuratJalanController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -47,7 +48,8 @@ Route::middleware('auth')->group(function () {
     
     Route::middleware('role:operator_gudang,admin')->prefix('gudang')->name('gudang.')->group(function () {
         Route::resource('stok', StokController::class);
-        Route::get('/surat-jalan/create', function() { return "Form Buat Surat Jalan"; })->name('surat-jalan.create');
+        Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
+        Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
         Route::get('/surat-jalan/cetak/{id}', function() { return "Cetak PDF"; })->name('surat-jalan.print');
         Route::post('/terima-barang/{id}', function() { return "Proses Terima"; })->name('barang.terima');
     });

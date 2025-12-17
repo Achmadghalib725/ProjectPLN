@@ -8,6 +8,9 @@ use App\Models\User;
 use App\Models\Gudang;
 use App\Models\Item;
 use App\Models\ItemStock;
+use App\Models\SuratJalan;
+use App\Models\SuratJalanItem;
+use Illuminate\Support\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -48,7 +51,7 @@ class DatabaseSeeder extends Seeder
         // ========================================
 
         // Operator Gudang Tarahan
-        User::create([
+        $operatorTarahan = User::create([
             'name' => 'Budi Santoso',
             'email' => 'operator.tarahan@pln.co.id',
             'password' => Hash::make('tarahan123'),
@@ -60,7 +63,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Operator Gudang Teluk Betung
-        User::create([
+        $operatorTelukBetung = User::create([
             'name' => 'Siti Rahma',
             'email' => 'operator.telukbetung@pln.co.id',
             'password' => Hash::make('telukbetung123'),
@@ -174,6 +177,61 @@ class DatabaseSeeder extends Seeder
             'gudang_id' => $gudangTelukBetung->id,
             'jumlah' => 5,
             'stok_minimum' => 15  // Stok rendah untuk testing
+        ]);
+
+        // ========================================
+        // 8. BUAT DUMMY SURAT JALAN + ITEM
+        // ========================================
+        $tanggalHariIni = Carbon::now()->startOfDay();
+
+        $sj1 = SuratJalan::create([
+            'nomor' => 'SJ-' . $tanggalHariIni->format('Ymd') . '-001',
+            'gudang_asal_id' => $gudangTarahan->id,
+            'gudang_tujuan_id' => $gudangTelukBetung->id,
+            'tipe' => 'PEMINJAMAN',
+            'status' => 'DRAFT',
+            'tanggal' => $tanggalHariIni->toDateString(),
+            'created_by' => $operatorTarahan->id,
+            'ttd_pembuat_id' => null,
+            'waktu_ttd_pembuat' => null,
+            'catatan' => 'Dummy surat jalan untuk testing list (draft).',
+            'pdf_path' => null,
+        ]);
+
+        SuratJalanItem::insert([
+            [
+                'surat_jalan_id' => $sj1->id,
+                'item_id' => $item1->id,
+                'jumlah' => 10,
+                'keterangan' => 'Kebutuhan instalasi (dummy).',
+            ],
+            [
+                'surat_jalan_id' => $sj1->id,
+                'item_id' => $item3->id,
+                'jumlah' => 2,
+                'keterangan' => 'Cadangan proteksi (dummy).',
+            ],
+        ]);
+
+        $sj2 = SuratJalan::create([
+            'nomor' => 'SJ-' . $tanggalHariIni->copy()->subDay()->format('Ymd') . '-002',
+            'gudang_asal_id' => $gudangTelukBetung->id,
+            'gudang_tujuan_id' => $gudangTarahan->id,
+            'tipe' => 'PENGEMBALIAN',
+            'status' => 'DIKIRIM',
+            'tanggal' => $tanggalHariIni->copy()->subDay()->toDateString(),
+            'created_by' => $operatorTelukBetung->id,
+            'ttd_pembuat_id' => $operatorTelukBetung->id,
+            'waktu_ttd_pembuat' => $tanggalHariIni->copy()->subDay()->setTime(9, 15, 0),
+            'catatan' => 'Dummy surat jalan untuk testing list (dikirim).',
+            'pdf_path' => null,
+        ]);
+
+        SuratJalanItem::create([
+            'surat_jalan_id' => $sj2->id,
+            'item_id' => $item4->id,
+            'jumlah' => 1,
+            'keterangan' => 'Pengembalian material (dummy).',
         ]);
     }
 }
