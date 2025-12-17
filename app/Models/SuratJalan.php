@@ -11,6 +11,11 @@ class SuratJalan extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'tanggal' => 'date:Y-m-d',
+        'waktu_ttd_pembuat' => 'datetime',
+    ];
+
     // Relasi ke Item Detail
     public function items()
     {
@@ -30,5 +35,10 @@ class SuratJalan extends Model
     public function pembuat()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function picTujuan()
+    {
+        return $this->belongsTo(User::class, 'pic_tujuan_id');
     }
 }
