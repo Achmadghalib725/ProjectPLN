@@ -24,14 +24,14 @@ class DatabaseSeeder extends Seeder
         // 2. Buat User Admin & Operator
         User::create([
             'name' => 'Admin Super',
-            'email' => 'admin@pln.co.id',
+            'email' => 'admin@example.com',
             'password' => Hash::make('password123'),
             'role' => 'admin',
         ]);
 
         User::create([
             'name' => 'Operator Jakarta',
-            'email' => 'op.jakarta@pln.co.id',
+            'email' => 'op@example.com',
             'password' => Hash::make('password123'),
             'role' => 'operator_gudang',
             'gudang_id' => $gudangPusat->id,
@@ -39,7 +39,7 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'name' => 'Danru Security',
-            'email' => 'security@pln.co.id',
+            'email' => 'security@example.com',
             'password' => Hash::make('password123'),
             'role' => 'security',
             'gudang_id' => $gudangPusat->id, // Security bertugas di Gudang Pusat
