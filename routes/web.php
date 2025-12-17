@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StokController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -39,7 +40,7 @@ Route::middleware('auth')->group(function () {
     
     // 1. AREA ADMIN
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/users', function() { return "Halaman Kelola User"; })->name('users.index');
+        Route::resource('users', UserController::class); 
         Route::resource('items', ItemController::class);
     });
 
