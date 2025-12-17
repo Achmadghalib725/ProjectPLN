@@ -21,7 +21,7 @@
                          alt="PLN Logo"
                          class="h-24 mb-2">
                         <div class="text-center mt-2">
-                        <h1 class="text-1xl font-extrabold text-[#00aff0] tracking-wide uppercase">Manajemen Inventori</h1>
+                        <h1 class="text-1xl font-extrabold text-[#00aff0] tracking-wide uppercase">Manajemen Gudang</h1>
                     </div>
                 </a>
             </div>
