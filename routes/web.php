@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StokController;
+use App\Http\Controllers\ItemController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -41,6 +42,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('users', App\Http\Controllers\Admin\UserController::class);
         Route::get('/items', function() { return "Halaman Master Barang"; })->name('items.index');
         Route::get('/gudangs', function() { return "Halaman Kelola Gudang"; })->name('gudangs.index');
+        Route::get('/users', function() { return "Halaman Kelola User"; })->name('users.index');
+        Route::resource('items', ItemController::class);
     });
 
     // ... (Area Operator & Security tetap sama)
