@@ -8,6 +8,7 @@ use App\Models\ItemStock;
 use App\Models\Pic;
 use App\Models\Peminjaman;
 use App\Models\PeminjamanItem;
+use App\Models\StockMovement;
 use App\Models\SuratJalan;
 use App\Models\SuratJalanItem;
 use Illuminate\Http\Request;
@@ -205,6 +206,7 @@ class SuratJalanController extends Controller
 
         try {
             DB::transaction(function () use ($suratJalan, $gudangId) {
+                // Validasi stok terlebih dahulu
                 foreach ($suratJalan->items as $item) {
                     $stock = ItemStock::where('gudang_id', $gudangId)
                         ->where('item_id', $item->item_id)
@@ -218,10 +220,31 @@ class SuratJalanController extends Controller
                     }
                 }
 
+                // Kurangi stok dan catat movement
                 foreach ($suratJalan->items as $item) {
-                    ItemStock::where('gudang_id', $gudangId)
+                    $stock = ItemStock::where('gudang_id', $gudangId)
                         ->where('item_id', $item->item_id)
-                        ->decrement('jumlah', $item->jumlah);
+                        ->first();
+
+                    $stokSebelum = $stock->jumlah;
+                    $stokSesudah = $stokSebelum - $item->jumlah;
+
+                    // Update stok
+                    $stock->decrement('jumlah', $item->jumlah);
+
+                    // Catat ke stock_movements
+                    StockMovement::create([
+                        'item_id' => $item->item_id,
+                        'gudang_id' => $gudangId,
+                        'tipe' => 'OUT',
+                        'jumlah' => $item->jumlah,
+                        'stok_sebelum' => $stokSebelum,
+                        'stok_sesudah' => $stokSesudah,
+                        'referensi_type' => 'SuratJalan',
+                        'referensi_id' => $suratJalan->id,
+                        'created_by' => Auth::id(),
+                        'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$suratJalan->gudangTujuan->nama}"
+                    ]);
                 }
 
                 $suratJalan->update([
