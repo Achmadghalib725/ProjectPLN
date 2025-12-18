@@ -14,14 +14,14 @@
                         <h2 class="text-2xl font-bold text-gray-900">Detail Stok Item</h2>
                         <p class="text-sm text-gray-600 mt-1">{{ $stock->gudang->nama }}</p>
                     </div>
-                    <a href="{{ route('gudang.stok.edit', $stock->id) }}">
-                        <x-primary-button class="bg-[#035b71] hover:bg-[#00aff0]">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                            </svg>
-                            Edit Stok
-                        </x-primary-button>
-                    </a>
+                    <button type="button"
+                            @click="$dispatch('open-modal', 'edit-stock')"
+                            class="inline-flex items-center px-4 py-2 bg-[#035b71] border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-[#00aff0] focus:bg-[#00aff0] active:bg-[#024a5c] focus:outline-none focus:ring-2 focus:ring-[#035b71] focus:ring-offset-2 transition ease-in-out duration-150">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        Edit Stok
+                    </button>
                 </div>
             </div>
 
@@ -58,14 +58,6 @@
                                 </div>
                             @endif
 
-                            @if($stock->item->gambar_path)
-                                <div class="mt-6 pt-6 border-t border-gray-200">
-                                    <p class="text-sm text-gray-600 mb-2">Gambar Item</p>
-                                    <img src="{{ asset('storage/' . $stock->item->gambar_path) }}"
-                                         alt="{{ $stock->item->nama }}"
-                                         class="max-w-xs rounded-lg shadow-md">
-                                </div>
-                            @endif
                         </div>
                     </div>
                 </div>
@@ -213,4 +205,128 @@
             </div>
         </div>
     </div>
+
+    {{-- Edit Stock Modal --}}
+    <x-modal name="edit-stock" focusable>
+        <div class="p-6" x-data="{ adjustmentType: 'add' }">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Sesuaikan Stok</h2>
+                    <p class="text-sm text-gray-600">{{ $stock->item->nama }}</p>
+                </div>
+                <button type="button" class="text-gray-400 hover:text-gray-600"
+                        x-on:click="$dispatch('close-modal', 'edit-stock')">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Item Info --}}
+            <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <p class="text-gray-500">Kode Item</p>
+                        <p class="font-medium text-gray-900">{{ $stock->item->kode }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Satuan</p>
+                        <p class="font-medium text-gray-900">{{ $stock->item->satuan }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Kategori</p>
+                        <p class="font-medium text-gray-900">{{ $stock->item->kategori ?? '-' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Stok Saat Ini</p>
+                        <p class="font-bold text-[#035b71] text-lg">{{ number_format($stock->jumlah) }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ route('gudang.stok.update', $stock->id) }}" class="space-y-4">
+                @csrf
+                @method('PUT')
+
+                {{-- Adjustment Type --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Penyesuaian *</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="adjustment_type" value="add" x-model="adjustmentType"
+                                   class="w-4 h-4 text-[#035b71] border-gray-300 focus:ring-[#035b71]">
+                            <span class="ml-2 flex items-center text-sm">
+                                <svg class="w-4 h-4 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                Tambah (IN)
+                            </span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="adjustment_type" value="subtract" x-model="adjustmentType"
+                                   class="w-4 h-4 text-[#035b71] border-gray-300 focus:ring-[#035b71]">
+                            <span class="ml-2 flex items-center text-sm">
+                                <svg class="w-4 h-4 mr-1 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                                </svg>
+                                Kurangi (OUT)
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                {{-- Warning for Subtract --}}
+                <div x-show="adjustmentType === 'subtract'" x-transition
+                     class="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r">
+                    <p class="text-sm text-yellow-700">
+                        Pastikan jumlah pengurangan tidak melebihi stok tersedia ({{ number_format($stock->jumlah) }} {{ $stock->item->satuan }}).
+                    </p>
+                </div>
+
+                {{-- Adjustment Quantity --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Jumlah Penyesuaian *</label>
+                    <input type="number" name="adjustment_quantity" min="1" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50"
+                           placeholder="Masukkan jumlah">
+                    <p class="mt-1 text-xs text-gray-500">
+                        <span x-show="adjustmentType === 'add'">Jumlah yang akan ditambahkan ke stok</span>
+                        <span x-show="adjustmentType === 'subtract'">Jumlah yang akan dikurangi dari stok</span>
+                    </p>
+                </div>
+
+                {{-- Minimum Stock --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Stok Minimum *</label>
+                    <input type="number" name="stok_minimum" min="0" required value="{{ $stock->stok_minimum }}"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50">
+                </div>
+
+                {{-- Reason --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Alasan Penyesuaian *</label>
+                    <textarea name="keterangan" rows="2" required
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50"
+                              placeholder="Jelaskan alasan penyesuaian stok..."></textarea>
+                    <p class="mt-1 text-xs text-gray-500">Wajib diisi untuk keperluan audit</p>
+                </div>
+
+                {{-- Action Buttons --}}
+                <div class="flex items-center justify-end gap-3 pt-4 border-t">
+                    <button type="button"
+                            class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50"
+                            x-on:click="$dispatch('close-modal', 'edit-stock')">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-[#035b71] border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-[#00aff0]">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Simpan Penyesuaian
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
 </x-app-layout>

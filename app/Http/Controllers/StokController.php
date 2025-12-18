@@ -48,7 +48,11 @@ class StokController extends Controller
         // Get available categories for filter
         $categories = Item::distinct()->pluck('kategori')->filter();
 
-        return view('gudang.stok.index', compact('stocks', 'lowStockCount', 'totalItems', 'totalUnits', 'categories'));
+        // Get items NOT yet in this warehouse (for create modal)
+        $existingItemIds = ItemStock::where('gudang_id', $gudangId)->pluck('item_id');
+        $availableItems = Item::whereNotIn('id', $existingItemIds)->get();
+
+        return view('gudang.stok.index', compact('stocks', 'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems'));
     }
 
     /**
