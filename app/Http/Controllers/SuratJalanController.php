@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SuratJalanController extends Controller
 {
@@ -726,5 +727,80 @@ class SuratJalanController extends Controller
         }
 
         return $prefix . str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Generate PDF for existing Surat Jalan (download)
+     */
+    public function generatePdf(string $id)
+    {
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item'])
+            ->findOrFail($id);
+
+        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->download('surat-jalan-' . $suratJalan->nomor . '.pdf');
+    }
+
+    /**
+     * Preview PDF for existing Surat Jalan (inline display)
+     */
+    public function previewPdf(string $id)
+    {
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item'])
+            ->findOrFail($id);
+
+        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->stream('surat-jalan-' . $suratJalan->nomor . '.pdf');
+    }
+
+    /**
+     * Preview PDF from form data (before saving draft)
+     */
+    public function previewDraft(Request $request)
+    {
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId) {
+            return response()->json(['error' => 'User tidak memiliki gudang'], 403);
+        }
+
+        // Build temporary surat jalan object for preview
+        $suratJalan = new SuratJalan();
+        $suratJalan->nomor = 'DRAFT-PREVIEW';
+        $suratJalan->tanggal = $request->input('tanggal_kirim') ? Carbon::parse($request->input('tanggal_kirim')) : now();
+        $suratJalan->tipe = $request->input('mode') === 'peminjaman' ? 'PEMINJAMAN' : 'TRANSFER';
+        $suratJalan->status = 'DRAFT';
+        $suratJalan->catatan = $request->input('catatan');
+
+        if ($request->input('tanggal_kembali')) {
+            $suratJalan->tanggal_kembali = Carbon::parse($request->input('tanggal_kembali'));
+        }
+
+        // Load relations
+        $suratJalan->setRelation('gudangAsal', Gudang::find($gudangId));
+        $suratJalan->setRelation('gudangTujuan', Gudang::find($request->input('gudang_tujuan_id')));
+        $suratJalan->setRelation('picTujuan', Pic::find($request->input('pic_tujuan_id')));
+        $suratJalan->setRelation('pembuat', Auth::user());
+
+        // Build items collection
+        $items = collect($request->input('items', []))
+            ->filter(fn($item) => !empty($item['item_id']) && !empty($item['jumlah']))
+            ->map(function ($itemData) {
+                $suratJalanItem = new SuratJalanItem();
+                $suratJalanItem->jumlah = $itemData['jumlah'];
+                $suratJalanItem->keterangan = $itemData['keterangan'] ?? null;
+                $suratJalanItem->setRelation('item', Item::find($itemData['item_id']));
+                return $suratJalanItem;
+            });
+
+        $suratJalan->setRelation('items', $items);
+
+        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->stream('preview-surat-jalan.pdf');
     }
 }

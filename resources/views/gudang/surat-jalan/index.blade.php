@@ -470,6 +470,13 @@
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                                     </svg>
                                                 </a>
+                                                <a href="{{ route('gudang.surat-jalan.pdf', $sj->id) }}"
+                                                   class="text-green-600 hover:text-green-800"
+                                                   title="Download PDF">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                                    </svg>
+                                                </a>
                                             @else
                                                 <span class="text-gray-300" title="Belum tersedia">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -578,7 +585,7 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" class="space-y-6">
+            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" class="space-y-6" x-ref="createForm">
                 @csrf
                 <input type="hidden" name="mode" :value="mode">
 
@@ -726,14 +733,161 @@
                             x-on:click="$dispatch('close-modal', 'create-surat-jalan')">
                         Batal
                     </button>
-                    <button type="submit"
-                            class="bg-pln-primary hover:bg-pln-light text-white font-semibold py-2 px-4 rounded-md transition duration-150">
-                        Simpan Draft
+                    <button type="button"
+                            class="bg-pln-primary hover:bg-pln-light text-white font-semibold py-2 px-4 rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            x-data="{ loading: false }"
+                            :disabled="loading"
+                            @click="
+                                loading = true;
+
+                                // Collect form data
+                                const formData = new FormData($refs.createForm);
+
+                                // Open preview in new window
+                                const previewUrl = '{{ route('gudang.surat-jalan.preview-draft') }}';
+
+                                fetch(previewUrl, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                    }
+                                })
+                                .then(response => {
+                                    if (!response.ok) throw new Error('Network response was not ok');
+                                    return response.blob();
+                                })
+                                .then(blob => {
+                                    const url = URL.createObjectURL(blob);
+                                    $dispatch('open-preview', { url: url, formData: Object.fromEntries(formData) });
+                                    loading = false;
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert('Gagal membuat preview. Silakan coba lagi.');
+                                    loading = false;
+                                });
+                            ">
+                        <svg x-show="loading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="loading ? 'Membuat Preview...' : 'Preview & Simpan Draft'"></span>
                     </button>
                 </div>
             </form>
         </div>
     </x-modal>
+
+    {{-- Preview PDF Modal --}}
+    <div x-data="{
+            showPreview: false,
+            previewUrl: '',
+            formDataJson: ''
+         }"
+         @open-preview.window="
+            previewUrl = $event.detail.url;
+            formDataJson = JSON.stringify($event.detail.formData);
+            showPreview = true;
+         "
+         @close-preview.window="
+            showPreview = false;
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = '';
+            }
+         ">
+        <div x-show="showPreview"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                {{-- Backdrop --}}
+                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+                     @click="$dispatch('close-preview')"></div>
+
+                {{-- Modal Content --}}
+                <div class="relative z-10 w-full max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden"
+                     x-transition:enter="ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-b">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Preview Surat Jalan</h3>
+                            <p class="text-sm text-gray-500">Periksa kembali data sebelum menyimpan draft</p>
+                        </div>
+                        <button type="button"
+                                class="text-gray-400 hover:text-gray-600"
+                                @click="$dispatch('close-preview')">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- PDF Preview --}}
+                    <div class="p-4 bg-gray-100" style="height: 70vh;">
+                        <iframe :src="previewUrl"
+                                class="w-full h-full rounded border border-gray-300 bg-white"
+                                style="min-height: 500px;"></iframe>
+                    </div>
+
+                    {{-- Footer Actions --}}
+                    <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t">
+                        <button type="button"
+                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+                                @click="$dispatch('close-preview')">
+                            Kembali & Edit
+                        </button>
+                        <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="confirmForm">
+                            @csrf
+                            <input type="hidden" name="form_data" :value="formDataJson">
+                            <button type="button"
+                                    class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150"
+                                    @click="
+                                        // Parse the stored form data and submit
+                                        const data = JSON.parse(formDataJson);
+                                        const form = document.createElement('form');
+                                        form.method = 'POST';
+                                        form.action = '{{ route('gudang.surat-jalan.store') }}';
+
+                                        // Add CSRF token
+                                        const csrf = document.createElement('input');
+                                        csrf.type = 'hidden';
+                                        csrf.name = '_token';
+                                        csrf.value = '{{ csrf_token() }}';
+                                        form.appendChild(csrf);
+
+                                        // Add all form data
+                                        Object.entries(data).forEach(([key, value]) => {
+                                            const input = document.createElement('input');
+                                            input.type = 'hidden';
+                                            input.name = key;
+                                            input.value = value;
+                                            form.appendChild(input);
+                                        });
+
+                                        document.body.appendChild(form);
+                                        form.submit();
+                                    ">
+                                Konfirmasi & Simpan Draft
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <x-modal name="return-peminjaman" focusable>
         <div class="p-6"
