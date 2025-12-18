@@ -59,7 +59,7 @@
             {{-- Form Card --}}
             <div class="bg-white border border-gray-100 rounded-2xl shadow-xl shadow-gray-200/50 overflow-hidden">
                 <div class="p-8">
-                    <form method="POST" action="{{ route('admin.items.store') }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('admin.items.store') }}">
                         @csrf
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -78,29 +78,101 @@
                                 <x-input-error :messages="$errors->get('nama')" />
                             </div>
 
-                            {{-- Kategori (Dropdown) --}}
-                            <div class="space-y-2">
+                            {{-- Kategori (Combobox) --}}
+                            <div class="space-y-2" x-data="{
+                                open: false,
+                                search: '{{ old('kategori') }}',
+                                options: @js($items->pluck('kategori')->unique()->filter()->values()),
+                                get filtered() {
+                                    if (!this.search) return this.options;
+                                    return this.options.filter(opt => opt.toLowerCase().includes(this.search.toLowerCase()));
+                                },
+                                select(value) {
+                                    this.search = value;
+                                    this.open = false;
+                                }
+                            }">
                                 <x-input-label for="kategori" :value="'Kategori *'" class="text-gray-700 font-semibold" />
-                                <select id="kategori" name="kategori" class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer" required>
-                                    <option value="">-- Pilih Kategori --</option>
-                                    @foreach($items->pluck('kategori')->unique()->filter() as $cat)
-                                        <option value="{{ $cat }}" {{ old('kategori') == $cat ? 'selected' : '' }}>{{ $cat }}</option>
-                                    @endforeach
-                                </select>
-                                <p class="text-[10px] text-gray-400 italic">Pilih kategori yang tersedia</p>
+                                <div class="relative">
+                                    <input type="text"
+                                           id="kategori"
+                                           name="kategori"
+                                           x-model="search"
+                                           @focus="open = true"
+                                           @click="open = true"
+                                           @input="open = true"
+                                           @keydown.escape="open = false"
+                                           @keydown.tab="open = false"
+                                           autocomplete="off"
+                                           class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all"
+                                           placeholder="Ketik atau pilih kategori..."
+                                           required />
+                                    <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <div x-show="open && filtered.length > 0"
+                                         x-transition
+                                         @click.outside="open = false"
+                                         class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                        <template x-for="option in filtered" :key="option">
+                                            <div @click="select(option)"
+                                                 class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
+                                                 x-text="option"></div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 italic">Ketik untuk mencari atau membuat kategori baru</p>
                                 <x-input-error :messages="$errors->get('kategori')" />
                             </div>
 
-                            {{-- Satuan (Dropdown) --}}
-                            <div class="space-y-2">
+                            {{-- Satuan (Combobox) --}}
+                            <div class="space-y-2" x-data="{
+                                open: false,
+                                search: '{{ old('satuan') }}',
+                                options: @js($items->pluck('satuan')->unique()->filter()->values()),
+                                get filtered() {
+                                    if (!this.search) return this.options;
+                                    return this.options.filter(opt => opt.toLowerCase().includes(this.search.toLowerCase()));
+                                },
+                                select(value) {
+                                    this.search = value;
+                                    this.open = false;
+                                }
+                            }">
                                 <x-input-label for="satuan" :value="'Satuan *'" class="text-gray-700 font-semibold" />
-                                <select id="satuan" name="satuan" class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer" required>
-                                    <option value="">-- Pilih Satuan --</option>
-                                    @foreach($items->pluck('satuan')->unique()->filter() as $sat)
-                                        <option value="{{ $sat }}" {{ old('satuan') == $sat ? 'selected' : '' }}>{{ $sat }}</option>
-                                    @endforeach
-                                </select>
-                                <p class="text-[10px] text-gray-400 italic">Pilih satuan yang tersedia</p>
+                                <div class="relative">
+                                    <input type="text"
+                                           id="satuan"
+                                           name="satuan"
+                                           x-model="search"
+                                           @focus="open = true"
+                                           @click="open = true"
+                                           @input="open = true"
+                                           @keydown.escape="open = false"
+                                           @keydown.tab="open = false"
+                                           autocomplete="off"
+                                           class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all"
+                                           placeholder="Ketik atau pilih satuan..."
+                                           required />
+                                    <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <div x-show="open && filtered.length > 0"
+                                         x-transition
+                                         @click.outside="open = false"
+                                         class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                        <template x-for="option in filtered" :key="option">
+                                            <div @click="select(option)"
+                                                 class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
+                                                 x-text="option"></div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 italic">Ketik untuk mencari atau membuat satuan baru</p>
                                 <x-input-error :messages="$errors->get('satuan')" />
                             </div>
 
@@ -111,27 +183,6 @@
                                 <x-input-error :messages="$errors->get('deskripsi')" />
                             </div>
 
-                            {{-- Gambar Item --}}
-                            <div class="col-span-1 md:col-span-2 space-y-4 pt-4 border-t border-gray-50">
-                                <x-input-label for="gambar" :value="'Gambar Item (Opsional)'" class="text-gray-700 font-semibold" />
-                                <div class="flex flex-col md:flex-row gap-8 items-start">
-                                    <div class="w-full md:w-1/2 space-y-3">
-                                        <input type="file" id="gambar" name="gambar" accept="image/jpeg,image/png,image/jpg"
-                                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 cursor-pointer transition-all"
-                                               onchange="previewImage(event)" />
-                                        <p class="text-[10px] text-gray-400">Format: JPG, PNG. Maksimal 2MB</p>
-                                        <x-input-error :messages="$errors->get('gambar')" />
-                                    </div>
-                                    
-                                    {{-- Image Preview Design --}}
-                                    <div id="imagePreview" class="hidden animate-in fade-in zoom-in duration-300">
-                                        <div class="inline-block p-2 bg-white rounded-2xl border-2 border-dashed border-cyan-200">
-                                            <img id="preview" src="" alt="Preview" class="h-32 w-32 object-cover rounded-xl shadow-sm">
-                                        </div>
-                                        <p class="text-[10px] text-cyan-600 font-bold mt-1 text-center">Preview Gambar</p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         {{-- Action Buttons --}}
@@ -152,18 +203,4 @@
         </div>
     </div>
 
-    {{-- JavaScript for Image Preview --}}
-    <script>
-        function previewImage(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('preview').src = e.target.result;
-                    document.getElementById('imagePreview').classList.remove('hidden');
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-    </script>
 </x-app-layout>

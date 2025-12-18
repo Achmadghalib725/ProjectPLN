@@ -96,7 +96,7 @@ class DatabaseSeeder extends Seeder
             'kode' => 'KBL-001',
             'nama' => 'Kabel NYA 1.5mm',
             'satuan' => 'roll',
-            'kategori' => 'Kabel',
+            'kategori' => 'kabel',
             'deskripsi' => 'Kabel instalasi rumah NYA ukuran 1.5mm'
         ]);
 
@@ -104,7 +104,7 @@ class DatabaseSeeder extends Seeder
             'kode' => 'TRA-001',
             'nama' => 'Trafo Distribusi 100kVA',
             'satuan' => 'unit',
-            'kategori' => 'Trafo',
+            'kategori' => 'trafo',
             'deskripsi' => 'Trafo distribusi 20kV/380V kapasitas 100kVA'
         ]);
 
@@ -112,7 +112,7 @@ class DatabaseSeeder extends Seeder
             'kode' => 'MCB-001',
             'nama' => 'MCB 3 Phase 63A',
             'satuan' => 'unit',
-            'kategori' => 'Proteksi',
+            'kategori' => 'proteksi',
             'deskripsi' => 'Miniature Circuit Breaker 3 phase 63 Ampere'
         ]);
 
@@ -120,7 +120,7 @@ class DatabaseSeeder extends Seeder
             'kode' => 'TNG-001',
             'nama' => 'Tiang Beton 9 Meter',
             'satuan' => 'batang',
-            'kategori' => 'Konstruksi',
+            'kategori' => 'konstruksi',
             'deskripsi' => 'Tiang beton pracetak tinggi 9 meter'
         ]);
 
@@ -128,7 +128,7 @@ class DatabaseSeeder extends Seeder
             'kode' => 'KWH-001',
             'nama' => 'KWH Meter Digital 1 Phase',
             'satuan' => 'unit',
-            'kategori' => 'Meter',
+            'kategori' => 'meter',
             'deskripsi' => 'KWH meter digital 1 phase dengan fitur prepaid'
         ]);
 
@@ -215,7 +215,7 @@ class DatabaseSeeder extends Seeder
             'gudang_tujuan_id' => $gudangTelukBetung->id,
             'pic_tujuan_id' => $picTelukBetung->id,
             'tipe' => 'PEMINJAMAN',
-            'status' => 'DIKIRIM',
+            'status' => 'DRAFT',
             'tanggal' => $tanggalHariIni->toDateString(),
             'created_by' => $operatorTarahan->id,
             'ttd_pembuat_id' => null,
