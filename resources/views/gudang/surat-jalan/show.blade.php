@@ -1,6 +1,25 @@
 <x-app-layout>
     <div class="py-12">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+            {{-- Flash Messages --}}
+            @if(session('success'))
+                <div x-data="{ show: true }"
+                     x-show="show"
+                     x-init="setTimeout(() => show = false, 3000)"
+                     class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="mb-6 bg-red-50 border border-red-200 text-red-900 px-4 py-3 rounded-lg">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
                     <div class="flex items-center justify-between">
@@ -8,10 +27,30 @@
                             <h2 class="text-2xl font-bold text-gray-900">Detail Surat Jalan</h2>
                             <p class="text-sm text-gray-500 mt-1">{{ $suratJalan->nomor }}</p>
                         </div>
-                        <a href="{{ route('gudang.surat-jalan.create') }}"
-                           class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
-                            Kembali
-                        </a>
+                        <div class="flex items-center gap-2">
+                            @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
+                                <form method="POST" action="{{ route('gudang.surat-jalan.approve', $suratJalan->id) }}">
+                                    @csrf
+                                    <button type="submit"
+                                            class="bg-pln-primary hover:bg-pln-light text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                                        Approve & Kirim
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('gudang.surat-jalan.destroy', $suratJalan->id) }}"
+                                      onsubmit="return confirm('Hapus draft surat jalan ini?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                            class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                                        Hapus Draft
+                                    </button>
+                                </form>
+                            @endif
+                            <a href="{{ route('gudang.surat-jalan.index') }}"
+                               class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
+                                Kembali
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -40,6 +79,14 @@
                             <p class="text-sm text-gray-500">Tanggal</p>
                             <p class="font-semibold text-gray-900">{{ $suratJalan->tanggal?->format('Y-m-d') ?? '-' }}</p>
                         </div>
+                        @if(($suratJalan->tipe ?? '') === 'PEMINJAMAN')
+                            <div>
+                                <p class="text-sm text-gray-500">Tanggal Pengembalian</p>
+                                <p class="font-semibold text-gray-900">
+                                    {{ $peminjaman?->waktu_pengembalian?->format('Y-m-d') ?? '-' }}
+                                </p>
+                            </div>
+                        @endif
                         <div>
                             <p class="text-sm text-gray-500">Tipe</p>
                             <p class="font-semibold text-gray-900">{{ $suratJalan->tipe ?? '-' }}</p>

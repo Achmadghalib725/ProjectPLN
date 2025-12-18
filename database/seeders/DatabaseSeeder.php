@@ -215,7 +215,7 @@ class DatabaseSeeder extends Seeder
             'gudang_tujuan_id' => $gudangTelukBetung->id,
             'pic_tujuan_id' => $picTelukBetung->id,
             'tipe' => 'PEMINJAMAN',
-            'status' => 'DIKIRIM',
+            'status' => 'DRAFT',
             'tanggal' => $tanggalHariIni->toDateString(),
             'created_by' => $operatorTarahan->id,
             'ttd_pembuat_id' => null,

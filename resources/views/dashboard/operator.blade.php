@@ -28,7 +28,7 @@
         @endif
     </a>
 
-    <a href="{{ route('gudang.surat-jalan.create') }}" class="bg-white p-5 rounded-xl shadow border border-slate-200 hover:border-emerald-500 transition">
+    <a href="{{ route('gudang.surat-jalan.index') }}" class="bg-white p-5 rounded-xl shadow border border-slate-200 hover:border-emerald-500 transition">
         <div class="flex items-start justify-between">
             <div>
                 <p class="text-sm text-slate-500">Total Surat Jalan</p>
@@ -61,7 +61,7 @@
     <div class="xl:col-span-2 bg-white p-6 rounded-xl shadow border border-slate-200">
         <div class="flex items-center justify-between mb-4">
             <h3 class="font-bold text-[#035b71] text-lg">Surat Jalan Aktif</h3>
-            <a href="{{ route('gudang.surat-jalan.create') }}" class="text-xs font-semibold text-[#00aff0] hover:text-[#035b71]">Lihat semua</a>
+            <a href="{{ route('gudang.surat-jalan.index') }}" class="text-xs font-semibold text-[#00aff0] hover:text-[#035b71]">Lihat semua</a>
         </div>
         <div class="space-y-4">
             @forelse($activeSuratJalans as $suratJalan)
@@ -125,7 +125,7 @@
         <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
             <h3 class="font-bold text-[#035b71] text-lg mb-4">Quick Action</h3>
             <div class="grid grid-cols-1 gap-3">
-                <a href="{{ route('gudang.surat-jalan.create') }}" class="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-[#00aff0] hover:bg-slate-50 transition">
+                <a href="{{ route('gudang.surat-jalan.index') }}" class="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-[#00aff0] hover:bg-slate-50 transition">
                     <div>
                         <p class="text-sm font-semibold text-slate-800">Buat Surat Jalan</p>
                         <p class="text-xs text-slate-500">Kirim barang ke gudang tujuan</p>

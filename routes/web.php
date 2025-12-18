@@ -101,8 +101,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:operator_gudang,admin')->prefix('gudang')->name('gudang.')->group(function () {
         Route::resource('stok', StokController::class);
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
+        Route::get('/surat-jalan/index', [SuratJalanController::class, 'index'])->name('surat-jalan.index');
         Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
-        Route::get('/surat-jalan/{id}', [SuratJalanController::class, 'show'])->name('surat-jalan.show');
+        Route::get('/surat-jalan/{id}', [SuratJalanController::class, 'show'])->whereNumber('id')->name('surat-jalan.show');
+        Route::post('/surat-jalan/{id}/approve', [SuratJalanController::class, 'approve'])->whereNumber('id')->name('surat-jalan.approve');
+        Route::delete('/surat-jalan/{id}', [SuratJalanController::class, 'destroy'])->whereNumber('id')->name('surat-jalan.destroy');
         Route::get('/surat-jalan/cetak/{id}', function() { return "Cetak PDF"; })->name('surat-jalan.print');
         Route::post('/terima-barang/{id}', function() { return "Proses Terima"; })->name('barang.terima');
     });

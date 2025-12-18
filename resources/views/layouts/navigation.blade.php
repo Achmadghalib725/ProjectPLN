@@ -61,7 +61,7 @@
                     'operator_gudang' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
                         ['label' => 'Manajemen Barang', 'route' => 'gudang.stok.index', 'icon' => 'clipboard'],
-                        ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.create', 'icon' => 'truck'],
+                        ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
                         ['label' => 'Riwayat', 'url' => '#', 'icon' => 'clock'],
                     ],
                     'security' => [

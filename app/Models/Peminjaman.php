@@ -13,6 +13,18 @@ class Peminjaman extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'waktu_pengajuan' => 'datetime',
+        'waktu_kirim' => 'datetime',
+        'waktu_diterima' => 'datetime',
+        'waktu_pengembalian' => 'datetime',
+        'waktu_selesai' => 'datetime',
+        'waktu_ttd_pengirim' => 'datetime',
+        'waktu_ttd_penerima' => 'datetime',
+        'waktu_ttd_pengembalian' => 'datetime',
+        'waktu_ttd_terima_kembali' => 'datetime',
+    ];
+
     // Relasi ke Item Detail Peminjaman
     public function items()
     {
