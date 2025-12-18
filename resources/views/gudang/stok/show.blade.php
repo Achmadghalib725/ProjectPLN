@@ -248,9 +248,22 @@
                 @csrf
                 @method('PUT')
 
+                {{-- Minimum Stock --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Stok Minimum *</label>
+                    <input type="number" name="stok_minimum" min="0" required value="{{ $stock->stok_minimum }}"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50">
+                    <p class="mt-1 text-xs text-gray-500">Batas minimum stok untuk peringatan</p>
+                </div>
+
+                {{-- Divider --}}
+                <div class="border-t border-gray-200 pt-4">
+                    <p class="text-sm font-medium text-gray-700 mb-3">Penyesuaian Jumlah Stok <span class="text-gray-400 font-normal">(Opsional)</span></p>
+                </div>
+
                 {{-- Adjustment Type --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Penyesuaian *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Penyesuaian</label>
                     <div class="flex gap-4">
                         <label class="flex items-center cursor-pointer">
                             <input type="radio" name="adjustment_type" value="add" x-model="adjustmentType"
@@ -285,30 +298,23 @@
 
                 {{-- Adjustment Quantity --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Jumlah Penyesuaian *</label>
-                    <input type="number" name="adjustment_quantity" min="1" required
+                    <label class="block text-sm font-medium text-gray-700">Jumlah Penyesuaian</label>
+                    <input type="number" name="adjustment_quantity" min="1"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50"
-                           placeholder="Masukkan jumlah">
+                           placeholder="Kosongkan jika tidak mengubah jumlah stok">
                     <p class="mt-1 text-xs text-gray-500">
                         <span x-show="adjustmentType === 'add'">Jumlah yang akan ditambahkan ke stok</span>
                         <span x-show="adjustmentType === 'subtract'">Jumlah yang akan dikurangi dari stok</span>
                     </p>
                 </div>
 
-                {{-- Minimum Stock --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Stok Minimum *</label>
-                    <input type="number" name="stok_minimum" min="0" required value="{{ $stock->stok_minimum }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50">
-                </div>
-
                 {{-- Reason --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Alasan Penyesuaian *</label>
-                    <textarea name="keterangan" rows="2" required
+                    <label class="block text-sm font-medium text-gray-700">Alasan Penyesuaian</label>
+                    <textarea name="keterangan" rows="2"
                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50"
-                              placeholder="Jelaskan alasan penyesuaian stok..."></textarea>
-                    <p class="mt-1 text-xs text-gray-500">Wajib diisi untuk keperluan audit</p>
+                              placeholder="Wajib diisi jika mengubah jumlah stok..."></textarea>
+                    <p class="mt-1 text-xs text-gray-500">Diperlukan untuk audit jika ada perubahan jumlah</p>
                 </div>
 
                 {{-- Action Buttons --}}
