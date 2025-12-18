@@ -36,11 +36,14 @@ class ItemController extends Controller
         // Mengambil kategori unik untuk keperluan filter di halaman index
         $categories = Item::distinct()->pluck('kategori')->filter();
 
+        // Mengambil satuan unik untuk dropdown
+        $satuans = Item::distinct()->pluck('satuan')->filter();
+
         // Statistik untuk Dashboard Master Barang
         $totalItems = Item::count();
         $totalCategories = Item::distinct('kategori')->count('kategori');
 
-        return view('admin.items.index', compact('items', 'categories', 'totalItems', 'totalCategories'));
+        return view('admin.items.index', compact('items', 'categories', 'satuans', 'totalItems', 'totalCategories'));
     }
 
     /**

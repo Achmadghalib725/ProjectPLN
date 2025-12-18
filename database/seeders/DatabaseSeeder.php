@@ -9,6 +9,8 @@ use App\Models\Gudang;
 use App\Models\Item;
 use App\Models\ItemStock;
 use App\Models\Pic;
+use App\Models\Peminjaman;
+use App\Models\PeminjamanItem;
 use App\Models\SuratJalan;
 use App\Models\SuratJalanItem;
 use Illuminate\Support\Carbon;
@@ -259,6 +261,95 @@ class DatabaseSeeder extends Seeder
             'item_id' => $item4->id,
             'jumlah' => 1,
             'keterangan' => 'Pengembalian material (dummy).',
+        ]);
+
+        // ========================================
+        // 10. DUMMY PEMINJAMAN AKTIF (TELUK <-> TARAHAN)
+        // ========================================
+        $sjPeminjamanTeluk = SuratJalan::create([
+            'nomor' => 'SJ-' . $tanggalHariIni->copy()->subDays(2)->format('Ymd') . '-010',
+            'gudang_asal_id' => $gudangTarahan->id,
+            'gudang_tujuan_id' => $gudangTelukBetung->id,
+            'pic_tujuan_id' => $picTelukBetung->id,
+            'tipe' => 'PEMINJAMAN',
+            'status' => 'DIKIRIM',
+            'tanggal' => $tanggalHariIni->copy()->subDays(2)->toDateString(),
+            'created_by' => $operatorTarahan->id,
+            'catatan' => 'Peminjaman aktif untuk Teluk Betung (dummy).',
+            'pdf_path' => null,
+        ]);
+
+        $peminjamanTeluk = Peminjaman::create([
+            'kode' => 'PMJ-' . $tanggalHariIni->copy()->subDays(2)->format('Ymd') . '-001',
+            'gudang_peminjam_id' => $gudangTelukBetung->id,
+            'gudang_pemilik_id' => $gudangTarahan->id,
+            'status' => 'DITERIMA',
+            'surat_jalan_kirim_id' => $sjPeminjamanTeluk->id,
+            'waktu_pengajuan' => $tanggalHariIni->copy()->subDays(2)->setTime(8, 0, 0),
+            'waktu_kirim' => $tanggalHariIni->copy()->subDays(2)->setTime(9, 0, 0),
+            'waktu_diterima' => $tanggalHariIni->copy()->subDays(2)->setTime(15, 30, 0),
+            'durasi_hari' => 3,
+            'durasi_jam' => 72,
+            'catatan_pengiriman' => 'Peminjaman barang untuk kebutuhan darurat (dummy).',
+            'created_by' => $operatorTarahan->id,
+        ]);
+
+        PeminjamanItem::insert([
+            [
+                'peminjaman_id' => $peminjamanTeluk->id,
+                'item_id' => $item1->id,
+                'jumlah_dipinjam' => 20,
+                'jumlah_diterima' => 20,
+                'jumlah_dikembalikan' => null,
+                'kondisi_kembali' => null,
+                'catatan' => 'Dummy peminjaman Teluk Betung.',
+            ],
+            [
+                'peminjaman_id' => $peminjamanTeluk->id,
+                'item_id' => $item3->id,
+                'jumlah_dipinjam' => 3,
+                'jumlah_diterima' => 3,
+                'jumlah_dikembalikan' => null,
+                'kondisi_kembali' => null,
+                'catatan' => 'Dummy peminjaman Teluk Betung.',
+            ],
+        ]);
+
+        $sjPeminjamanTarahan = SuratJalan::create([
+            'nomor' => 'SJ-' . $tanggalHariIni->copy()->subDays(4)->format('Ymd') . '-011',
+            'gudang_asal_id' => $gudangTelukBetung->id,
+            'gudang_tujuan_id' => $gudangTarahan->id,
+            'pic_tujuan_id' => $picTarahan->id,
+            'tipe' => 'PEMINJAMAN',
+            'status' => 'DIKIRIM',
+            'tanggal' => $tanggalHariIni->copy()->subDays(4)->toDateString(),
+            'created_by' => $operatorTelukBetung->id,
+            'catatan' => 'Peminjaman aktif untuk Tarahan (dummy).',
+            'pdf_path' => null,
+        ]);
+
+        $peminjamanTarahan = Peminjaman::create([
+            'kode' => 'PMJ-' . $tanggalHariIni->copy()->subDays(4)->format('Ymd') . '-001',
+            'gudang_peminjam_id' => $gudangTarahan->id,
+            'gudang_pemilik_id' => $gudangTelukBetung->id,
+            'status' => 'DIKIRIM',
+            'surat_jalan_kirim_id' => $sjPeminjamanTarahan->id,
+            'waktu_pengajuan' => $tanggalHariIni->copy()->subDays(4)->setTime(8, 30, 0),
+            'waktu_kirim' => $tanggalHariIni->copy()->subDays(4)->setTime(10, 0, 0),
+            'durasi_hari' => 5,
+            'durasi_jam' => 120,
+            'catatan_pengiriman' => 'Peminjaman barang untuk proyek (dummy).',
+            'created_by' => $operatorTelukBetung->id,
+        ]);
+
+        PeminjamanItem::create([
+            'peminjaman_id' => $peminjamanTarahan->id,
+            'item_id' => $item4->id,
+            'jumlah_dipinjam' => 2,
+            'jumlah_diterima' => null,
+            'jumlah_dikembalikan' => null,
+            'kondisi_kembali' => null,
+            'catatan' => 'Dummy peminjaman Tarahan.',
         ]);
     }
 }

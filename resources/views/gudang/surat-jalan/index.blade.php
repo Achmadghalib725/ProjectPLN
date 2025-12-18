@@ -51,9 +51,7 @@
                             </p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-pln-primary/10 text-pln-primary">
-                                Operator Gudang
-                            </span>
+
                             <button type="button"
                                     class="inline-flex items-center px-4 py-2 bg-pln-primary hover:bg-pln-light text-white font-semibold rounded-md transition duration-150"
                                     @click="$dispatch('open-modal', 'create-surat-jalan')">
@@ -61,6 +59,15 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                 </svg>
                                 Buat Surat Jalan
+                            </button>
+                            <button type="button"
+                                    class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md transition duration-150"
+                                    @click="$dispatch('open-modal', 'return-peminjaman')">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h13l4 4v6a2 2 0 01-2 2H6a2 2 0 01-2-2V7zm0 0V5a2 2 0 012-2h9"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l4-4m0 0l4 4m-4-4v6"/>
+                                </svg>
+                                Pengembalian Peminjaman
                             </button>
                         </div>
                     </div>
@@ -319,8 +326,17 @@
                                         {{ $sj->picTujuan->nama ?? '-' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pln-primary/10 text-pln-primary">
-                                            {{ $sj->tipe ?? '-' }}
+                                        @php
+                                            $tipeLabel = $sj->tipe ?? '-';
+                                            $tipeClass = match ($tipeLabel) {
+                                                'PEMINJAMAN' => 'bg-blue-100 text-blue-800',
+                                                'PENGEMBALIAN' => 'bg-green-100 text-green-800',
+                                                'TRANSFER' => 'bg-purple-100 text-purple-800',
+                                                default => 'bg-gray-100 text-gray-700',
+                                            };
+                                        @endphp
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $tipeClass }}">
+                                            {{ $tipeLabel }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -604,6 +620,160 @@
                     <button type="submit"
                             class="bg-pln-primary hover:bg-pln-light text-white font-semibold py-2 px-4 rounded-md transition duration-150">
                         Simpan Draft
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+
+    <x-modal name="return-peminjaman" focusable>
+        <div class="p-6"
+             x-data="{
+                selectedPeminjamanId: @js(old('peminjaman_id', '')),
+                selectedPic: @js(old('pic_tujuan_id', '')),
+                peminjamans: @js(($activePeminjamans ?? collect())->map(fn($p) => [
+                    'id' => $p->id,
+                    'kode' => $p->kode,
+                    'gudang_pemilik_id' => $p->gudang_pemilik_id,
+                    'gudang_pemilik_nama' => $p->gudangPemilik->nama ?? '-',
+                    'items' => $p->items->map(fn($item) => [
+                        'kode' => $item->item->kode ?? '-',
+                        'nama' => $item->item->nama ?? 'Item',
+                        'satuan' => $item->item->satuan ?? '-',
+                        'jumlah' => $item->jumlah_dipinjam,
+                    ]),
+                ])->values()),
+                pics: @js(($pics ?? collect())->map(fn($pic) => [
+                    'id' => $pic->id,
+                    'nama' => $pic->nama,
+                    'jabatan' => $pic->jabatan,
+                    'gudang_id' => $pic->gudang_id,
+                ])->values()),
+                selectedPeminjaman() {
+                    return this.peminjamans.find(p => String(p.id) === String(this.selectedPeminjamanId));
+                },
+                filteredPics() {
+                    const peminjaman = this.selectedPeminjaman();
+                    if (!peminjaman) return [];
+                    return this.pics.filter(pic => String(pic.gudang_id) === String(peminjaman.gudang_pemilik_id));
+                },
+                handlePeminjamanChange() {
+                    const match = this.filteredPics().some(pic => String(pic.id) === String(this.selectedPic));
+                    if (!match) {
+                        this.selectedPic = '';
+                    }
+                }
+             }">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Pengembalian Peminjaman Barang</h3>
+                    <p class="text-sm text-gray-500 mt-1">Pilih kode peminjaman, lalu sistem menyiapkan surat jalan pengembalian.</p>
+                </div>
+                <button type="button" class="text-gray-400 hover:text-gray-600"
+                        x-on:click="$dispatch('close-modal', 'return-peminjaman')">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6">
+                @csrf
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>
+                        <select name="peminjaman_id"
+                                x-model="selectedPeminjamanId"
+                                @change="handlePeminjamanChange()"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                            <option value="">Pilih kode peminjaman...</option>
+                            <template x-for="p in peminjamans" :key="p.id">
+                                <option :value="p.id" x-text="p.kode"></option>
+                            </template>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Hanya peminjaman dengan status Dikirim/Diterima.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Pemilik</label>
+                        <input type="text"
+                               class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
+                               :value="selectedPeminjaman() ? selectedPeminjaman().gudang_pemilik_nama : '-'"
+                               readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
+                        <select name="pic_tujuan_id"
+                                x-model="selectedPic"
+                                required
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                            <option value="">Pilih PIC...</option>
+                            <template x-for="pic in filteredPics()" :key="pic.id">
+                                <option :value="pic.id" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
+                        <input type="date"
+                               name="tanggal_kirim"
+                               value="{{ old('tanggal_kirim', now()->toDateString()) }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                    <textarea name="catatan"
+                              rows="3"
+                              placeholder="Contoh: Pengembalian barang sesuai peminjaman..."
+                              class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">{{ old('catatan') }}</textarea>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="p-4">
+                        <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
+                        <p class="text-xs text-gray-500">Jumlah otomatis penuh sesuai peminjaman.</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <template x-if="!selectedPeminjaman()">
+                                    <tr>
+                                        <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">
+                                            Pilih kode peminjaman untuk melihat item.
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-if="selectedPeminjaman()">
+                                    <template x-for="(item, idx) in selectedPeminjaman().items" :key="idx">
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm text-gray-900" x-text="item.kode + ' - ' + item.nama"></td>
+                                            <td class="px-4 py-3 text-sm text-gray-500" x-text="item.satuan"></td>
+                                            <td class="px-4 py-3 text-sm text-gray-900" x-text="item.jumlah"></td>
+                                        </tr>
+                                    </template>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button"
+                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+                            x-on:click="$dispatch('close-modal', 'return-peminjaman')">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                        Simpan Draft Pengembalian
                     </button>
                 </div>
             </form>

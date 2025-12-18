@@ -13,18 +13,19 @@
                 jabatan: @json(old('jabatan')),
                 gudang_id: @json(old('gudang_id')),
                 password: '',
+                password_confirmation: '',
                 is_active: @json(old('is_active', 1)),
             },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', name: '', email: '', no_hp: '', role: '', jabatan: '', gudang_id: '', password: '', is_active: 1 };
+                this.form = { id: '', name: '', email: '', no_hp: '', role: '', jabatan: '', gudang_id: '', password: '', password_confirmation: '', is_active: 1 };
                 this.actionUrl = '{{ route('admin.users.store') }}';
                 this.showModal = true;
             },
             openEdit(user) {
                 this.isEdit = true;
                 // Populate form with user data
-                this.form = { ...user, password: '', gudang_id: user.gudang_id || '' }; 
+                this.form = { ...user, password: '', password_confirmation: '', gudang_id: user.gudang_id || '' };
                 // Construct update URL manually since we are in JS
                 this.actionUrl = '{{ url('admin/users') }}/' + user.id;
                 this.showModal = true;
@@ -254,9 +255,10 @@
                         
                         <form :action="actionUrl" method="POST" class="mt-4 space-y-4">
                             @csrf
-                            {{-- Method Spoofing for PUT --}}
-                            <input type="hidden" name="_method" value="PUT" :disabled="!isEdit">
-                            <input type="hidden" name="id" x-model="form.id" :disabled="!isEdit">
+                            {{-- Method Spoofing for PUT (only when editing) --}}
+                            <template x-if="isEdit">
+                                <input type="hidden" name="_method" value="PUT">
+                            </template>
 
                             {{-- Nama --}}
                             <div>
@@ -298,7 +300,6 @@
                             </div>
 
                             {{-- Gudang (Optional/Conditional) --}}
-                            @isset($gudangs)
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Lokasi Gudang</label>
                                 <select name="gudang_id" x-model="form.gudang_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
@@ -308,15 +309,23 @@
                                     @endforeach
                                 </select>
                             </div>
-                            @endisset
 
                             {{-- Password --}}
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">
                                     Password <span x-show="isEdit" class="text-xs text-gray-400 font-normal">(Kosongkan jika tidak ingin mengubah)</span>
                                 </label>
-                                <input type="password" name="password" :required="!isEdit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                <input type="password" name="password" x-model="form.password" :required="!isEdit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
                                 @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            {{-- Konfirmasi Password --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">
+                                    Konfirmasi Password <span x-show="isEdit" class="text-xs text-gray-400 font-normal">(Kosongkan jika tidak ingin mengubah)</span>
+                                </label>
+                                <input type="password" name="password_confirmation" x-model="form.password_confirmation" :required="!isEdit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                @error('password_confirmation') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- Status --}}
