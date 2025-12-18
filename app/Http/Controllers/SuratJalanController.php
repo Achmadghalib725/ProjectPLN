@@ -449,8 +449,12 @@ class SuratJalanController extends Controller
 
         try {
             DB::transaction(function () use ($suratJalan, $gudangId) {
-                // Validasi stok terlebih dahulu
-                foreach ($suratJalan->items as $item) {
+                $itemTotals = $suratJalan->items
+                    ->groupBy('item_id')
+                    ->map(fn ($rows) => $rows->sum('jumlah'));
+
+                // Validasi stok terlebih dahulu (per item total)
+                foreach ($itemTotals as $itemId => $qty) {
                     $stock = ItemStock::where('gudang_id', $gudangId)
                         ->where('item_id', $itemId)
                         ->lockForUpdate()
@@ -463,24 +467,22 @@ class SuratJalanController extends Controller
                     }
                 }
 
-                // Kurangi stok dan catat movement
-                foreach ($suratJalan->items as $item) {
+                // Kurangi stok dan catat movement (per item total)
+                foreach ($itemTotals as $itemId => $qty) {
                     $stock = ItemStock::where('gudang_id', $gudangId)
-                        ->where('item_id', $item->item_id)
+                        ->where('item_id', $itemId)
                         ->first();
 
                     $stokSebelum = $stock->jumlah;
-                    $stokSesudah = $stokSebelum - $item->jumlah;
+                    $stokSesudah = $stokSebelum - $qty;
 
-                    // Update stok
-                    $stock->decrement('jumlah', $item->jumlah);
+                    $stock->decrement('jumlah', $qty);
 
-                    // Catat ke stock_movements
                     StockMovement::create([
-                        'item_id' => $item->item_id,
+                        'item_id' => $itemId,
                         'gudang_id' => $gudangId,
                         'tipe' => 'OUT',
-                        'jumlah' => $item->jumlah,
+                        'jumlah' => $qty,
                         'stok_sebelum' => $stokSebelum,
                         'stok_sesudah' => $stokSesudah,
                         'referensi_type' => 'SuratJalan',
