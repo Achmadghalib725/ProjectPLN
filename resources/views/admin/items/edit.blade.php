@@ -2,18 +2,13 @@
     <div class="py-12 bg-gray-50/50 min-h-screen">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             
-            {{-- Header Section dengan Visual Inisial --}}
+            {{-- Header Section --}}
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div class="flex items-center space-x-4">
-                    <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                        {{ strtoupper(substr($item->satuan ?? 'ITM', 0, 3)) }}
-                    </div>
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-800 tracking-tight">
-                            Edit Profil Item
-                        </h2>
-                        <p class="text-sm text-gray-500 mt-1">Mengubah spesifikasi: <span class="font-semibold text-cyan-600">{{ $item->nama }}</span></p>
-                    </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 tracking-tight">
+                        Edit Data Item
+                    </h2>
+                    <p class="text-sm text-gray-500 mt-1">Mengubah spesifikasi: <span class="font-semibold text-cyan-600">{{ $item->nama }}</span></p>
                 </div>
                 <a href="{{ route('admin.items.index') }}" 
                    class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500">
@@ -48,7 +43,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('admin.items.update', $item->id) }}" enctype="multipart/form-data" class="space-y-8">
+                    <form method="POST" action="{{ route('admin.items.update', $item->id) }}" class="space-y-8">
                         @csrf
                         @method('PUT')
 
@@ -66,16 +61,100 @@
                                 <x-text-input id="nama" name="nama" type="text" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" :value="old('nama', $item->nama)" required />
                             </div>
 
-                            {{-- Kategori --}}
-                            <div class="space-y-2">
+                            {{-- Kategori (Combobox) --}}
+                            <div class="space-y-2" x-data="{
+                                open: false,
+                                search: '{{ old('kategori', $item->kategori) }}',
+                                options: @js($items->pluck('kategori')->unique()->filter()->values()),
+                                get filtered() {
+                                    if (!this.search) return this.options;
+                                    return this.options.filter(opt => opt.toLowerCase().includes(this.search.toLowerCase()));
+                                },
+                                select(value) {
+                                    this.search = value;
+                                    this.open = false;
+                                }
+                            }">
                                 <x-input-label for="kategori" :value="'Kategori *'" class="text-gray-700 font-semibold" />
-                                <x-text-input id="kategori" name="kategori" type="text" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" :value="old('kategori', $item->kategori)" required />
+                                <div class="relative">
+                                    <input type="text"
+                                           id="kategori"
+                                           name="kategori"
+                                           x-model="search"
+                                           @focus="open = true"
+                                           @click="open = true"
+                                           @input="open = true"
+                                           @keydown.escape="open = false"
+                                           @keydown.tab="open = false"
+                                           autocomplete="off"
+                                           class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all"
+                                           placeholder="Ketik atau pilih kategori..."
+                                           required />
+                                    <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <div x-show="open && filtered.length > 0"
+                                         x-transition
+                                         @click.outside="open = false"
+                                         class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                        <template x-for="option in filtered" :key="option">
+                                            <div @click="select(option)"
+                                                 class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
+                                                 x-text="option"></div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 italic">Ketik untuk mencari atau membuat kategori baru</p>
                             </div>
 
-                            {{-- Satuan --}}
-                            <div class="space-y-2">
+                            {{-- Satuan (Combobox) --}}
+                            <div class="space-y-2" x-data="{
+                                open: false,
+                                search: '{{ old('satuan', $item->satuan) }}',
+                                options: @js($items->pluck('satuan')->unique()->filter()->values()),
+                                get filtered() {
+                                    if (!this.search) return this.options;
+                                    return this.options.filter(opt => opt.toLowerCase().includes(this.search.toLowerCase()));
+                                },
+                                select(value) {
+                                    this.search = value;
+                                    this.open = false;
+                                }
+                            }">
                                 <x-input-label for="satuan" :value="'Satuan *'" class="text-gray-700 font-semibold" />
-                                <x-text-input id="satuan" name="satuan" type="text" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" :value="old('satuan', $item->satuan)" required />
+                                <div class="relative">
+                                    <input type="text"
+                                           id="satuan"
+                                           name="satuan"
+                                           x-model="search"
+                                           @focus="open = true"
+                                           @click="open = true"
+                                           @input="open = true"
+                                           @keydown.escape="open = false"
+                                           @keydown.tab="open = false"
+                                           autocomplete="off"
+                                           class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all"
+                                           placeholder="Ketik atau pilih satuan..."
+                                           required />
+                                    <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <div x-show="open && filtered.length > 0"
+                                         x-transition
+                                         @click.outside="open = false"
+                                         class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                        <template x-for="option in filtered" :key="option">
+                                            <div @click="select(option)"
+                                                 class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
+                                                 x-text="option"></div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 italic">Ketik untuk mencari atau membuat satuan baru</p>
                             </div>
 
                             {{-- Deskripsi --}}
@@ -84,41 +163,6 @@
                                 <textarea id="deskripsi" name="deskripsi" rows="3" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm transition-all">{{ old('deskripsi', $item->deskripsi) }}</textarea>
                             </div>
 
-                            {{-- Bagian Gambar --}}
-                            <div class="col-span-1 md:col-span-2 space-y-4 pt-4 border-t border-gray-50">
-                                <x-input-label for="gambar" :value="'Media & Gambar Item'" class="text-gray-700 font-semibold" />
-                                
-                                <div class="flex flex-col md:flex-row gap-8 items-start">
-                                    {{-- Current Image --}}
-                                    @if($item->gambar_path)
-                                        <div class="relative group">
-                                            <p class="text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Gambar Saat Ini</p>
-                                            <div class="overflow-hidden rounded-2xl border-4 border-gray-50 shadow-md">
-                                                <img src="{{ asset('storage/' . $item->gambar_path) }}"
-                                                     alt="{{ $item->nama }}"
-                                                     class="h-40 w-40 object-cover group-hover:scale-110 transition-transform duration-500"
-                                                     id="currentImage">
-                                            </div>
-                                        </div>
-                                    @endif
-
-                                    {{-- Upload New & Preview --}}
-                                    <div class="flex-grow space-y-3">
-                                        <p class="text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Upload Baru</p>
-                                        <input type="file" id="gambar" name="gambar" accept="image/*"
-                                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 cursor-pointer transition-all"
-                                               onchange="previewImage(event)" />
-                                        <p class="text-[10px] text-gray-400">Format: JPG, PNG. Maksimal 2MB. Pilih file untuk mengganti gambar lama.</p>
-                                        
-                                        <div id="imagePreview" class="mt-4 hidden animate-pulse">
-                                            <div class="inline-block p-2 bg-white rounded-2xl border-2 border-dashed border-cyan-200">
-                                                <img id="preview" src="" alt="Preview" class="h-32 w-32 object-cover rounded-xl">
-                                            </div>
-                                            <p class="text-[10px] text-cyan-600 font-bold mt-1">Preview Gambar Baru</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         {{-- Action Buttons --}}
@@ -139,22 +183,4 @@
         </div>
     </div>
 
-    {{-- Script Preview Tetap Dipertahankan --}}
-    <script>
-        function previewImage(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('preview').src = e.target.result;
-                    document.getElementById('imagePreview').classList.remove('hidden');
-                    const currentImage = document.getElementById('currentImage');
-                    if (currentImage) {
-                        currentImage.classList.add('opacity-40', 'grayscale');
-                    }
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-    </script>
 </x-app-layout>

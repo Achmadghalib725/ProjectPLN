@@ -7,7 +7,6 @@ use App\Http\Requests\ItemUpdateRequest;
 use App\Models\Item;
 use App\Models\ItemStock;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ItemController extends Controller
 {
@@ -21,11 +20,14 @@ class ItemController extends Controller
 
         $items = Item::query()
             ->when($search, function ($query, $search) {
-                $query->where('nama', 'like', "%{$search}%")
-                    ->orWhere('kode', 'like', "%{$search}%");
+                $searchLower = strtolower($search);
+                $query->where(function ($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                      ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
+                });
             })
             ->when($kategori, function ($query, $kategori) {
-                $query->where('kategori', $kategori);
+                $query->whereRaw('LOWER(kategori) = ?', [strtolower($kategori)]);
             })
             ->orderBy('created_at', 'desc')
             ->paginate(15)
@@ -60,13 +62,9 @@ class ItemController extends Controller
         try {
             $data = $request->validated();
 
-            // Handle upload gambar jika ada
-            if ($request->hasFile('gambar')) {
-                $file = $request->file('gambar');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('items', $filename, 'public');
-                $data['gambar_path'] = $path;
-            }
+            // Normalisasi kategori dan satuan ke lowercase untuk konsistensi
+            $data['kategori'] = strtolower($data['kategori']);
+            $data['satuan'] = strtolower($data['satuan']);
 
             Item::create($data);
 
@@ -116,18 +114,9 @@ class ItemController extends Controller
             $item = Item::findOrFail($id);
             $data = $request->validated();
 
-            // Handle upload gambar baru
-            if ($request->hasFile('gambar')) {
-                // Hapus gambar lama jika ada
-                if ($item->gambar_path) {
-                    Storage::disk('public')->delete($item->gambar_path);
-                }
-
-                $file = $request->file('gambar');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('items', $filename, 'public');
-                $data['gambar_path'] = $path;
-            }
+            // Normalisasi kategori dan satuan ke lowercase untuk konsistensi
+            $data['kategori'] = strtolower($data['kategori']);
+            $data['satuan'] = strtolower($data['satuan']);
 
             $item->update($data);
 
@@ -153,11 +142,6 @@ class ItemController extends Controller
             if ($stockCount > 0) {
                 return redirect()->back()
                     ->with('error', "Item tidak dapat dihapus karena masih digunakan di {$stockCount} gudang. Hapus stok dari gudang terlebih dahulu.");
-            }
-
-            // Hapus gambar fisik dari storage
-            if ($item->gambar_path) {
-                Storage::disk('public')->delete($item->gambar_path);
             }
 
             $item->delete();

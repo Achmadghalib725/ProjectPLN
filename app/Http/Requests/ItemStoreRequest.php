@@ -27,7 +27,6 @@ class ItemStoreRequest extends FormRequest
             'satuan' => ['required', 'string', 'max:50'],
             'kategori' => ['required', 'string', 'max:100'],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
-            'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'] // Max 2MB
         ];
     }
 
@@ -49,9 +48,6 @@ class ItemStoreRequest extends FormRequest
             'kategori.required' => 'Kategori harus diisi',
             'kategori.max' => 'Kategori maksimal 100 karakter',
             'deskripsi.max' => 'Deskripsi maksimal 1000 karakter',
-            'gambar.image' => 'File harus berupa gambar',
-            'gambar.mimes' => 'Format gambar harus jpeg, png, atau jpg',
-            'gambar.max' => 'Ukuran gambar maksimal 2MB'
         ];
     }
 }
