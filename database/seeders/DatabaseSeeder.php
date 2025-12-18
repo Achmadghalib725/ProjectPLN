@@ -39,8 +39,8 @@ class DatabaseSeeder extends Seeder
         // ========================================
         User::create([
             'name' => 'Admin PLN Lampung',
-            'email' => 'admin@pln.co.id',
-            'password' => Hash::make('admin123'),
+            'email' => 'admin@pln.com',
+            'password' => Hash::make('password'),
             'role' => 'admin',
             'jabatan' => 'Administrator Sistem',
             'no_hp' => '081234567890',
@@ -54,8 +54,8 @@ class DatabaseSeeder extends Seeder
         // Operator Gudang Tarahan
         $operatorTarahan = User::create([
             'name' => 'Budi Santoso',
-            'email' => 'operator.tarahan@pln.co.id',
-            'password' => Hash::make('tarahan123'),
+            'email' => 'tarahan@pln.com',
+            'password' => Hash::make('password'),
             'role' => 'operator_gudang',
             'gudang_id' => $gudangTarahan->id,
             'jabatan' => 'Operator Gudang PLTD/G Tarahan',
@@ -66,8 +66,8 @@ class DatabaseSeeder extends Seeder
         // Operator Gudang Teluk Betung
         $operatorTelukBetung = User::create([
             'name' => 'Siti Rahma',
-            'email' => 'operator.telukbetung@pln.co.id',
-            'password' => Hash::make('telukbetung123'),
+            'email' => 'telukbetung@pln.com',
+            'password' => Hash::make('password'),
             'role' => 'operator_gudang',
             'gudang_id' => $gudangTelukBetung->id,
             'jabatan' => 'Operator Gudang PLTD Teluk Betung',
@@ -81,7 +81,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Agus Priyanto',
             'email' => 'security@pln.co.id',
-            'password' => Hash::make('security123'),
+            'password' => Hash::make('password'),
             'role' => 'security',
             'gudang_id' => $gudangTarahan->id, // Security di Tarahan
             'jabatan' => 'Komandan Regu Security',
