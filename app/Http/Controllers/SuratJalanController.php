@@ -56,7 +56,17 @@ class SuratJalanController extends Controller
                 ->get()
             : collect();
 
-        return view('gudang.surat-jalan.index', compact('suratJalans', 'stats', 'gudangs', 'pics', 'availableStocks', 'filters'));
+        $activePeminjamans = Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
+            ? Peminjaman::query()
+                ->with(['items.item', 'gudangPemilik'])
+                ->where('gudang_peminjam_id', $gudangId)
+                ->whereIn('status', ['DIKIRIM', 'DITERIMA'])
+                ->whereNull('surat_jalan_kembali_id')
+                ->orderByDesc('waktu_pengajuan')
+                ->get()
+            : collect();
+
+        return view('gudang.surat-jalan.index', compact('suratJalans', 'stats', 'gudangs', 'pics', 'availableStocks', 'filters', 'activePeminjamans'));
     }
 
     public function create(Request $request)
@@ -168,6 +178,86 @@ class SuratJalanController extends Controller
         }
 
         return $redirect;
+    }
+
+    public function storeReturn(Request $request)
+    {
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId) {
+            abort(403, 'User tidak memiliki gudang yang ditugaskan');
+        }
+
+        $validated = $request->validate([
+            'peminjaman_id' => [
+                'required',
+                'integer',
+                Rule::exists('peminjamans', 'id')->where(function ($query) use ($gudangId) {
+                    $query->where('gudang_peminjam_id', $gudangId)
+                        ->whereIn('status', ['DIKIRIM', 'DITERIMA'])
+                        ->whereNull('surat_jalan_kembali_id');
+                }),
+            ],
+            'pic_tujuan_id' => ['required', 'integer', 'exists:pics,id'],
+            'tanggal_kirim' => ['required', 'date'],
+            'catatan' => ['nullable', 'string'],
+        ], [
+            'peminjaman_id.required' => 'Kode peminjaman wajib dipilih.',
+            'peminjaman_id.exists' => 'Kode peminjaman tidak valid atau sudah dikembalikan.',
+            'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
+        ]);
+
+        $peminjaman = Peminjaman::with(['items', 'gudangPemilik'])
+            ->where('id', $validated['peminjaman_id'])
+            ->firstOrFail();
+
+        $picValid = Pic::where('id', $validated['pic_tujuan_id'])
+            ->where('gudang_id', $peminjaman->gudang_pemilik_id)
+            ->exists();
+
+        if (!$picValid) {
+            return redirect()
+                ->route('gudang.surat-jalan.index')
+                ->withErrors(['pic_tujuan_id' => 'PIC tujuan tidak sesuai dengan gudang pemilik.'])
+                ->withInput();
+        }
+
+        $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
+
+        DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman) {
+            $suratJalan = SuratJalan::create([
+                'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
+                'gudang_asal_id' => $gudangId,
+                'gudang_tujuan_id' => $peminjaman->gudang_pemilik_id,
+                'pic_tujuan_id' => $validated['pic_tujuan_id'],
+                'tipe' => 'PENGEMBALIAN',
+                'status' => 'DRAFT',
+                'tanggal' => $tanggalKirim->toDateString(),
+                'created_by' => Auth::id(),
+                'catatan' => $validated['catatan'] ?? null,
+                'pdf_path' => null,
+            ]);
+
+            $rows = $peminjaman->items->map(function ($item) use ($suratJalan) {
+                return [
+                    'surat_jalan_id' => $suratJalan->id,
+                    'item_id' => $item->item_id,
+                    'jumlah' => (int) $item->jumlah_dipinjam,
+                    'keterangan' => 'Pengembalian barang peminjaman.',
+                ];
+            })->all();
+
+            SuratJalanItem::insert($rows);
+
+            $peminjaman->update([
+                'surat_jalan_kembali_id' => $suratJalan->id,
+                'status' => 'DIKEMBALIKAN',
+                'waktu_pengembalian' => $tanggalKirim->toDateString(),
+            ]);
+        });
+
+        return redirect()
+            ->route('gudang.surat-jalan.index')
+            ->with('success', 'Draft pengembalian peminjaman berhasil dibuat.');
     }
 
     public function show($id)
