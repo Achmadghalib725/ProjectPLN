@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 class ItemController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Menampilkan daftar item dengan fitur pencarian dan filter.
      */
     public function index(Request $request)
     {
@@ -31,10 +31,10 @@ class ItemController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Get distinct categories for filter
+        // Mengambil kategori unik untuk keperluan filter di halaman index
         $categories = Item::distinct()->pluck('kategori')->filter();
 
-        // Statistics
+        // Statistik untuk Dashboard Master Barang
         $totalItems = Item::count();
         $totalCategories = Item::distinct('kategori')->count('kategori');
 
@@ -42,22 +42,25 @@ class ItemController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Menampilkan form tambah item.
+     * Mengambil data $items agar dropdown kategori & satuan bisa muncul.
      */
     public function create()
     {
-        return view('admin.items.create');
+        // Solusi: Mengambil semua data item agar variabel $items tersedia di view create
+        $items = Item::all();
+        return view('admin.items.create', compact('items'));
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Menyimpan item baru ke database.
      */
     public function store(ItemStoreRequest $request)
     {
         try {
             $data = $request->validated();
 
-            // Handle file upload
+            // Handle upload gambar jika ada
             if ($request->hasFile('gambar')) {
                 $file = $request->file('gambar');
                 $filename = time() . '_' . $file->getClientOriginalName();
@@ -77,13 +80,13 @@ class ItemController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Menampilkan detail item tertentu.
      */
     public function show(string $id)
     {
         $item = Item::with('stocks.gudang')->findOrFail($id);
 
-        // Get stock info across all warehouses
+        // Menghitung total stok di seluruh gudang
         $totalStockAcrossWarehouses = $item->stocks->sum('jumlah');
         $warehouseCount = $item->stocks->count();
 
@@ -91,16 +94,21 @@ class ItemController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Menampilkan form edit item.
+     * Mengambil data $items agar dropdown kategori & satuan bisa muncul.
      */
     public function edit(string $id)
     {
         $item = Item::findOrFail($id);
-        return view('admin.items.edit', compact('item'));
+        
+        // Solusi: Mengambil semua data item agar variabel $items tersedia di view edit
+        $items = Item::all();
+        
+        return view('admin.items.edit', compact('item', 'items'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Memperbarui data item di database.
      */
     public function update(ItemUpdateRequest $request, string $id)
     {
@@ -108,9 +116,9 @@ class ItemController extends Controller
             $item = Item::findOrFail($id);
             $data = $request->validated();
 
-            // Handle file upload
+            // Handle upload gambar baru
             if ($request->hasFile('gambar')) {
-                // Delete old image if exists
+                // Hapus gambar lama jika ada
                 if ($item->gambar_path) {
                     Storage::disk('public')->delete($item->gambar_path);
                 }
@@ -133,21 +141,21 @@ class ItemController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Menghapus item dari master data.
      */
     public function destroy(string $id)
     {
         try {
             $item = Item::findOrFail($id);
 
-            // Check if item is used in any warehouse
+            // Validasi: Cek apakah item masih memiliki stok di gudang manapun
             $stockCount = ItemStock::where('item_id', $id)->count();
             if ($stockCount > 0) {
                 return redirect()->back()
                     ->with('error', "Item tidak dapat dihapus karena masih digunakan di {$stockCount} gudang. Hapus stok dari gudang terlebih dahulu.");
             }
 
-            // Delete image if exists
+            // Hapus gambar fisik dari storage
             if ($item->gambar_path) {
                 Storage::disk('public')->delete($item->gambar_path);
             }
