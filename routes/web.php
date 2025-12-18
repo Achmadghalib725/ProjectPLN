@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('stok', StokController::class);
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
         Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
+        Route::get('/surat-jalan/{id}', [SuratJalanController::class, 'show'])->name('surat-jalan.show');
         Route::get('/surat-jalan/cetak/{id}', function() { return "Cetak PDF"; })->name('surat-jalan.print');
         Route::post('/terima-barang/{id}', function() { return "Proses Terima"; })->name('barang.terima');
     });
