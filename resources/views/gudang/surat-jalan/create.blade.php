@@ -288,13 +288,13 @@
                                 <select name="pic_tujuan_id"
                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                     <option value="">(Opsional) Pilih PIC...</option>
-                                    @foreach($picUsers as $u)
-                                        <option value="{{ $u->id }}" {{ (string)old('pic_tujuan_id') === (string)$u->id ? 'selected' : '' }}>
-                                            {{ $u->name }} ({{ $u->email }})
+                                    @foreach($pics as $pic)
+                                        <option value="{{ $pic->id }}" {{ (string)old('pic_tujuan_id') === (string)$pic->id ? 'selected' : '' }}>
+                                            {{ $pic->nama }}{{ $pic->jabatan ? ' - ' . $pic->jabatan : '' }}{{ $pic->gudang ? ' (' . $pic->gudang->nama . ')' : '' }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <p class="text-xs text-gray-500 mt-1">Bisa diisi operator gudang tujuan / pihak penerima.</p>
+                                <p class="text-xs text-gray-500 mt-1">Data PIC diambil dari master PIC (seeder).</p>
                             </div>
 
                             <div>

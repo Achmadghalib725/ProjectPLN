@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Pic;
 
 class SuratJalan extends Model
 {
@@ -39,6 +40,6 @@ class SuratJalan extends Model
 
     public function picTujuan()
     {
-        return $this->belongsTo(User::class, 'pic_tujuan_id');
+        return $this->belongsTo(Pic::class, 'pic_tujuan_id');
     }
 }
