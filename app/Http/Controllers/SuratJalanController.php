@@ -22,24 +22,38 @@ class SuratJalanController extends Controller
 {
     public function index(Request $request)
     {
-        $filters = $request->only(['search', 'status', 'tipe', 'tanggal_mulai', 'tanggal_selesai', 'order_by']);
-        $suratJalans = $this->getSuratJalanListItems($filters);
-
-        $stats = [
-            'total' => $suratJalans->count(),
-            'draft' => $suratJalans->where('status', 'DRAFT')->count(),
-            'dikirim' => $suratJalans->where('status', 'DIKIRIM')->count(),
-            'diterima' => $suratJalans->where('status', 'DITERIMA')->count(),
-            'dikembalikan' => $suratJalans->filter(function ($sj) {
-                return $sj->tipe === 'PENGEMBALIAN' && $sj->status === 'DIKIRIM';
-            })->count(),
-            'selesai' => $suratJalans->where('status', 'SELESAI')->count(),
-        ];
-
         $gudangId = Auth::user()?->gudang_id;
         if (!$gudangId) {
             abort(403, 'User tidak memiliki gudang yang ditugaskan');
         }
+
+        $tab = $request->input('tab', 'keluar'); // Default to 'keluar'
+        $filters = $request->only(['search', 'status', 'tipe', 'tanggal_mulai', 'tanggal_selesai', 'order_by']);
+        $filters['tab'] = $tab;
+
+        $suratJalans = $this->getSuratJalanListItems($filters, $gudangId);
+
+        // Stats for current tab
+        if ($tab === 'keluar') {
+            $stats = [
+                'total' => $suratJalans->count(),
+                'draft' => $suratJalans->where('status', 'DRAFT')->count(),
+                'dikirim' => $suratJalans->where('status', 'DIKIRIM')->count(),
+                'diterima' => $suratJalans->where('status', 'DITERIMA')->count(),
+                'selesai' => $suratJalans->where('status', 'SELESAI')->count(),
+            ];
+        } else {
+            $stats = [
+                'total' => $suratJalans->count(),
+                'menunggu' => $suratJalans->where('status', 'DIKIRIM')->count(),
+                'diterima' => $suratJalans->where('status', 'DITERIMA')->count(),
+                'selesai' => $suratJalans->where('status', 'SELESAI')->count(),
+            ];
+        }
+
+        // Count for tab badges
+        $countKeluar = $this->countSuratKeluar($gudangId);
+        $countMasuk = $this->countSuratMasuk($gudangId);
 
         $gudangs = Schema::hasTable('gudangs')
             ? Gudang::query()->where('id', '!=', $gudangId)->orderBy('nama')->get()
@@ -67,7 +81,7 @@ class SuratJalanController extends Controller
                 ->get()
             : collect();
 
-        return view('gudang.surat-jalan.index', compact('suratJalans', 'stats', 'gudangs', 'pics', 'availableStocks', 'filters', 'activePeminjamans'));
+        return view('gudang.surat-jalan.index', compact('suratJalans', 'stats', 'gudangs', 'pics', 'availableStocks', 'filters', 'activePeminjamans', 'tab', 'countKeluar', 'countMasuk'));
     }
 
     public function create(Request $request)
@@ -541,12 +555,14 @@ class SuratJalanController extends Controller
             ->with('success', 'Draft Surat Jalan berhasil dihapus.');
     }
 
-    private function getSuratJalanListItems(array $filters = [])
+    private function getSuratJalanListItems(array $filters = [], ?int $gudangId = null)
     {
         if (!Schema::hasTable('surat_jalans')) {
             return collect();
         }
 
+        $gudangId = $gudangId ?? Auth::user()?->gudang_id;
+        $tab = $filters['tab'] ?? 'keluar';
         $orderBy = $filters['order_by'] ?? 'terbaru';
         $direction = $orderBy === 'terlama' ? 'asc' : 'desc';
 
@@ -556,22 +572,17 @@ class SuratJalanController extends Controller
             ->withSum('items', 'jumlah')
             ->orderBy('tanggal', $direction)
             ->orderBy('id', $direction)
-            ->limit(20);
+            ->limit(50);
 
-        $gudangId = Auth::user()?->gudang_id;
         if ($gudangId) {
-            $query->where(function ($q) use ($gudangId) {
-                $q->where(function ($sub) use ($gudangId) {
-                    $sub->where('tipe', 'PEMINJAMAN')
-                        ->where('gudang_asal_id', $gudangId);
-                })->orWhere(function ($sub) use ($gudangId) {
-                    $sub->where('tipe', 'TRANSFER')
-                        ->where('gudang_asal_id', $gudangId);
-                })->orWhere(function ($sub) use ($gudangId) {
-                    $sub->where('tipe', 'PENGEMBALIAN')
-                        ->where('gudang_tujuan_id', $gudangId);
-                });
-            });
+            if ($tab === 'keluar') {
+                // Surat Keluar: Semua surat yang dibuat oleh gudang saya (gudang_asal_id = gudangId)
+                $query->where('gudang_asal_id', $gudangId);
+            } else {
+                // Surat Masuk: Semua surat yang ditujukan ke gudang saya, tapi bukan DRAFT
+                $query->where('gudang_tujuan_id', $gudangId)
+                      ->where('status', '!=', 'DRAFT');
+            }
         }
 
         if (!empty($filters['search'])) {
@@ -583,11 +594,7 @@ class SuratJalanController extends Controller
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'DIKEMBALIKAN') {
-                $query->where('tipe', 'PENGEMBALIAN')->where('status', 'DIKIRIM');
-            } else {
-                $query->where('status', $filters['status']);
-            }
+            $query->where('status', $filters['status']);
         }
 
         if (!empty($filters['tanggal_mulai'])) {
@@ -599,6 +606,24 @@ class SuratJalanController extends Controller
         }
 
         return $query->get();
+    }
+
+    private function countSuratKeluar(int $gudangId): array
+    {
+        $query = SuratJalan::where('gudang_asal_id', $gudangId);
+        return [
+            'total' => (clone $query)->count(),
+            'draft' => (clone $query)->where('status', 'DRAFT')->count(),
+        ];
+    }
+
+    private function countSuratMasuk(int $gudangId): array
+    {
+        $query = SuratJalan::where('gudang_tujuan_id', $gudangId)->where('status', '!=', 'DRAFT');
+        return [
+            'total' => (clone $query)->count(),
+            'menunggu' => (clone $query)->where('status', 'DIKIRIM')->count(),
+        ];
     }
 
     private function createSuratJalanItems(int $suratJalanId, array $items): void
