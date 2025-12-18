@@ -20,11 +20,14 @@ class ItemController extends Controller
 
         $items = Item::query()
             ->when($search, function ($query, $search) {
-                $query->where('nama', 'like', "%{$search}%")
-                    ->orWhere('kode', 'like', "%{$search}%");
+                $searchLower = strtolower($search);
+                $query->where(function ($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                      ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
+                });
             })
             ->when($kategori, function ($query, $kategori) {
-                $query->where('kategori', $kategori);
+                $query->whereRaw('LOWER(kategori) = ?', [strtolower($kategori)]);
             })
             ->orderBy('created_at', 'desc')
             ->paginate(15)
