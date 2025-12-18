@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('satuan'); // pcs, set, unit
             $table->string('kategori'); // Tools, Sparepart
             $table->text('deskripsi')->nullable();
-            $table->string('gambar_path')->nullable();
             $table->timestamps();
         });
     }
