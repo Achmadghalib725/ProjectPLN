@@ -1,67 +1,152 @@
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <a href="{{ route('gudang.stok.index') }}" class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-[#00aff0] transition">
-        <div class="flex justify-between items-center">
-            <div class="text-[#035b71] font-bold text-lg">📦 Inventaris Saya</div>
-            @if(isset($lowStockCount) && $lowStockCount > 0)
-                <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{{ $lowStockCount }} Rendah</span>
-            @endif
-        </div>
-        <p class="text-sm text-gray-500 mt-1">
-            @if(isset($totalStockItems))
-                {{ $totalStockItems }} item terdaftar
-            @else
-                Cek stok barang di gudang ini
-            @endif
-        </p>
-    </a>
-    
-    <div class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-green-500 transition cursor-pointer">
-        <div class="flex justify-between items-center">
-            <div class="text-green-700 font-bold text-lg">📥 Barang Masuk</div>
-            <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">2 Baru</span>
-        </div>
-        <p class="text-sm text-gray-500 mt-1">Konfirmasi penerimaan barang</p>
-    </div>
+@php
+    $statusClasses = [
+        'DRAFT' => 'bg-slate-100 text-slate-700',
+        'DIKIRIM' => 'bg-blue-100 text-blue-700',
+        'DITERIMA' => 'bg-emerald-100 text-emerald-700',
+        'SELESAI' => 'bg-slate-100 text-slate-600',
+    ];
+@endphp
 
-    <div class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-orange-500 transition cursor-pointer">
-        <div class="text-orange-700 font-bold text-lg">📤 Barang Keluar</div>
-        <p class="text-sm text-gray-500 mt-1">Status pengiriman berjalan</p>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+    <a href="{{ route('gudang.stok.index') }}" class="bg-white p-5 rounded-xl shadow border border-slate-200 hover:border-[#00aff0] transition">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-sm text-slate-500">Stok Barang</p>
+                <h3 class="text-2xl font-bold text-[#035b71] mt-1">{{ number_format($totalStockItems ?? 0) }}</h3>
+                <p class="text-xs text-slate-500 mt-1">{{ number_format($totalStockUnits ?? 0) }} unit tersedia</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-[#e6f7ff] text-[#00aff0] flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4m16 0H4"></path></svg>
+            </div>
+        </div>
+        @if(!empty($lowStockCount))
+            <span class="inline-flex items-center text-xs font-semibold text-red-600 mt-3">
+                {{ $lowStockCount }} stok rendah perlu perhatian
+            </span>
+        @else
+            <span class="inline-flex items-center text-xs text-emerald-600 mt-3">Stok aman hari ini</span>
+        @endif
+    </a>
+
+    <a href="{{ route('gudang.surat-jalan.create') }}" class="bg-white p-5 rounded-xl shadow border border-slate-200 hover:border-emerald-500 transition">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-sm text-slate-500">Total Surat Jalan</p>
+                <h3 class="text-2xl font-bold text-emerald-700 mt-1">{{ number_format($totalSuratJalan ?? 0) }}</h3>
+                <p class="text-xs text-slate-500 mt-1">Dari gudang Anda</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            </div>
+        </div>
+        <span class="inline-flex items-center text-xs text-slate-500 mt-3">Terkait gudang Anda</span>
+    </a>
+
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-200 hover:border-amber-500 transition">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-sm text-slate-500">Barang Dipinjam</p>
+                <h3 class="text-2xl font-bold text-amber-600 mt-1">{{ number_format($totalBarangDipinjam ?? 0) }}</h3>
+                <p class="text-xs text-slate-500 mt-1">{{ number_format($totalPeminjamanAktif ?? 0) }} transaksi aktif</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+        </div>
+        <span class="inline-flex items-center text-xs text-slate-500 mt-3">Pantau proses pengembalian</span>
     </div>
 </div>
 
-<h3 class="font-bold text-[#035b71] text-lg mb-4 flex items-center gap-2">
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-    Pembuatan Surat Jalan Digital
-</h3>
-
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <a href="{{ route('gudang.surat-jalan.create', ['tujuan' => 'pltd_teluk']) }}" class="bg-blue-50 p-6 rounded-lg border-2 border-dashed border-blue-300 hover:bg-blue-100 hover:border-[#00aff0] transition group">
-        <div class="flex flex-col items-center text-center">
-            <div class="w-12 h-12 bg-[#00aff0] rounded-full flex items-center justify-center text-white mb-3 group-hover:scale-110 transition">
-                <span class="font-bold text-xl">T</span>
-            </div>
-            <h4 class="font-bold text-[#035b71]">Ke PLTD Teluk</h4>
-            <p class="text-xs text-gray-500 mt-1">Surat jalan rutin antar unit</p>
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="xl:col-span-2 bg-white p-6 rounded-xl shadow border border-slate-200">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-[#035b71] text-lg">Surat Jalan Aktif</h3>
+            <a href="{{ route('gudang.surat-jalan.create') }}" class="text-xs font-semibold text-[#00aff0] hover:text-[#035b71]">Lihat semua</a>
         </div>
-    </a>
-
-    <a href="{{ route('gudang.surat-jalan.create', ['tujuan' => 'tarahan']) }}" class="bg-blue-50 p-6 rounded-lg border-2 border-dashed border-blue-300 hover:bg-blue-100 hover:border-[#00aff0] transition group">
-        <div class="flex flex-col items-center text-center">
-             <div class="w-12 h-12 bg-[#00aff0] rounded-full flex items-center justify-center text-white mb-3 group-hover:scale-110 transition">
-                <span class="font-bold text-xl">TR</span>
-            </div>
-            <h4 class="font-bold text-[#035b71]">Ke Tarahan</h4>
-            <p class="text-xs text-gray-500 mt-1">Surat jalan rutin antar unit</p>
+        <div class="space-y-4">
+            @forelse($activeSuratJalans as $suratJalan)
+                <a href="{{ route('gudang.surat-jalan.show', $suratJalan->id) }}" class="flex flex-col md:flex-row md:items-center md:justify-between p-4 rounded-lg border border-slate-100 hover:border-[#00aff0] hover:bg-slate-50 transition">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">{{ $suratJalan->nomor }}</p>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Asal: {{ $suratJalan->gudangAsal?->nama ?? 'Gudang Asal' }} •
+                            Tujuan: {{ $suratJalan->gudangTujuan?->nama ?? 'Gudang Tujuan' }} •
+                            {{ $suratJalan->tanggal?->format('d M Y') ?? '-' }}
+                        </p>
+                    </div>
+                    <div class="mt-3 md:mt-0 flex items-center gap-3">
+                        <span class="text-xs font-medium text-slate-500">{{ $suratJalan->tipe }}</span>
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full {{ $statusClasses[$suratJalan->status] ?? 'bg-slate-100 text-slate-600' }}">
+                            {{ $suratJalan->status }}
+                        </span>
+                    </div>
+                </a>
+            @empty
+                <div class="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-lg p-4">
+                    Belum ada surat jalan aktif dari gudang ini.
+                </div>
+            @endforelse
         </div>
-    </a>
+    </div>
 
-    <a href="{{ route('gudang.surat-jalan.create') }}" class="bg-gray-50 p-6 rounded-lg border-2 border-dashed border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition">
-        <div class="flex flex-col items-center text-center">
-             <div class="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center text-white mb-3">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+    <div class="space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+            <h3 class="font-bold text-[#035b71] text-lg mb-4">Aktivitas Terakhir</h3>
+            <div class="space-y-4">
+                @forelse($recentActivities as $activity)
+                    <div class="flex items-start gap-3">
+                        <div class="w-9 h-9 rounded-full {{ $activity->tipe === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600' }} flex items-center justify-center">
+                            @if($activity->tipe === 'IN')
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            @else
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            @endif
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-slate-800">
+                                {{ $activity->item?->nama ?? 'Item' }}
+                                <span class="text-xs text-slate-500">({{ $activity->tipe }})</span>
+                            </p>
+                            <p class="text-xs text-slate-500 mt-1">
+                                Qty {{ number_format($activity->jumlah ?? 0) }} •
+                                {{ $activity->creator?->name ?? 'Sistem' }} •
+                                {{ $activity->created_at?->diffForHumans() ?? '-' }}
+                            </p>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-lg p-4">
+                        Belum ada aktivitas stok terbaru.
+                    </div>
+                @endforelse
             </div>
-            <h4 class="font-bold text-gray-700">Tujuan Lainnya</h4>
-            <p class="text-xs text-gray-500 mt-1">Buat surat jalan ke gudang umum</p>
         </div>
-    </a>
+
+        <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+            <h3 class="font-bold text-[#035b71] text-lg mb-4">Quick Action</h3>
+            <div class="grid grid-cols-1 gap-3">
+                <a href="{{ route('gudang.surat-jalan.create') }}" class="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-[#00aff0] hover:bg-slate-50 transition">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Buat Surat Jalan</p>
+                        <p class="text-xs text-slate-500">Kirim barang ke gudang tujuan</p>
+                    </div>
+                    <span class="text-xs font-semibold text-[#00aff0]">Mulai</span>
+                </a>
+                <a href="{{ route('gudang.stok.index') }}" class="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-[#00aff0] hover:bg-slate-50 transition">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Cek Stok Gudang</p>
+                        <p class="text-xs text-slate-500">Pantau persediaan dan stok minimum</p>
+                    </div>
+                    <span class="text-xs font-semibold text-[#00aff0]">Lihat</span>
+                </a>
+                <a href="{{ route('gudang.stok.create') }}" class="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-[#00aff0] hover:bg-slate-50 transition">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Tambah Item Stok</p>
+                        <p class="text-xs text-slate-500">Input inventaris baru</p>
+                    </div>
+                    <span class="text-xs font-semibold text-[#00aff0]">Tambah</span>
+                </a>
+            </div>
+        </div>
+    </div>
 </div>

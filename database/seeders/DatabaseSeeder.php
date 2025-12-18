@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
         // ========================================
         $gudangTarahan = Gudang::create([
             'kode' => 'GDG-TRH',
-            'nama' => 'Gudang PLTU Tarahan',
+            'nama' => 'Gudang PLTD/G Tarahan',
             'alamat' => 'Jl. Raya Tarahan, Kotaagung, Tanggamus, Lampung',
             'telepon' => '0721-5678901'
         ]);
@@ -58,7 +58,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('tarahan123'),
             'role' => 'operator_gudang',
             'gudang_id' => $gudangTarahan->id,
-            'jabatan' => 'Operator Gudang PLTU Tarahan',
+            'jabatan' => 'Operator Gudang PLTD/G Tarahan',
             'no_hp' => '082345678901',
             'is_active' => true
         ]);

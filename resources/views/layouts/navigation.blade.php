@@ -16,7 +16,7 @@
                 <div x-show="sidebarOpen" 
                      class="text-white whitespace-nowrap overflow-hidden transition-opacity duration-300 delay-100">
                     <h1 class="font-bold text-xl leading-tight tracking-wide">E-Gudang</h1>
-                    <p class="text-[10px] font-bold text-pln-yellow tracking-widest">PLN INDONESIA</p>
+                    <p class="text-[10px] font-bold text-pln-yellow tracking-widest">ULPLTD/G Tanjung Karang</p>
                 </div>
             </div>
 

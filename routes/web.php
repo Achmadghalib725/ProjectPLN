@@ -11,7 +11,12 @@ use App\Models\User;
 use App\Models\Item;
 use App\Models\Gudang;
 use App\Models\ItemStock;
+use App\Models\SuratJalan;
+use App\Models\Peminjaman;
+use App\Models\PeminjamanItem;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 Route::redirect('/', '/login');
 
@@ -25,10 +30,54 @@ Route::get('/dashboard', function () {
         'totalUsers'   => User::count(),
         'totalItems'   => Item::count(),
         'totalGudangs' => Gudang::count(),
-        'totalStockItems' => $gudangId ? ItemStock::where('gudang_id', $gudangId)->count() : 0,
-        'lowStockCount' => $gudangId ? ItemStock::where('gudang_id', $gudangId)
-            ->whereColumn('jumlah', '<', 'stok_minimum')
-            ->count() : 0
+        'totalStockItems' => $gudangId && Schema::hasTable('item_stocks')
+            ? ItemStock::where('gudang_id', $gudangId)->count()
+            : 0,
+        'totalStockUnits' => $gudangId && Schema::hasTable('item_stocks')
+            ? ItemStock::where('gudang_id', $gudangId)->sum('jumlah')
+            : 0,
+        'lowStockCount' => $gudangId && Schema::hasTable('item_stocks')
+            ? ItemStock::where('gudang_id', $gudangId)
+                ->whereColumn('jumlah', '<', 'stok_minimum')
+                ->count()
+            : 0,
+        'totalSuratJalan' => $gudangId && Schema::hasTable('surat_jalans')
+            ? SuratJalan::where(function ($query) use ($gudangId) {
+                $query->where('gudang_asal_id', $gudangId)
+                    ->orWhere('gudang_tujuan_id', $gudangId);
+            })->count()
+            : 0,
+        'totalPeminjamanAktif' => $gudangId && Schema::hasTable('peminjamans')
+            ? Peminjaman::where('gudang_pemilik_id', $gudangId)
+                ->where('status', '!=', 'SELESAI')
+                ->count()
+            : 0,
+        'totalBarangDipinjam' => $gudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
+            ? PeminjamanItem::whereIn('peminjaman_id', function ($query) use ($gudangId) {
+                $query->select('id')
+                    ->from('peminjamans')
+                    ->where('gudang_pemilik_id', $gudangId)
+                    ->where('status', '!=', 'SELESAI');
+            })->sum('jumlah_dipinjam')
+            : 0,
+        'activeSuratJalans' => $gudangId && Schema::hasTable('surat_jalans')
+            ? SuratJalan::with(['gudangTujuan', 'gudangAsal'])
+                ->where(function ($query) use ($gudangId) {
+                    $query->where('gudang_asal_id', $gudangId)
+                        ->orWhere('gudang_tujuan_id', $gudangId);
+                })
+                ->where('status', '!=', 'SELESAI')
+                ->orderByDesc('tanggal')
+                ->limit(6)
+                ->get()
+            : collect(),
+        'recentActivities' => $gudangId && Schema::hasTable('stock_movements')
+            ? StockMovement::with(['item', 'creator'])
+                ->where('gudang_id', $gudangId)
+                ->orderByDesc('created_at')
+                ->limit(6)
+                ->get()
+            : collect(),
     ];
 
     // Mengirim variabel $data ke view dashboard
