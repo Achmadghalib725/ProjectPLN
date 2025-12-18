@@ -20,12 +20,16 @@ class SuratJalanController extends Controller
 {
     public function create(Request $request)
     {
-        $suratJalans = $this->getSuratJalanListItems();
+        $filters = $request->only(['search', 'status', 'tipe', 'tanggal_mulai', 'tanggal_selesai']);
+        $suratJalans = $this->getSuratJalanListItems($filters);
 
         $stats = [
             'total' => $suratJalans->count(),
-            'draft' => $suratJalans->where('status', 'DRAFT')->count(),
             'dikirim' => $suratJalans->where('status', 'DIKIRIM')->count(),
+            'diterima' => $suratJalans->where('status', 'DITERIMA')->count(),
+            'dikembalikan' => $suratJalans->filter(function ($sj) {
+                return $sj->tipe === 'PENGEMBALIAN' && $sj->status === 'DIKIRIM';
+            })->count(),
             'selesai' => $suratJalans->where('status', 'SELESAI')->count(),
         ];
 
@@ -50,7 +54,7 @@ class SuratJalanController extends Controller
                 ->get()
             : collect();
 
-        return view('gudang.surat-jalan.create', compact('suratJalans', 'stats', 'gudangs', 'pics', 'availableStocks'));
+        return view('gudang.surat-jalan.create', compact('suratJalans', 'stats', 'gudangs', 'pics', 'availableStocks', 'filters'));
     }
 
     public function store(Request $request)
@@ -63,7 +67,16 @@ class SuratJalanController extends Controller
         $validated = $request->validate([
             'mode' => ['required', Rule::in(['transfer', 'peminjaman'])],
             'gudang_tujuan_id' => ['required', 'integer', 'exists:gudangs,id', 'not_in:' . $gudangId],
-            'pic_tujuan_id' => ['nullable', 'integer', Rule::exists('pics', 'id')],
+            'pic_tujuan_id' => [
+                'required',
+                'integer',
+                Rule::exists('pics', 'id')->where(function ($query) use ($request) {
+                    $gudangTujuan = $request->input('gudang_tujuan_id');
+                    if ($gudangTujuan) {
+                        $query->where('gudang_id', $gudangTujuan);
+                    }
+                }),
+            ],
             'tanggal_kirim' => ['required', 'date'],
             'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
@@ -77,6 +90,9 @@ class SuratJalanController extends Controller
             'items.*.keterangan' => ['nullable', 'string'],
         ], [
             'items.*.item_id.exists' => 'Item harus berasal dari stok gudang Anda.',
+            'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
+            'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang yang dipilih.',
+            'pic_tujuan_id.integer' => 'PIC tujuan tidak valid.',
         ]);
 
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
@@ -90,7 +106,7 @@ class SuratJalanController extends Controller
                     'gudang_tujuan_id' => (int) $validated['gudang_tujuan_id'],
                     'pic_tujuan_id' => $validated['pic_tujuan_id'] ?? null,
                     'tipe' => 'TRANSFER',
-                    'status' => 'DRAFT',
+                    'status' => 'DIKIRIM',
                     'tanggal' => $tanggalKirim->toDateString(),
                     'created_by' => Auth::id(),
                     'catatan' => $validated['catatan'] ?? null,
@@ -119,7 +135,7 @@ class SuratJalanController extends Controller
                 'gudang_tujuan_id' => (int) $validated['gudang_tujuan_id'],
                 'pic_tujuan_id' => $validated['pic_tujuan_id'] ?? null,
                 'tipe' => 'PEMINJAMAN',
-                'status' => 'DRAFT',
+                'status' => 'DIKIRIM',
                 'tanggal' => $tanggalKirim->toDateString(),
                 'created_by' => Auth::id(),
                 'catatan' => $validated['catatan'] ?? null,
@@ -136,17 +152,32 @@ class SuratJalanController extends Controller
 
         return redirect()
             ->route('gudang.surat-jalan.create')
-            ->with('success', 'Surat Jalan berhasil dibuat (Draft).');
+            ->with('success', 'Surat Jalan berhasil dibuat dan berstatus Dikirim.');
     }
 
-    private function getSuratJalanListItems()
+    public function show(int $id)
+    {
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item'])
+            ->findOrFail($id);
+
+        $gudangId = Auth::user()?->gudang_id;
+        if ($gudangId && $suratJalan->gudang_asal_id !== $gudangId && $suratJalan->gudang_tujuan_id !== $gudangId) {
+            abort(403, 'Anda tidak berhak mengakses surat jalan gudang lain.');
+        }
+
+        return view('gudang.surat-jalan.show', compact('suratJalan'));
+    }
+
+    private function getSuratJalanListItems(array $filters = [])
     {
         if (!Schema::hasTable('surat_jalans')) {
             return collect();
         }
 
         $query = SuratJalan::query()
-            ->with(['gudangAsal', 'gudangTujuan', 'pembuat'])
+            ->with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan'])
+            ->withCount('items')
+            ->withSum('items', 'jumlah')
             ->latest('tanggal')
             ->limit(20);
 
@@ -156,6 +187,30 @@ class SuratJalanController extends Controller
                 $q->where('gudang_asal_id', $gudangId)
                     ->orWhere('gudang_tujuan_id', $gudangId);
             });
+        }
+
+        if (!empty($filters['search'])) {
+            $query->where('nomor', 'like', '%' . $filters['search'] . '%');
+        }
+
+        if (!empty($filters['tipe'])) {
+            $query->where('tipe', $filters['tipe']);
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'DIKEMBALIKAN') {
+                $query->where('tipe', 'PENGEMBALIAN')->where('status', 'DIKIRIM');
+            } else {
+                $query->where('status', $filters['status']);
+            }
+        }
+
+        if (!empty($filters['tanggal_mulai'])) {
+            $query->whereDate('tanggal', '>=', $filters['tanggal_mulai']);
+        }
+
+        if (!empty($filters['tanggal_selesai'])) {
+            $query->whereDate('tanggal', '<=', $filters['tanggal_selesai']);
         }
 
         return $query->get();
