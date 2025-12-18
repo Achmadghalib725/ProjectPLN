@@ -5,6 +5,7 @@ use App\Http\Controllers\StokController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\SuratJalanController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\PicController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -41,8 +42,9 @@ Route::middleware('auth')->group(function () {
     
     // 1. AREA ADMIN
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::resource('users', UserController::class); 
+        Route::resource('users', UserController::class);
         Route::resource('items', ItemController::class);
+        Route::resource('pics', PicController::class);
     });
 
     // ... (Area Operator & Security tetap sama)

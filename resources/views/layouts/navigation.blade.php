@@ -56,7 +56,7 @@
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
                         ['label' => 'Kelola User', 'route' => 'admin.users.index', 'icon' => 'users'],
                         ['label' => 'Kelola Barang', 'route' => 'admin.items.index', 'icon' => 'boxes'],
-                        ['label' => 'Kelola PIC', 'url' => '#', 'icon' => 'id'],
+                        ['label' => 'Kelola PIC', 'route' => 'admin.pics.index', 'icon' => 'id'],
                     ],
                     'operator_gudang' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
