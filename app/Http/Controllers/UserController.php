@@ -33,7 +33,10 @@ class UserController extends Controller
         // ->appends($request->all()) berguna agar saat pindah halaman (page 2, 3), filter tidak hilang
         $users = $query->latest()->paginate(10)->appends($request->all());
 
-        return view('admin.users.index', compact('users'));
+        // Load semua gudang untuk modal create/edit
+        $gudangs = Gudang::all();
+
+        return view('admin.users.index', compact('users', 'gudangs'));
     }
 
     public function create()

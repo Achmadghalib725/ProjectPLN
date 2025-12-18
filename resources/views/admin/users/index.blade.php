@@ -1,5 +1,37 @@
 <x-app-layout>
-    <div class="py-12 bg-gray-50/50 min-h-screen">
+    <div class="py-12 bg-gray-50/50 min-h-screen"
+         x-data="{
+            showModal: {{ $errors->any() ? 'true' : 'false' }},
+            isEdit: {{ old('_method') === 'PUT' ? 'true' : 'false' }},
+            actionUrl: '{{ old('_method') === 'PUT' ? (old('id') ? url('admin/users').'/'.old('id') : '') : route('admin.users.store') }}',
+            form: {
+                id: @json(old('id')),
+                name: @json(old('name')),
+                email: @json(old('email')),
+                no_hp: @json(old('no_hp')),
+                role: @json(old('role')),
+                jabatan: @json(old('jabatan')),
+                gudang_id: @json(old('gudang_id')),
+                password: '',
+                password_confirmation: '',
+                is_active: @json(old('is_active', 1)),
+            },
+            openCreate() {
+                this.isEdit = false;
+                this.form = { id: '', name: '', email: '', no_hp: '', role: '', jabatan: '', gudang_id: '', password: '', password_confirmation: '', is_active: 1 };
+                this.actionUrl = '{{ route('admin.users.store') }}';
+                this.showModal = true;
+            },
+            openEdit(user) {
+                this.isEdit = true;
+                // Populate form with user data
+                this.form = { ...user, password: '', password_confirmation: '', gudang_id: user.gudang_id || '' };
+                // Construct update URL manually since we are in JS
+                this.actionUrl = '{{ url('admin/users') }}/' + user.id;
+                this.showModal = true;
+            }
+         }"
+    >
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             
             {{-- Header Section with Gradient --}}
@@ -10,13 +42,13 @@
                     </h2>
                     <p class="text-sm text-gray-500 mt-1">Daftar semua pengguna yang memiliki akses ke sistem.</p>
                 </div>
-                <a href="{{ route('admin.users.create') }}" 
+                <button @click="openCreate()" 
                    class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-lg shadow-md hover:shadow-lg hover:from-blue-700 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transform hover:-translate-y-0.5">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
                     Tambah User Baru
-                </a>
+                </button>
             </div>
 
             {{-- Alerts --}}
@@ -156,11 +188,11 @@
                                 {{-- Kolom Aksi --}}
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <div class="flex items-center justify-center space-x-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <a href="{{ route('admin.users.edit', $user->id) }}" class="text-indigo-500 hover:text-indigo-700 p-2 hover:bg-indigo-50 rounded-full transition-all duration-200" title="Edit User">
+                                        <button @click='openEdit(@json($user))' class="text-indigo-500 hover:text-indigo-700 p-2 hover:bg-indigo-50 rounded-full transition-all duration-200" title="Edit User">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
-                                        </a>
+                                        </button>
                                         
                                         @if($user->id !== auth()->id())
                                         <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus user {{ $user->name }}? Data tidak dapat dikembalikan.');">
@@ -194,6 +226,121 @@
                 {{-- Pagination Footer --}}
                 <div class="bg-gray-50 px-6 py-4 border-t border-gray-100">
                     {{ $users->links() }}
+                </div>
+            </div>
+        </div>
+
+        {{-- Modal Create/Edit User --}}
+        <div x-show="showModal" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                
+                {{-- Backdrop --}}
+                <div x-show="showModal" 
+                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" 
+                     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" 
+                     class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showModal = false" aria-hidden="true"></div>
+
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                {{-- Modal Panel --}}
+                <div x-show="showModal" 
+                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                    
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                            <span x-text="isEdit ? 'Edit User' : 'Tambah User Baru'"></span>
+                        </h3>
+                        
+                        <form :action="actionUrl" method="POST" class="mt-4 space-y-4">
+                            @csrf
+                            {{-- Method Spoofing for PUT (only when editing) --}}
+                            <template x-if="isEdit">
+                                <input type="hidden" name="_method" value="PUT">
+                            </template>
+
+                            {{-- Nama --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                                <input type="text" name="name" x-model="form.name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            {{-- Email --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Email</label>
+                                <input type="email" name="email" x-model="form.email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                @error('email') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            {{-- No HP --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">No. HP</label>
+                                <input type="text" name="no_hp" x-model="form.no_hp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                {{-- Role --}}
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Role</label>
+                                    <select name="role" x-model="form.role" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                        <option value="">Pilih Role</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="operator_gudang">Operator Gudang</option>
+                                        <option value="security">Security</option>
+                                    </select>
+                                </div>
+
+                                {{-- Jabatan --}}
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Jabatan</label>
+                                    <input type="text" name="jabatan" x-model="form.jabatan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                </div>
+                            </div>
+
+                            {{-- Gudang (Optional/Conditional) --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Lokasi Gudang</label>
+                                <select name="gudang_id" x-model="form.gudang_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                    <option value="">Tidak ada gudang</option>
+                                    @foreach($gudangs as $gudang)
+                                        <option value="{{ $gudang->id }}">{{ $gudang->nama }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- Password --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">
+                                    Password <span x-show="isEdit" class="text-xs text-gray-400 font-normal">(Kosongkan jika tidak ingin mengubah)</span>
+                                </label>
+                                <input type="password" name="password" x-model="form.password" :required="!isEdit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            {{-- Konfirmasi Password --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">
+                                    Konfirmasi Password <span x-show="isEdit" class="text-xs text-gray-400 font-normal">(Kosongkan jika tidak ingin mengubah)</span>
+                                </label>
+                                <input type="password" name="password_confirmation" x-model="form.password_confirmation" :required="!isEdit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                @error('password_confirmation') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            {{-- Status --}}
+                            <div class="flex items-center">
+                                <input type="hidden" name="is_active" value="0">
+                                <input type="checkbox" name="is_active" id="is_active" value="1" x-model="form.is_active" :checked="form.is_active == 1" class="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded">
+                                <label for="is_active" class="ml-2 block text-sm text-gray-900">User Aktif</label>
+                            </div>
+
+                            <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                                <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-cyan-600 text-base font-medium text-white hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 sm:col-start-2 sm:text-sm">Simpan</button>
+                                <button type="button" @click="showModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 sm:mt-0 sm:col-start-1 sm:text-sm">Batal</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
