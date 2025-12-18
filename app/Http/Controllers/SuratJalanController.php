@@ -278,6 +278,159 @@ class SuratJalanController extends Controller
         return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman'));
     }
 
+    public function edit($id)
+    {
+        $suratJalan = SuratJalan::with(['items.item', 'gudangAsal', 'gudangTujuan', 'picTujuan'])
+            ->findOrFail($id);
+
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
+            abort(403, 'Anda tidak berhak mengedit surat jalan gudang lain.');
+        }
+
+        if ($suratJalan->status !== 'DRAFT') {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', 'Hanya surat jalan Draft yang bisa diedit.');
+        }
+
+        $gudangs = Schema::hasTable('gudangs')
+            ? Gudang::query()->where('id', '!=', $gudangId)->orderBy('nama')->get()
+            : collect();
+
+        $pics = Schema::hasTable('pics')
+            ? Pic::query()->with('gudang')->orderBy('nama')->get()
+            : collect();
+
+        $availableStocks = Schema::hasTable('item_stocks')
+            ? ItemStock::query()
+                ->with('item')
+                ->where('gudang_id', $gudangId)
+                ->orderBy('item_id')
+                ->get()
+            : collect();
+
+        $peminjaman = null;
+        if ($suratJalan->tipe === 'PEMINJAMAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        }
+
+        return view('gudang.surat-jalan.edit', compact('suratJalan', 'gudangs', 'pics', 'availableStocks', 'peminjaman'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $suratJalan = SuratJalan::with('items')->findOrFail($id);
+
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
+            abort(403, 'Anda tidak berhak mengedit surat jalan gudang lain.');
+        }
+
+        if ($suratJalan->status !== 'DRAFT') {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', 'Hanya surat jalan Draft yang bisa diedit.');
+        }
+
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $validated = $request->validate([
+                'pic_tujuan_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('pics', 'id')->where(fn ($q) => $q->where('gudang_id', $suratJalan->gudang_tujuan_id)),
+                ],
+                'tanggal_kirim' => ['required', 'date'],
+                'catatan' => ['nullable', 'string'],
+            ], [
+                'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
+                'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
+            ]);
+
+            $suratJalan->update([
+                'pic_tujuan_id' => $validated['pic_tujuan_id'],
+                'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
+                'catatan' => $validated['catatan'] ?? null,
+            ]);
+
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('success', 'Draft pengembalian berhasil diperbarui.');
+        }
+
+        $validated = $request->validate([
+            'gudang_tujuan_id' => ['required', 'integer', 'exists:gudangs,id', 'not_in:' . $gudangId],
+            'pic_tujuan_id' => [
+                'required',
+                'integer',
+                Rule::exists('pics', 'id')->where(function ($query) use ($request) {
+                    $gudangTujuan = $request->input('gudang_tujuan_id');
+                    if ($gudangTujuan) {
+                        $query->where('gudang_id', $gudangTujuan);
+                    }
+                }),
+            ],
+            'tanggal_kirim' => ['required', 'date'],
+            'tanggal_kembali' => ['required_if:tipe,PEMINJAMAN', 'nullable', 'date', 'after:tanggal_kirim'],
+            'catatan' => ['nullable', 'string'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.item_id' => [
+                'required',
+                'integer',
+                Rule::exists('item_stocks', 'item_id')->where(fn ($q) => $q->where('gudang_id', $gudangId)),
+            ],
+            'items.*.jumlah' => ['required', 'integer', 'min:1'],
+            'items.*.keterangan' => ['nullable', 'string'],
+            'tipe' => ['required', Rule::in(['TRANSFER', 'PEMINJAMAN'])],
+        ], [
+            'items.*.item_id.exists' => 'Item harus berasal dari stok gudang Anda.',
+            'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
+            'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang yang dipilih.',
+        ]);
+
+        $warningItems = $this->buildStockWarnings($gudangId, $validated['items']);
+
+        DB::transaction(function () use ($suratJalan, $validated, $gudangId) {
+            $suratJalan->update([
+                'gudang_tujuan_id' => (int) $validated['gudang_tujuan_id'],
+                'pic_tujuan_id' => (int) $validated['pic_tujuan_id'],
+                'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
+                'catatan' => $validated['catatan'] ?? null,
+            ]);
+
+            $suratJalan->items()->delete();
+            $this->createSuratJalanItems($suratJalan->id, $validated['items']);
+
+            if ($suratJalan->tipe === 'PEMINJAMAN') {
+                $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                if ($peminjaman) {
+                    $tanggalKembali = !empty($validated['tanggal_kembali'])
+                        ? Carbon::parse($validated['tanggal_kembali'])->startOfDay()
+                        : null;
+                    $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
+
+                    $peminjaman->update([
+                        'gudang_peminjam_id' => (int) $validated['gudang_tujuan_id'],
+                        'durasi_hari' => $tanggalKembali ? $tanggalKirim->diffInDays($tanggalKembali) : null,
+                        'durasi_jam' => $tanggalKembali ? $tanggalKirim->diffInHours($tanggalKembali) : null,
+                        'waktu_pengembalian' => $tanggalKembali?->toDateString(),
+                        'catatan_pengiriman' => $validated['catatan'] ?? null,
+                    ]);
+                }
+            }
+        });
+
+        $redirect = redirect()
+            ->route('gudang.surat-jalan.show', $suratJalan->id)
+            ->with('success', 'Draft surat jalan berhasil diperbarui.');
+
+        if (!empty($warningItems)) {
+            $redirect->with('warning', $warningItems);
+        }
+
+        return $redirect;
+    }
+
     public function approve($id)
     {
         $suratJalan = SuratJalan::with('items.item')->findOrFail($id);
@@ -295,23 +448,27 @@ class SuratJalanController extends Controller
 
         try {
             DB::transaction(function () use ($suratJalan, $gudangId) {
-                foreach ($suratJalan->items as $item) {
+                $itemTotals = $suratJalan->items
+                    ->groupBy('item_id')
+                    ->map(fn ($rows) => $rows->sum('jumlah'));
+
+                foreach ($itemTotals as $itemId => $qty) {
                     $stock = ItemStock::where('gudang_id', $gudangId)
-                        ->where('item_id', $item->item_id)
+                        ->where('item_id', $itemId)
                         ->lockForUpdate()
                         ->first();
 
                     $available = $stock?->jumlah ?? 0;
-                    if ($available < $item->jumlah) {
-                        $itemName = $item->item->nama ?? "Item ID {$item->item_id}";
+                    if ($available < $qty) {
+                        $itemName = $suratJalan->items->firstWhere('item_id', $itemId)?->item->nama ?? "Item ID {$itemId}";
                         throw new \RuntimeException("Stok tidak cukup untuk {$itemName}.");
                     }
                 }
 
-                foreach ($suratJalan->items as $item) {
+                foreach ($itemTotals as $itemId => $qty) {
                     ItemStock::where('gudang_id', $gudangId)
-                        ->where('item_id', $item->item_id)
-                        ->decrement('jumlah', $item->jumlah);
+                        ->where('item_id', $itemId)
+                        ->decrement('jumlah', $qty);
                 }
 
                 $suratJalan->update([
@@ -383,8 +540,16 @@ class SuratJalanController extends Controller
         $gudangId = Auth::user()?->gudang_id;
         if ($gudangId) {
             $query->where(function ($q) use ($gudangId) {
-                $q->where('gudang_asal_id', $gudangId)
-                    ->orWhere('gudang_tujuan_id', $gudangId);
+                $q->where(function ($sub) use ($gudangId) {
+                    $sub->where('tipe', 'PEMINJAMAN')
+                        ->where('gudang_asal_id', $gudangId);
+                })->orWhere(function ($sub) use ($gudangId) {
+                    $sub->where('tipe', 'TRANSFER')
+                        ->where('gudang_asal_id', $gudangId);
+                })->orWhere(function ($sub) use ($gudangId) {
+                    $sub->where('tipe', 'PENGEMBALIAN')
+                        ->where('gudang_tujuan_id', $gudangId);
+                });
             });
         }
 

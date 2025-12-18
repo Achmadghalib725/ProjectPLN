@@ -105,6 +105,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
         Route::post('/surat-jalan/pengembalian', [SuratJalanController::class, 'storeReturn'])->name('surat-jalan.return');
         Route::get('/surat-jalan/{id}', [SuratJalanController::class, 'show'])->whereNumber('id')->name('surat-jalan.show');
+        Route::get('/surat-jalan/{id}/edit', [SuratJalanController::class, 'edit'])->whereNumber('id')->name('surat-jalan.edit');
+        Route::patch('/surat-jalan/{id}', [SuratJalanController::class, 'update'])->whereNumber('id')->name('surat-jalan.update');
         Route::post('/surat-jalan/{id}/approve', [SuratJalanController::class, 'approve'])->whereNumber('id')->name('surat-jalan.approve');
         Route::delete('/surat-jalan/{id}', [SuratJalanController::class, 'destroy'])->whereNumber('id')->name('surat-jalan.destroy');
         Route::get('/surat-jalan/cetak/{id}', function() { return "Cetak PDF"; })->name('surat-jalan.print');

@@ -326,8 +326,17 @@
                                         {{ $sj->picTujuan->nama ?? '-' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pln-primary/10 text-pln-primary">
-                                            {{ $sj->tipe ?? '-' }}
+                                        @php
+                                            $tipeLabel = $sj->tipe ?? '-';
+                                            $tipeClass = match ($tipeLabel) {
+                                                'PEMINJAMAN' => 'bg-blue-100 text-blue-800',
+                                                'PENGEMBALIAN' => 'bg-green-100 text-green-800',
+                                                'TRANSFER' => 'bg-purple-100 text-purple-800',
+                                                default => 'bg-gray-100 text-gray-700',
+                                            };
+                                        @endphp
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $tipeClass }}">
+                                            {{ $tipeLabel }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">

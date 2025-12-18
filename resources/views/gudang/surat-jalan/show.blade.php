@@ -29,6 +29,10 @@
                         </div>
                         <div class="flex items-center gap-2">
                             @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
+                                <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}"
+                                   class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                                    Edit Draft
+                                </a>
                                 <form method="POST" action="{{ route('gudang.surat-jalan.approve', $suratJalan->id) }}">
                                     @csrf
                                     <button type="submit"
