@@ -52,7 +52,7 @@
                         <svg class="flex-shrink-0 inline w-4 h-4 mr-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
                         </svg>
-                        <span class="font-medium">Berhasil!</span> {{ session('success') }}
+                         {{ session('success') }}
                     </div>
                     <button @click="show = false" class="text-green-600 hover:text-green-800">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -114,16 +114,9 @@
                             @forelse($items as $item)
                             <tr class="bg-white hover:bg-cyan-50/30 transition-colors duration-200 group">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10">
-                                            <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm group-hover:scale-110 transition-transform duration-200">
-                                                {{ strtoupper(substr($item->satuan, 0, 3)) }}
-                                            </div>
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-bold text-gray-900 group-hover:text-cyan-700 transition-colors">{{ $item->nama }}</div>
-                                            <div class="text-xs text-gray-500">Kode: {{ $item->kode }}</div>
-                                        </div>
+                                    <div>
+                                        <div class="text-sm font-bold text-gray-900 group-hover:text-cyan-700 transition-colors">{{ $item->nama }}</div>
+                                        <div class="text-xs text-gray-500">Kode: {{ $item->kode }}</div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
