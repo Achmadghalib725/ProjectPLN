@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Gudang;
 use App\Models\ItemStock;
+use App\Models\Pic;
 use App\Models\Peminjaman;
 use App\Models\PeminjamanItem;
 use App\Models\SuratJalan;
 use App\Models\SuratJalanItem;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -38,8 +38,8 @@ class SuratJalanController extends Controller
             ? Gudang::query()->where('id', '!=', $gudangId)->orderBy('nama')->get()
             : collect();
 
-        $picUsers = Schema::hasTable('users')
-            ? User::query()->orderBy('name')->get()
+        $pics = Schema::hasTable('pics')
+            ? Pic::query()->with('gudang')->orderBy('nama')->get()
             : collect();
 
         $availableStocks = Schema::hasTable('item_stocks')
@@ -50,7 +50,7 @@ class SuratJalanController extends Controller
                 ->get()
             : collect();
 
-        return view('gudang.surat-jalan.create', compact('suratJalans', 'stats', 'gudangs', 'picUsers', 'availableStocks'));
+        return view('gudang.surat-jalan.create', compact('suratJalans', 'stats', 'gudangs', 'pics', 'availableStocks'));
     }
 
     public function store(Request $request)
@@ -63,7 +63,7 @@ class SuratJalanController extends Controller
         $validated = $request->validate([
             'mode' => ['required', Rule::in(['transfer', 'peminjaman'])],
             'gudang_tujuan_id' => ['required', 'integer', 'exists:gudangs,id', 'not_in:' . $gudangId],
-            'pic_tujuan_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'pic_tujuan_id' => ['nullable', 'integer', Rule::exists('pics', 'id')],
             'tanggal_kirim' => ['required', 'date'],
             'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],

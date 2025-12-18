@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Gudang;
 use App\Models\Item;
 use App\Models\ItemStock;
+use App\Models\Pic;
 use App\Models\SuratJalan;
 use App\Models\SuratJalanItem;
 use Illuminate\Support\Carbon;
@@ -180,7 +181,31 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ========================================
-        // 8. BUAT DUMMY SURAT JALAN + ITEM
+        // 8. MASTER PIC (DATA NON-USER)
+        // ========================================
+        $picTarahan = Pic::create([
+            'nama' => 'Rama Kurniawan',
+            'jabatan' => 'PIC Logistik Tarahan',
+            'no_hp' => '0812-3456-7890',
+            'gudang_id' => $gudangTarahan->id,
+        ]);
+
+        $picTelukBetung = Pic::create([
+            'nama' => 'Dewi Lestari',
+            'jabatan' => 'PIC Gudang Teluk Betung',
+            'no_hp' => '0813-9876-5432',
+            'gudang_id' => $gudangTelukBetung->id,
+        ]);
+
+        Pic::create([
+            'nama' => 'Heri Pranata',
+            'jabatan' => 'PIC Proyek Area',
+            'no_hp' => '0815-7788-9900',
+            'gudang_id' => null,
+        ]);
+
+        // ========================================
+        // 9. BUAT DUMMY SURAT JALAN + ITEM
         // ========================================
         $tanggalHariIni = Carbon::now()->startOfDay();
 
@@ -188,6 +213,7 @@ class DatabaseSeeder extends Seeder
             'nomor' => 'SJ-' . $tanggalHariIni->format('Ymd') . '-001',
             'gudang_asal_id' => $gudangTarahan->id,
             'gudang_tujuan_id' => $gudangTelukBetung->id,
+            'pic_tujuan_id' => $picTelukBetung->id,
             'tipe' => 'PEMINJAMAN',
             'status' => 'DRAFT',
             'tanggal' => $tanggalHariIni->toDateString(),
@@ -217,6 +243,7 @@ class DatabaseSeeder extends Seeder
             'nomor' => 'SJ-' . $tanggalHariIni->copy()->subDay()->format('Ymd') . '-002',
             'gudang_asal_id' => $gudangTelukBetung->id,
             'gudang_tujuan_id' => $gudangTarahan->id,
+            'pic_tujuan_id' => $picTarahan->id,
             'tipe' => 'PENGEMBALIAN',
             'status' => 'DIKIRIM',
             'tanggal' => $tanggalHariIni->copy()->subDay()->toDateString(),
