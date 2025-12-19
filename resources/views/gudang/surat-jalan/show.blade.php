@@ -76,6 +76,72 @@
                 </div>
             </div>
 
+            @php
+                $tipe = strtoupper($suratJalan->tipe ?? '');
+                $status = strtoupper($suratJalan->status ?? 'DRAFT');
+
+                if ($tipe === 'TRANSFER') {
+                    $steps = ['Draft', 'Dikirim', 'Diterima', 'Selesai'];
+                    $statusIndexMap = [
+                        'DRAFT' => 0,
+                        'DIKIRIM' => 1,
+                        'DITERIMA' => 2,
+                        'SELESAI' => 3,
+                    ];
+                } else {
+                    // PEMINJAMAN dan PENGEMBALIAN pakai 1 garis yang sama
+                    $steps = ['Draft', 'Dikirim', 'Diterima', 'Dikembalikan', 'Selesai'];
+                    $statusIndexMap = [
+                        'DRAFT' => 0,
+                        'DIKIRIM' => 1,
+                        'DITERIMA' => 2,
+                        'DIKEMBALIKAN' => 3,
+                        'SELESAI' => 4,
+                    ];
+
+                    // Jika tipe Pengembalian, anggap sudah di langkah Dikembalikan kecuali sudah Selesai
+                    if ($tipe === 'PENGEMBALIAN' && $status !== 'SELESAI') {
+                        $status = 'DIKEMBALIKAN';
+                    }
+                }
+
+                $currentStep = $statusIndexMap[$status] ?? 0;
+                $maxStep = count($steps) - 1;
+                if ($currentStep > $maxStep) {
+                    $currentStep = $maxStep;
+                }
+            @endphp
+
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">Progress</h3>
+                        <span class="text-sm text-gray-500">{{ $suratJalan->tipe ?? '-' }}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        @foreach($steps as $index => $label)
+                            @php
+                                $isCompleted = $index < $currentStep;
+                                $isActive = $index === $currentStep;
+                                $stateClass = $isCompleted ? 'bg-green-500 text-white'
+                                    : ($isActive ? 'bg-pln-primary text-white' : 'bg-gray-200 text-gray-600');
+                            @endphp
+                            <div class="flex items-center w-full">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold {{ $stateClass }}">
+                                        {{ $index + 1 }}
+                                    </div>
+                                    <span class="mt-2 text-xs font-semibold {{ $isCompleted || $isActive ? 'text-gray-900' : 'text-gray-500' }}">{{ $label }}</span>
+                                </div>
+                                @if($index < count($steps) - 1)
+                                    <div class="flex-1 h-1 mx-2 rounded-full {{ $index < $currentStep ? 'bg-green-500' : 'bg-gray-200' }}"></div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
