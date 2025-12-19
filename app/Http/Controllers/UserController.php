@@ -15,12 +15,12 @@ class UserController extends Controller
         // Mulai query user dan load relasi gudang
         $query = User::with('gudang');
 
-        // 1. Logika Search (Cari berdasarkan Nama atau Email)
+        // 1. Logika Search (Cari berdasarkan Nama atau Username)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('username', 'like', "%{$search}%");
             });
         }
 
@@ -49,7 +49,7 @@ class UserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'in:admin,operator_gudang,security'],
             'gudang_id' => ['nullable', 'exists:gudangs,id'],
@@ -59,7 +59,8 @@ class UserController extends Controller
 
         User::create([
             'name' => $request->name,
-            'email' => $request->email,
+            'username' => $request->username,
+            'email' => $request->username . '@egudang.local', // Generate dummy email
             'password' => Hash::make($request->password),
             'role' => $request->role,
             'gudang_id' => $request->gudang_id, // Nullable jika admin
@@ -81,7 +82,7 @@ class UserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:users,username,'.$user->id],
             'role' => ['required', 'in:admin,operator_gudang,security'],
             'gudang_id' => ['nullable', 'exists:gudangs,id'],
             'jabatan' => ['nullable', 'string', 'max:255'],
@@ -90,6 +91,11 @@ class UserController extends Controller
         ]);
 
         $data = $request->except('password');
+
+        // Update email if username changes
+        if ($request->username !== $user->username) {
+            $data['email'] = $request->username . '@egudang.local';
+        }
 
         // Update password hanya jika diisi
         if ($request->filled('password')) {
