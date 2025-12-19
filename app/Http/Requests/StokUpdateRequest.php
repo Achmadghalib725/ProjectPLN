@@ -22,10 +22,10 @@ class StokUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'adjustment_type' => ['required', 'in:add,subtract'],
-            'adjustment_quantity' => ['required', 'integer', 'min:1'],
+            'adjustment_type' => ['required_with:adjustment_quantity', 'nullable', 'in:add,subtract'],
+            'adjustment_quantity' => ['nullable', 'integer', 'min:1'],
             'stok_minimum' => ['required', 'integer', 'min:0'],
-            'keterangan' => ['required', 'string', 'max:500']
+            'keterangan' => ['required_with:adjustment_quantity', 'nullable', 'string', 'max:500'],
         ];
     }
 
@@ -37,15 +37,14 @@ class StokUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'adjustment_type.required' => 'Tipe penyesuaian harus dipilih',
+            'adjustment_type.required_with' => 'Tipe penyesuaian harus dipilih jika mengisi jumlah',
             'adjustment_type.in' => 'Tipe penyesuaian tidak valid',
-            'adjustment_quantity.required' => 'Jumlah penyesuaian harus diisi',
             'adjustment_quantity.integer' => 'Jumlah penyesuaian harus berupa angka',
             'adjustment_quantity.min' => 'Jumlah penyesuaian minimal 1',
             'stok_minimum.required' => 'Stok minimum harus diisi',
             'stok_minimum.integer' => 'Stok minimum harus berupa angka',
             'stok_minimum.min' => 'Stok minimum tidak boleh negatif',
-            'keterangan.required' => 'Alasan penyesuaian stok wajib diisi untuk audit trail',
+            'keterangan.required_with' => 'Alasan penyesuaian wajib diisi jika mengubah jumlah stok',
             'keterangan.max' => 'Keterangan maksimal 500 karakter'
         ];
     }

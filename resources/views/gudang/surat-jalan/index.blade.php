@@ -50,8 +50,8 @@
                                 {{ Auth::user()->gudang->nama ?? 'Gudang Saya' }}
                             </p>
                         </div>
+                        @if($tab === 'keluar')
                         <div class="flex items-center gap-2">
-
                             <button type="button"
                                     class="inline-flex items-center px-4 py-2 bg-pln-primary hover:bg-pln-light text-white font-semibold rounded-md transition duration-150"
                                     @click="$dispatch('open-modal', 'create-surat-jalan')">
@@ -70,12 +70,51 @@
                                 Pengembalian Peminjaman
                             </button>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
 
+            {{-- Tabs Navigation --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex" aria-label="Tabs">
+                        <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'keluar']) }}"
+                           class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm {{ $tab === 'keluar' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                            <div class="flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                </svg>
+                                <span>Surat Keluar</span>
+                                @if(($countKeluar['draft'] ?? 0) > 0)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
+                                        {{ $countKeluar['draft'] }} draft
+                                    </span>
+                                @endif
+                            </div>
+                        </a>
+                        <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
+                           class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm {{ $tab === 'masuk' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                            <div class="flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                                </svg>
+                                <span>Surat Masuk</span>
+                                @if(($countMasuk['menunggu'] ?? 0) > 0)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
+                                        {{ $countMasuk['menunggu'] }} menunggu
+                                    </span>
+                                @endif
+                            </div>
+                        </a>
+                    </nav>
+                </div>
+            </div>
+
             {{-- Statistics --}}
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-6 mb-6">
+            @if($tab === 'keluar')
+            {{-- Stats for Surat Keluar --}}
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex items-center">
@@ -86,7 +125,7 @@
                             </div>
                             <div class="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Surat Jalan</dt>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total</dt>
                                     <dd class="text-lg font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</dd>
                                 </dl>
                             </div>
@@ -99,7 +138,7 @@
                         <div class="flex items-center">
                             <div class="flex-shrink-0 bg-gray-500 rounded-md p-3">
                                 <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
                             </div>
                             <div class="ml-5 w-0 flex-1">
@@ -115,9 +154,9 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-pln-light rounded-md p-3">
+                            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
                                 <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17h6m-6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 104 0m-4 0h4v-5l-3-4h-5v9m0-9H5v9h4"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                                 </svg>
                             </div>
                             <div class="ml-5 w-0 flex-1">
@@ -151,26 +190,9 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Dikembalikan</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['dikembalikan'] ?? 0 }}</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
                             <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
                                 <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
                             </div>
                             <div class="ml-5 w-0 flex-1">
@@ -183,11 +205,88 @@
                     </div>
                 </div>
             </div>
+            @else
+            {{-- Stats for Surat Masuk --}}
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-pln-primary rounded-md p-3">
+                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total</dt>
+                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Menunggu Konfirmasi</dt>
+                                    <dd class="text-lg font-bold text-yellow-600">{{ $stats['menunggu'] ?? 0 }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Diterima</dt>
+                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['diterima'] ?? 0 }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Selesai</dt>
+                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['selesai'] ?? 0 }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             {{-- Filters --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
                     <form method="GET" action="{{ route('gudang.surat-jalan.index') }}" class="grid grid-cols-1 md:grid-cols-7 gap-4">
+                        <input type="hidden" name="tab" value="{{ $tab }}">
                         <div class="md:col-span-2">
                             <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari Nomor</label>
                             <input type="text"
@@ -203,11 +302,19 @@
                                     id="status"
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 <option value="">Semua</option>
-                                @foreach(['DRAFT','DIKIRIM','DITERIMA','DIKEMBALIKAN','SELESAI'] as $statusOption)
-                                    <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                        {{ $statusOption }}
-                                    </option>
-                                @endforeach
+                                @if($tab === 'keluar')
+                                    @foreach(['DRAFT','DIKIRIM','DITERIMA','SELESAI'] as $statusOption)
+                                        <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
+                                            {{ $statusOption }}
+                                        </option>
+                                    @endforeach
+                                @else
+                                    @foreach(['DIKIRIM','DITERIMA','SELESAI'] as $statusOption)
+                                        <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
+                                            {{ $statusOption === 'DIKIRIM' ? 'MENUNGGU' : $statusOption }}
+                                        </option>
+                                    @endforeach
+                                @endif
                             </select>
                         </div>
                         <div>
@@ -254,7 +361,7 @@
                                 Filter
                             </button>
                             @if(($filters['search'] ?? '') || ($filters['status'] ?? '') || ($filters['tipe'] ?? '') || ($filters['tanggal_mulai'] ?? '') || ($filters['tanggal_selesai'] ?? '') || ($filters['order_by'] ?? 'terbaru') !== 'terbaru')
-                                <a href="{{ route('gudang.surat-jalan.index') }}"
+                                <a href="{{ route('gudang.surat-jalan.index', ['tab' => $tab]) }}"
                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
                                     Reset
                                 </a>
@@ -268,8 +375,10 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 border-b border-gray-100">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-gray-900">Daftar Surat Jalan</h3>
-                        <div class="text-sm text-gray-500">Terbaru (maks. 20)</div>
+                        <h3 class="text-lg font-bold text-gray-900">
+                            {{ $tab === 'keluar' ? 'Daftar Surat Keluar' : 'Daftar Surat Masuk' }}
+                        </h3>
+                        <div class="text-sm text-gray-500">Terbaru (maks. 50)</div>
                     </div>
                 </div>
 
@@ -359,6 +468,13 @@
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                                    </svg>
+                                                </a>
+                                                <a href="{{ route('gudang.surat-jalan.pdf', $sj->id) }}"
+                                                   class="text-green-600 hover:text-green-800"
+                                                   title="Download PDF">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                                     </svg>
                                                 </a>
                                             @else
@@ -469,7 +585,7 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" class="space-y-6">
+            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" class="space-y-6" x-ref="createForm">
                 @csrf
                 <input type="hidden" name="mode" :value="mode">
 
@@ -617,14 +733,179 @@
                             x-on:click="$dispatch('close-modal', 'create-surat-jalan')">
                         Batal
                     </button>
-                    <button type="submit"
-                            class="bg-pln-primary hover:bg-pln-light text-white font-semibold py-2 px-4 rounded-md transition duration-150">
-                        Simpan Draft
+                    <button type="button"
+                            class="bg-pln-primary hover:bg-pln-light text-white font-semibold py-2 px-4 rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            x-data="{ loading: false }"
+                            :disabled="loading"
+                            @click="
+                                loading = true;
+
+                                // Collect form data
+                                const formData = new FormData($refs.createForm);
+
+                                // Store form data as object BEFORE fetch (FormData may be consumed by fetch in some browsers)
+                                const formDataObj = {};
+                                for (const [key, value] of formData.entries()) {
+                                    formDataObj[key] = value;
+                                }
+
+                                // Open preview in new window
+                                const previewUrl = '{{ route('gudang.surat-jalan.preview-draft') }}';
+
+                                fetch(previewUrl, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                    }
+                                })
+                                .then(response => {
+                                    if (!response.ok) throw new Error('Network response was not ok');
+                                    return response.blob();
+                                })
+                                .then(blob => {
+                                    const url = URL.createObjectURL(blob);
+                                    $dispatch('open-preview', { url: url, formData: formDataObj });
+                                    loading = false;
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert('Gagal membuat preview. Silakan coba lagi.');
+                                    loading = false;
+                                });
+                            ">
+                        <svg x-show="loading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="loading ? 'Membuat Preview...' : 'Preview & Simpan Draft'"></span>
                     </button>
                 </div>
             </form>
         </div>
     </x-modal>
+
+    {{-- Preview PDF Modal --}}
+    <div x-data="{
+            showPreview: false,
+            previewUrl: '',
+            formDataObj: {},
+            submitting: false,
+            submitDraft() {
+                console.log('submitDraft called');
+                console.log('formDataObj:', this.formDataObj);
+
+                if (Object.keys(this.formDataObj).length === 0) {
+                    alert('Data form tidak ditemukan. Silakan tutup preview dan coba lagi.');
+                    return;
+                }
+
+                this.submitting = true;
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ route('gudang.surat-jalan.store') }}';
+
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = '_token';
+                csrf.value = '{{ csrf_token() }}';
+                form.appendChild(csrf);
+
+                Object.entries(this.formDataObj).forEach(([key, value]) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value !== null && value !== undefined ? value : '';
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+         }"
+         @open-preview.window="
+            console.log('open-preview event received');
+            console.log('formData received:', $event.detail.formData);
+            previewUrl = $event.detail.url;
+            formDataObj = $event.detail.formData;
+            showPreview = true;
+         "
+         @close-preview.window="
+            showPreview = false;
+            submitting = false;
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = '';
+            }
+         ">
+        <div x-show="showPreview"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                {{-- Backdrop --}}
+                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 z-0"
+                     @click="$dispatch('close-preview')"></div>
+
+                {{-- Modal Content --}}
+                <div class="relative z-20 w-full max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden"
+                     x-transition:enter="ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-b">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Preview Surat Jalan</h3>
+                            <p class="text-sm text-gray-500">Periksa kembali data sebelum menyimpan draft</p>
+                        </div>
+                        <button type="button"
+                                class="text-gray-400 hover:text-gray-600"
+                                @click="$dispatch('close-preview')">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- PDF Preview --}}
+                    <div class="p-4 bg-gray-100" style="height: 70vh;">
+                        <iframe :src="previewUrl"
+                                class="w-full h-full rounded border border-gray-300 bg-white"
+                                style="min-height: 500px;"></iframe>
+                    </div>
+
+                    {{-- Footer Actions --}}
+                    <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t">
+                        <button type="button"
+                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+                                @click="$dispatch('close-preview')">
+                            Kembali & Edit
+                        </button>
+                        <button type="button"
+                                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                :disabled="submitting"
+                                @click="submitDraft()">
+                            <svg x-show="submitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="submitting ? 'Menyimpan...' : 'Konfirmasi & Simpan Draft'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <x-modal name="return-peminjaman" focusable>
         <div class="p-6"

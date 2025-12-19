@@ -28,6 +28,23 @@
                             <p class="text-sm text-gray-500 mt-1">{{ $suratJalan->nomor }}</p>
                         </div>
                         <div class="flex items-center gap-2">
+                            {{-- PDF Buttons --}}
+                            <a href="{{ route('gudang.surat-jalan.preview', $suratJalan->id) }}"
+                               target="_blank"
+                               class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                Preview PDF
+                            </a>
+                            <a href="{{ route('gudang.surat-jalan.pdf', $suratJalan->id) }}"
+                               class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                Download PDF
+                            </a>
                             @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
                                 <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}"
                                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
@@ -55,6 +72,72 @@
                                 Kembali
                             </a>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            @php
+                $tipe = strtoupper($suratJalan->tipe ?? '');
+                $status = strtoupper($suratJalan->status ?? 'DRAFT');
+
+                if ($tipe === 'TRANSFER') {
+                    $steps = ['Draft', 'Dikirim', 'Diterima', 'Selesai'];
+                    $statusIndexMap = [
+                        'DRAFT' => 0,
+                        'DIKIRIM' => 1,
+                        'DITERIMA' => 2,
+                        'SELESAI' => 3,
+                    ];
+                } else {
+                    // PEMINJAMAN dan PENGEMBALIAN pakai 1 garis yang sama
+                    $steps = ['Draft', 'Dikirim', 'Diterima', 'Dikembalikan', 'Selesai'];
+                    $statusIndexMap = [
+                        'DRAFT' => 0,
+                        'DIKIRIM' => 1,
+                        'DITERIMA' => 2,
+                        'DIKEMBALIKAN' => 3,
+                        'SELESAI' => 4,
+                    ];
+
+                    // Jika tipe Pengembalian, anggap sudah di langkah Dikembalikan kecuali sudah Selesai
+                    if ($tipe === 'PENGEMBALIAN' && $status !== 'SELESAI') {
+                        $status = 'DIKEMBALIKAN';
+                    }
+                }
+
+                $currentStep = $statusIndexMap[$status] ?? 0;
+                $maxStep = count($steps) - 1;
+                if ($currentStep > $maxStep) {
+                    $currentStep = $maxStep;
+                }
+            @endphp
+
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">Progress</h3>
+                        <span class="text-sm text-gray-500">{{ $suratJalan->tipe ?? '-' }}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        @foreach($steps as $index => $label)
+                            @php
+                                $isCompleted = $index < $currentStep;
+                                $isActive = $index === $currentStep;
+                                $stateClass = $isCompleted ? 'bg-green-500 text-white'
+                                    : ($isActive ? 'bg-pln-primary text-white' : 'bg-gray-200 text-gray-600');
+                            @endphp
+                            <div class="flex items-center w-full">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold {{ $stateClass }}">
+                                        {{ $index + 1 }}
+                                    </div>
+                                    <span class="mt-2 text-xs font-semibold {{ $isCompleted || $isActive ? 'text-gray-900' : 'text-gray-500' }}">{{ $label }}</span>
+                                </div>
+                                @if($index < count($steps) - 1)
+                                    <div class="flex-1 h-1 mx-2 rounded-full {{ $index < $currentStep ? 'bg-green-500' : 'bg-gray-200' }}"></div>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             </div>

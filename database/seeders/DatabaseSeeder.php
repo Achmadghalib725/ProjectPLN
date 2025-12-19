@@ -82,7 +82,7 @@ class DatabaseSeeder extends Seeder
         // ========================================
         User::create([
             'name' => 'Agus Priyanto',
-            'email' => 'security@pln.co.id',
+            'email' => 'security@pln.com',
             'password' => Hash::make('password'),
             'role' => 'security',
             'gudang_id' => $gudangTarahan->id, // Security di Tarahan

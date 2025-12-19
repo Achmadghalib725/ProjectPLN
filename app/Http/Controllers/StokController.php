@@ -156,41 +156,49 @@ class StokController extends Controller
                 $stokSebelum = $stock->jumlah;
                 $adjustment = $request->adjustment_quantity;
 
-                // Calculate new stock
-                if ($request->adjustment_type === 'add') {
-                    $stokSesudah = $stokSebelum + $adjustment;
-                    $tipe = 'IN';
-                } else {
-                    $stokSesudah = $stokSebelum - $adjustment;
-                    $tipe = 'OUT';
+                // Check if there's a stock adjustment or just stok_minimum update
+                if ($adjustment && $adjustment > 0) {
+                    // Calculate new stock
+                    if ($request->adjustment_type === 'add') {
+                        $stokSesudah = $stokSebelum + $adjustment;
+                        $tipe = 'IN';
+                    } else {
+                        $stokSesudah = $stokSebelum - $adjustment;
+                        $tipe = 'OUT';
 
-                    // Prevent negative stock
-                    if ($stokSesudah < 0) {
-                        throw new \Exception('Stok tidak boleh negatif. Jumlah pengurangan melebihi stok tersedia.');
+                        // Prevent negative stock
+                        if ($stokSesudah < 0) {
+                            throw new \Exception('Stok tidak boleh negatif. Jumlah pengurangan melebihi stok tersedia.');
+                        }
                     }
+
+                    // Update stock with adjustment
+                    $stock->update([
+                        'jumlah' => $stokSesudah,
+                        'stok_minimum' => $request->stok_minimum
+                    ]);
+
+                    // Log movement
+                    $this->logStockMovement(
+                        $stock->item_id,
+                        $stock->gudang_id,
+                        $tipe,
+                        $adjustment,
+                        $stokSebelum,
+                        $stokSesudah,
+                        'PenyesuaianManual',
+                        $request->keterangan
+                    );
+                } else {
+                    // Only update stok_minimum (no stock adjustment)
+                    $stock->update([
+                        'stok_minimum' => $request->stok_minimum
+                    ]);
                 }
-
-                // Update stock
-                $stock->update([
-                    'jumlah' => $stokSesudah,
-                    'stok_minimum' => $request->stok_minimum
-                ]);
-
-                // Log movement
-                $this->logStockMovement(
-                    $stock->item_id,
-                    $stock->gudang_id,
-                    $tipe,
-                    $adjustment,
-                    $stokSebelum,
-                    $stokSesudah,
-                    'PenyesuaianManual',
-                    $request->keterangan
-                );
             });
 
             return redirect()->route('gudang.stok.index')
-                ->with('success', 'Stok berhasil disesuaikan');
+                ->with('success', 'Data stok berhasil diperbarui');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()

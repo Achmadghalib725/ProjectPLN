@@ -109,7 +109,9 @@ Route::middleware('auth')->group(function () {
         Route::patch('/surat-jalan/{id}', [SuratJalanController::class, 'update'])->whereNumber('id')->name('surat-jalan.update');
         Route::post('/surat-jalan/{id}/approve', [SuratJalanController::class, 'approve'])->whereNumber('id')->name('surat-jalan.approve');
         Route::delete('/surat-jalan/{id}', [SuratJalanController::class, 'destroy'])->whereNumber('id')->name('surat-jalan.destroy');
-        Route::get('/surat-jalan/cetak/{id}', function() { return "Cetak PDF"; })->name('surat-jalan.print');
+        Route::get('/surat-jalan/{id}/pdf', [SuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
+        Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
+        Route::post('/surat-jalan/preview', [SuratJalanController::class, 'previewDraft'])->name('surat-jalan.preview-draft');
         Route::post('/terima-barang/{id}', function() { return "Proses Terima"; })->name('barang.terima');
     });
 
