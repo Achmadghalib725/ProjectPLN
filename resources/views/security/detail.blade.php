@@ -77,6 +77,18 @@
                                     <dt class="text-sm text-gray-500">Tanggal Kirim</dt>
                                     <dd class="mt-1 text-gray-900 font-medium">{{ \Carbon\Carbon::parse($suratJalan->tanggal)->format('d F Y') }}</dd>
                                 </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Nama Driver</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->nama_driver ?? '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Jenis Kendaraan</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->jenis_kendaraan ?? '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Nomor Plat</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->nomor_plat ?? '-' }}</dd>
+                                </div>
                                 @if($suratJalan->catatan)
                                 <div>
                                     <dt class="text-sm text-gray-500">Catatan</dt>

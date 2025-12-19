@@ -166,6 +166,18 @@
                             <p class="text-sm text-gray-500">Tanggal</p>
                             <p class="font-semibold text-gray-900">{{ $suratJalan->tanggal?->format('Y-m-d') ?? '-' }}</p>
                         </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Nama Driver</p>
+                            <p class="font-semibold text-gray-900">{{ $suratJalan->nama_driver ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Jenis Kendaraan</p>
+                            <p class="font-semibold text-gray-900">{{ $suratJalan->jenis_kendaraan ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Nomor Plat</p>
+                            <p class="font-semibold text-gray-900">{{ $suratJalan->nomor_plat ?? '-' }}</p>
+                        </div>
                         @if(($suratJalan->tipe ?? '') === 'PEMINJAMAN')
                             <div>
                                 <p class="text-sm text-gray-500">Tanggal Pengembalian</p>
