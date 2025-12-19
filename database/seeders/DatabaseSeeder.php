@@ -214,9 +214,18 @@ class DatabaseSeeder extends Seeder
         // 9. BUAT DUMMY SURAT JALAN + ITEM
         // ========================================
         $tanggalHariIni = Carbon::now()->startOfDay();
+        $usedSuratNomors = [];
+        $generateSuratNomor = function () use (&$usedSuratNomors) {
+            do {
+                $suffix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+                $nomor = 'SJ-' . $suffix;
+            } while (in_array($nomor, $usedSuratNomors, true));
+            $usedSuratNomors[] = $nomor;
+            return $nomor;
+        };
 
         $sj1 = SuratJalan::create([
-            'nomor' => 'SJ-' . $tanggalHariIni->format('Ymd') . '-001',
+            'nomor' => $generateSuratNomor(),
             'gudang_asal_id' => $gudangTarahan->id,
             'gudang_tujuan_id' => $gudangTelukBetung->id,
             'pic_tujuan_id' => $picTelukBetung->id,
@@ -246,7 +255,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $sj2 = SuratJalan::create([
-            'nomor' => 'SJ-' . $tanggalHariIni->copy()->subDay()->format('Ymd') . '-002',
+            'nomor' => $generateSuratNomor(),
             'gudang_asal_id' => $gudangTelukBetung->id,
             'gudang_tujuan_id' => $gudangTarahan->id,
             'pic_tujuan_id' => $picTarahan->id,
@@ -271,7 +280,7 @@ class DatabaseSeeder extends Seeder
         // 10. DUMMY PEMINJAMAN AKTIF (TELUK <-> TARAHAN)
         // ========================================
         $sjPeminjamanTeluk = SuratJalan::create([
-            'nomor' => 'SJ-' . $tanggalHariIni->copy()->subDays(2)->format('Ymd') . '-010',
+            'nomor' => $generateSuratNomor(),
             'gudang_asal_id' => $gudangTarahan->id,
             'gudang_tujuan_id' => $gudangTelukBetung->id,
             'pic_tujuan_id' => $picTelukBetung->id,
@@ -320,7 +329,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $sjPeminjamanTarahan = SuratJalan::create([
-            'nomor' => 'SJ-' . $tanggalHariIni->copy()->subDays(4)->format('Ymd') . '-011',
+            'nomor' => $generateSuratNomor(),
             'gudang_asal_id' => $gudangTelukBetung->id,
             'gudang_tujuan_id' => $gudangTarahan->id,
             'pic_tujuan_id' => $picTarahan->id,

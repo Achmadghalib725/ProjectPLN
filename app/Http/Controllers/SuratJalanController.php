@@ -724,19 +724,12 @@ class SuratJalanController extends Controller
 
     private function generateSuratJalanNomor(Carbon $tanggal): string
     {
-        $prefix = 'SJ-' . $tanggal->format('Ymd') . '-';
-        $latest = SuratJalan::query()
-            ->where('nomor', 'like', $prefix . '%')
-            ->orderByDesc('nomor')
-            ->value('nomor');
+        do {
+            $suffix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+            $nomor = 'SJ-' . $suffix;
+        } while (SuratJalan::where('nomor', $nomor)->exists());
 
-        $nextNumber = 1;
-        if ($latest) {
-            $suffix = (int) substr($latest, -3);
-            $nextNumber = $suffix + 1;
-        }
-
-        return $prefix . str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
+        return $nomor;
     }
 
     private function generatePeminjamanKode(Carbon $tanggal): string
