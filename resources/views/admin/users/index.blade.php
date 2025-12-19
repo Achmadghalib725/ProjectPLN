@@ -7,7 +7,7 @@
             form: {
                 id: @json(old('id')),
                 name: @json(old('name')),
-                email: @json(old('email')),
+                username: @json(old('username')),
                 no_hp: @json(old('no_hp')),
                 role: @json(old('role')),
                 jabatan: @json(old('jabatan')),
@@ -18,7 +18,7 @@
             },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', name: '', email: '', no_hp: '', role: '', jabatan: '', gudang_id: '', password: '', password_confirmation: '', is_active: 1 };
+                this.form = { id: '', name: '', username: '', no_hp: '', role: '', jabatan: '', gudang_id: '', password: '', password_confirmation: '', is_active: 1 };
                 this.actionUrl = '{{ route('admin.users.store') }}';
                 this.showModal = true;
             },
@@ -81,8 +81,8 @@
                                 </svg>
                             </div>
                             <input type="text" name="search" value="{{ request('search') }}" 
-                                class="block w-full p-2.5 pl-10 text-sm text-gray-900 border border-gray-200 rounded-lg bg-gray-50 focus:ring-cyan-500 focus:border-cyan-500 transition-all focus:bg-white" 
-                                placeholder="Cari nama, email, atau jabatan...">
+                                class="block w-full p-2.5 pl-10 text-sm text-gray-900 border border-gray-200 rounded-lg bg-gray-50 focus:ring-cyan-500 focus:border-cyan-500 transition-all focus:bg-white"
+                                placeholder="Cari nama, username, atau jabatan...">
                         </div>
 
                         {{-- Filters --}}
@@ -129,7 +129,7 @@
                                         </div>
                                         <div class="ml-4">
                                             <div class="text-sm font-bold text-gray-900 group-hover:text-cyan-700 transition-colors">{{ $user->name }}</div>
-                                            <div class="text-xs text-gray-500">{{ $user->email }}</div>
+                                            <div class="text-xs text-gray-500">{{ $user->jabatan ?? '-' }}</div>
                                             @if($user->no_hp)
                                                 <div class="flex items-center mt-1 text-[10px] text-gray-400">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
@@ -267,11 +267,11 @@
                                 @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
 
-                            {{-- Email --}}
+                            {{-- Username --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Email</label>
-                                <input type="email" name="email" x-model="form.email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
-                                @error('email') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                <label class="block text-sm font-medium text-gray-700">Username</label>
+                                <input type="text" name="username" x-model="form.username" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" pattern="[a-z0-9_]+" title="Username hanya boleh huruf kecil, angka, dan underscore">
+                                @error('username') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- No HP --}}
