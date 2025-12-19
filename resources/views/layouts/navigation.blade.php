@@ -125,6 +125,11 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V6l-8-4-8 4v6c0 6 8 10 8 10zM9 12l2 2 4-4"></path>
                             </svg>
                             @break
+                        @case('user')
+                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            @break
                         @case('grid')
                         @default
                             <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,15 +152,15 @@
 
     <div class="p-4 border-t border-gray-100 bg-gray-50/80">
         <div class="flex items-center transition-all duration-300" :class="!sidebarOpen ? 'justify-start md:justify-center flex-row md:flex-col md:space-y-3 space-x-3 md:space-x-0' : 'space-x-3'">
-            
-            <div class="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-pln-primary to-pln-light flex items-center justify-center text-white font-bold shadow-md ring-2 ring-pln-light/30">
-                {{ substr(Auth::user()->name, 0, 1) }}
-            </div>
 
-            <div x-show="sidebarOpen" class="flex-1 min-w-0 overflow-hidden">
+            <a href="{{ route('profile.edit') }}" class="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-pln-primary to-pln-light flex items-center justify-center text-white font-bold shadow-md ring-2 ring-pln-light/30 hover:scale-105 transition-transform cursor-pointer" title="Profile">
+                {{ substr(Auth::user()->name, 0, 1) }}
+            </a>
+
+            <a href="{{ route('profile.edit') }}" x-show="sidebarOpen" class="flex-1 min-w-0 overflow-hidden hover:opacity-80 transition-opacity">
                 <p class="text-sm font-bold text-pln-primary truncate">{{ Auth::user()->name }}</p>
                 <p class="text-xs text-gray-500 truncate">{{ Auth::user()->jabatan ?? Auth::user()->role }}</p>
-            </div>
+            </a>
             
             <form method="POST" action="{{ route('logout') }}" :class="!sidebarOpen ? 'md:w-full md:flex md:justify-center ml-auto md:ml-0' : ''">
                 @csrf
