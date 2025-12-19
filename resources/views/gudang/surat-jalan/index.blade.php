@@ -743,6 +743,12 @@
                                 // Collect form data
                                 const formData = new FormData($refs.createForm);
 
+                                // Store form data as object BEFORE fetch (FormData may be consumed by fetch in some browsers)
+                                const formDataObj = {};
+                                for (const [key, value] of formData.entries()) {
+                                    formDataObj[key] = value;
+                                }
+
                                 // Open preview in new window
                                 const previewUrl = '{{ route('gudang.surat-jalan.preview-draft') }}';
 
@@ -759,7 +765,7 @@
                                 })
                                 .then(blob => {
                                     const url = URL.createObjectURL(blob);
-                                    $dispatch('open-preview', { url: url, formData: Object.fromEntries(formData) });
+                                    $dispatch('open-preview', { url: url, formData: formDataObj });
                                     loading = false;
                                 })
                                 .catch(error => {
@@ -783,15 +789,51 @@
     <div x-data="{
             showPreview: false,
             previewUrl: '',
-            formDataJson: ''
+            formDataObj: {},
+            submitting: false,
+            submitDraft() {
+                console.log('submitDraft called');
+                console.log('formDataObj:', this.formDataObj);
+
+                if (Object.keys(this.formDataObj).length === 0) {
+                    alert('Data form tidak ditemukan. Silakan tutup preview dan coba lagi.');
+                    return;
+                }
+
+                this.submitting = true;
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ route('gudang.surat-jalan.store') }}';
+
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = '_token';
+                csrf.value = '{{ csrf_token() }}';
+                form.appendChild(csrf);
+
+                Object.entries(this.formDataObj).forEach(([key, value]) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value !== null && value !== undefined ? value : '';
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+            }
          }"
          @open-preview.window="
+            console.log('open-preview event received');
+            console.log('formData received:', $event.detail.formData);
             previewUrl = $event.detail.url;
-            formDataJson = JSON.stringify($event.detail.formData);
+            formDataObj = $event.detail.formData;
             showPreview = true;
          "
          @close-preview.window="
             showPreview = false;
+            submitting = false;
             if (previewUrl) {
                 URL.revokeObjectURL(previewUrl);
                 previewUrl = '';
@@ -808,11 +850,11 @@
              x-transition:leave-end="opacity-0">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
                 {{-- Backdrop --}}
-                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 z-0"
                      @click="$dispatch('close-preview')"></div>
 
                 {{-- Modal Content --}}
-                <div class="relative z-10 w-full max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden"
+                <div class="relative z-20 w-full max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden"
                      x-transition:enter="ease-out duration-300"
                      x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                      x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
@@ -849,40 +891,16 @@
                                 @click="$dispatch('close-preview')">
                             Kembali & Edit
                         </button>
-                        <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="confirmForm">
-                            @csrf
-                            <input type="hidden" name="form_data" :value="formDataJson">
-                            <button type="button"
-                                    class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150"
-                                    @click="
-                                        // Parse the stored form data and submit
-                                        const data = JSON.parse(formDataJson);
-                                        const form = document.createElement('form');
-                                        form.method = 'POST';
-                                        form.action = '{{ route('gudang.surat-jalan.store') }}';
-
-                                        // Add CSRF token
-                                        const csrf = document.createElement('input');
-                                        csrf.type = 'hidden';
-                                        csrf.name = '_token';
-                                        csrf.value = '{{ csrf_token() }}';
-                                        form.appendChild(csrf);
-
-                                        // Add all form data
-                                        Object.entries(data).forEach(([key, value]) => {
-                                            const input = document.createElement('input');
-                                            input.type = 'hidden';
-                                            input.name = key;
-                                            input.value = value;
-                                            form.appendChild(input);
-                                        });
-
-                                        document.body.appendChild(form);
-                                        form.submit();
-                                    ">
-                                Konfirmasi & Simpan Draft
-                            </button>
-                        </form>
+                        <button type="button"
+                                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                :disabled="submitting"
+                                @click="submitDraft()">
+                            <svg x-show="submitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="submitting ? 'Menyimpan...' : 'Konfirmasi & Simpan Draft'"></span>
+                        </button>
                     </div>
                 </div>
             </div>
