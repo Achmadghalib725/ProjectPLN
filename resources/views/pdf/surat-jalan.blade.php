@@ -272,7 +272,7 @@
                                 default => 'type-transfer',
                             };
                         @endphp
-                        <span class="type-badge {{ $tipeClass }}">{{ $tipe }}</span>
+                        <span class="">{{ $tipe }}</span>
                     </div>
                 </div>
                 <div class="info-row">
