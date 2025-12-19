@@ -5,10 +5,10 @@
         @csrf
 
         <div>
-            <x-input-label for="email" :value="__('Email')" class="text-[#035b71] font-bold" />
-            <x-text-input id="email" class="block mt-1 w-full border-gray-300 focus:border-[#00aff0] focus:ring-[#00aff0] rounded-md shadow-sm"
-                            type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+            <x-input-label for="username" :value="__('Username')" class="text-[#035b71] font-bold" />
+            <x-text-input id="username" class="block mt-1 w-full border-gray-300 focus:border-[#00aff0] focus:ring-[#00aff0] rounded-md shadow-sm"
+                            type="text" name="username" :value="old('username')" required autofocus autocomplete="username" />
+            <x-input-error :messages="$errors->get('username')" class="mt-2" />
         </div>
 
         <div class="mt-4">

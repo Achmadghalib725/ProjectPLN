@@ -154,7 +154,7 @@
 
             <div x-show="sidebarOpen" class="flex-1 min-w-0 overflow-hidden">
                 <p class="text-sm font-bold text-pln-primary truncate">{{ Auth::user()->name }}</p>
-                <p class="text-xs text-gray-500 truncate">{{ Auth::user()->email }}</p>
+                <p class="text-xs text-gray-500 truncate">{{ Auth::user()->jabatan ?? Auth::user()->role }}</p>
             </div>
             
             <form method="POST" action="{{ route('logout') }}" :class="!sidebarOpen ? 'md:w-full md:flex md:justify-center ml-auto md:ml-0' : ''">
