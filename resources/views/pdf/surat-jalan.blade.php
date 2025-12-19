@@ -328,6 +328,18 @@
                     <div class="info-label">Status</div>
                     <div class="info-value">: {{ $suratJalan->status ?? 'DRAFT' }}</div>
                 </div>
+                <div class="info-row">
+                    <div class="info-label">Nama Driver</div>
+                    <div class="info-value">: {{ $suratJalan->nama_driver ?? '-' }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Jenis Kendaraan</div>
+                    <div class="info-value">: {{ $suratJalan->jenis_kendaraan ?? '-' }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Nomor Plat</div>
+                    <div class="info-value">: {{ $suratJalan->nomor_plat ?? '-' }}</div>
+                </div>
             </div>
             <div class="info-box">
                 <div class="info-title">Gudang Asal</div>
@@ -445,8 +457,10 @@
             <div class="signature-box">
                 <div class="signature-title">Pengantar</div>
                 <div class="signature-line">
-                    <div class="signature-name">________________</div>
-                    <div class="signature-position">Driver</div>
+                    <div class="signature-name">{{ $suratJalan->nama_driver ?? '________________' }}</div>
+                    <div class="signature-position">
+                        {{ $suratJalan->nomor_plat ? 'Driver - ' . $suratJalan->nomor_plat : 'Driver' }}
+                    </div>
                 </div>
             </div>
             <div class="signature-box">
