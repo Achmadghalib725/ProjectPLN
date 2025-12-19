@@ -129,6 +129,49 @@ class StokController extends Controller
     }
 
     /**
+     * Display all stock movement history for the warehouse
+     */
+    public function riwayat(Request $request)
+    {
+        $gudangId = $this->getGudangId();
+        $search = $request->input('search');
+        $tipe = $request->input('tipe');
+        $referensi = $request->input('referensi');
+
+        $movements = StockMovement::with(['item', 'gudang', 'creator'])
+            ->where('gudang_id', $gudangId)
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('item', function ($itemQuery) use ($search) {
+                        $itemQuery->where('nama', 'like', "%{$search}%")
+                            ->orWhere('kode', 'like', "%{$search}%");
+                    })
+                    ->orWhere('keterangan', 'like', "%{$search}%")
+                    ->orWhereHas('creator', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%");
+                    });
+                });
+            })
+            ->when($tipe, function ($query, $tipe) {
+                $query->where('tipe', $tipe);
+            })
+            ->when($referensi, function ($query, $referensi) {
+                $query->where('referensi_type', $referensi);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+
+        // Get available referensi types for filter
+        $referensiTypes = StockMovement::where('gudang_id', $gudangId)
+            ->distinct()
+            ->pluck('referensi_type')
+            ->filter();
+
+        return view('gudang.riwayat', compact('movements', 'referensiTypes'));
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit(string $id)
