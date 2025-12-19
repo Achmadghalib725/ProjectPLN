@@ -65,7 +65,7 @@ class SecurityController extends Controller
     }
 
     /**
-     * Reject/return surat jalan (optional - jika ada masalah)
+     * Reject surat jalan - change status to DITOLAK
      */
     public function tolak(Request $request, $id)
     {
@@ -79,12 +79,14 @@ class SecurityController extends Controller
             return back()->with('error', 'Surat Jalan ini tidak dalam status DIKIRIM.');
         }
 
-        // For now, just add a note - could implement rejection logic later
-        $suratJalan->update([
-            'catatan' => $suratJalan->catatan . "\n[DITOLAK SECURITY: " . $request->alasan . "]",
-        ]);
+        DB::transaction(function () use ($suratJalan, $request) {
+            $suratJalan->update([
+                'status' => 'DITOLAK',
+                'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[DITOLAK: " . $request->alasan . "]",
+            ]);
+        });
 
         return redirect()->route('dashboard')
-            ->with('warning', 'Surat Jalan ' . $suratJalan->nomor . ' ditolak dengan alasan: ' . $request->alasan);
+            ->with('warning', 'Surat Jalan ' . $suratJalan->nomor . ' telah DITOLAK dengan alasan: ' . $request->alasan);
     }
 }

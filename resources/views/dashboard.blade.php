@@ -25,7 +25,7 @@
                         </p>
                     </div>
                     <div class="text-right text-xs text-gray-400">
-                        {{ now()->format('l, d F Y') }}
+                        {{ now()->locale('id')->translatedFormat('l, d F Y') }}
                     </div>
                 </div>
             </div>
