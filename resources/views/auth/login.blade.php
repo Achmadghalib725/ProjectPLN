@@ -25,14 +25,8 @@
             </label>
         </div>
 
-        <div class="flex items-center justify-between mt-6">
-            @if (Route::has('password.request'))
-                <a class="text-sm text-gray-500 hover:text-[#00aff0] rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00aff0]" href="{{ route('password.request') }}">
-                    {{ __('Lupa password?') }}
-                </a>
-            @endif
-
-            <x-primary-button class="ms-3 bg-[#035b71] hover:bg-[#024455] active:bg-[#023340] focus:ring-[#00aff0]">
+        <div class="flex items-center justify-end mt-6">
+            <x-primary-button class="bg-[#035b71] hover:bg-[#024455] active:bg-[#023340] focus:ring-[#00aff0]">
                 {{ __('Masuk') }}
             </x-primary-button>
         </div>
