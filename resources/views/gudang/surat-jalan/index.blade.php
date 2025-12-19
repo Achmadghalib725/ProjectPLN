@@ -636,6 +636,33 @@
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                         <p class="text-xs text-gray-500 mt-1">Dipakai untuk menghitung durasi peminjaman.</p>
                     </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver</label>
+                        <input type="text"
+                               name="nama_driver"
+                               value="{{ old('nama_driver') }}"
+                               placeholder="Contoh: Budi Santoso"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
+                        <input type="text"
+                               name="jenis_kendaraan"
+                               value="{{ old('jenis_kendaraan') }}"
+                               placeholder="Contoh: Truk Box"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat</label>
+                        <input type="text"
+                               name="nomor_plat"
+                               value="{{ old('nomor_plat') }}"
+                               placeholder="Contoh: B 1234 CD"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
                 </div>
 
                 <div>
@@ -993,6 +1020,33 @@
                         <input type="date"
                                name="tanggal_kirim"
                                value="{{ old('tanggal_kirim', now()->toDateString()) }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver</label>
+                        <input type="text"
+                               name="nama_driver"
+                               value="{{ old('nama_driver') }}"
+                               placeholder="Contoh: Budi Santoso"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
+                        <input type="text"
+                               name="jenis_kendaraan"
+                               value="{{ old('jenis_kendaraan') }}"
+                               placeholder="Contoh: Truk Box"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat</label>
+                        <input type="text"
+                               name="nomor_plat"
+                               value="{{ old('nomor_plat') }}"
+                               placeholder="Contoh: B 1234 CD"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
                 </div>

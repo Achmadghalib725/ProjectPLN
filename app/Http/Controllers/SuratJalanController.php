@@ -113,6 +113,9 @@ class SuratJalanController extends Controller
             'tanggal_kirim' => ['required', 'date'],
             'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
+            'nama_driver' => ['nullable', 'string', 'max:100'],
+            'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
+            'nomor_plat' => ['nullable', 'string', 'max:50'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => [
                 'required',
@@ -144,6 +147,9 @@ class SuratJalanController extends Controller
                     'tanggal' => $tanggalKirim->toDateString(),
                     'created_by' => Auth::id(),
                     'catatan' => $validated['catatan'] ?? null,
+                    'nama_driver' => $validated['nama_driver'] ?? null,
+                    'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
+                    'nomor_plat' => $validated['nomor_plat'] ?? null,
                     'pdf_path' => null,
                 ]);
 
@@ -174,6 +180,9 @@ class SuratJalanController extends Controller
                 'tanggal' => $tanggalKirim->toDateString(),
                 'created_by' => Auth::id(),
                 'catatan' => $validated['catatan'] ?? null,
+                'nama_driver' => $validated['nama_driver'] ?? null,
+                'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
+                'nomor_plat' => $validated['nomor_plat'] ?? null,
                 'pdf_path' => null,
             ]);
 
@@ -216,6 +225,9 @@ class SuratJalanController extends Controller
             'pic_tujuan_id' => ['required', 'integer', 'exists:pics,id'],
             'tanggal_kirim' => ['required', 'date'],
             'catatan' => ['nullable', 'string'],
+            'nama_driver' => ['nullable', 'string', 'max:100'],
+            'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
+            'nomor_plat' => ['nullable', 'string', 'max:50'],
         ], [
             'peminjaman_id.required' => 'Kode peminjaman wajib dipilih.',
             'peminjaman_id.exists' => 'Kode peminjaman tidak valid atau sudah dikembalikan.',
@@ -250,6 +262,9 @@ class SuratJalanController extends Controller
                 'tanggal' => $tanggalKirim->toDateString(),
                 'created_by' => Auth::id(),
                 'catatan' => $validated['catatan'] ?? null,
+                'nama_driver' => $validated['nama_driver'] ?? null,
+                'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
+                'nomor_plat' => $validated['nomor_plat'] ?? null,
                 'pdf_path' => null,
             ]);
 
@@ -358,6 +373,9 @@ class SuratJalanController extends Controller
                 ],
                 'tanggal_kirim' => ['required', 'date'],
                 'catatan' => ['nullable', 'string'],
+                'nama_driver' => ['nullable', 'string', 'max:100'],
+                'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
+                'nomor_plat' => ['nullable', 'string', 'max:50'],
             ], [
                 'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
@@ -367,6 +385,9 @@ class SuratJalanController extends Controller
                 'pic_tujuan_id' => $validated['pic_tujuan_id'],
                 'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
                 'catatan' => $validated['catatan'] ?? null,
+                'nama_driver' => $validated['nama_driver'] ?? null,
+                'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
+                'nomor_plat' => $validated['nomor_plat'] ?? null,
             ]);
 
             return redirect()
@@ -389,6 +410,9 @@ class SuratJalanController extends Controller
             'tanggal_kirim' => ['required', 'date'],
             'tanggal_kembali' => ['required_if:tipe,PEMINJAMAN', 'nullable', 'date', 'after:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
+            'nama_driver' => ['nullable', 'string', 'max:100'],
+            'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
+            'nomor_plat' => ['nullable', 'string', 'max:50'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => [
                 'required',
@@ -412,6 +436,9 @@ class SuratJalanController extends Controller
                 'pic_tujuan_id' => (int) $validated['pic_tujuan_id'],
                 'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
                 'catatan' => $validated['catatan'] ?? null,
+                'nama_driver' => $validated['nama_driver'] ?? null,
+                'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
+                'nomor_plat' => $validated['nomor_plat'] ?? null,
             ]);
 
             $suratJalan->items()->delete();
@@ -774,6 +801,9 @@ class SuratJalanController extends Controller
         $suratJalan->tipe = $request->input('mode') === 'peminjaman' ? 'PEMINJAMAN' : 'TRANSFER';
         $suratJalan->status = 'DRAFT';
         $suratJalan->catatan = $request->input('catatan');
+        $suratJalan->nama_driver = $request->input('nama_driver');
+        $suratJalan->jenis_kendaraan = $request->input('jenis_kendaraan');
+        $suratJalan->nomor_plat = $request->input('nomor_plat');
 
         if ($request->input('tanggal_kembali')) {
             $suratJalan->tanggal_kembali = Carbon::parse($request->input('tanggal_kembali'));

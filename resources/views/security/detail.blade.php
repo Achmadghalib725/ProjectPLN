@@ -130,37 +130,68 @@
                 <div class="p-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <p class="text-sm text-gray-500">Gudang Asal</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->gudangAsal->nama ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Gudang Tujuan</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->gudangTujuan->nama ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">PIC Tujuan</p>
-                            <p class="font-semibold text-gray-900">
-                                {{ $suratJalan->picTujuan->nama ?? '-' }}
-                                @if(!empty($suratJalan->picTujuan?->no_hp))
-                                    <span class="text-sm text-gray-500 font-normal">({{ $suratJalan->picTujuan->no_hp }})</span>
+                            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Informasi Pengiriman</h3>
+                            <dl class="space-y-3">
+                                <div>
+                                    <dt class="text-sm text-gray-500">Tipe</dt>
+                                    <dd class="mt-1">
+                                        @php
+                                            $tipeBadge = match($suratJalan->tipe) {
+                                                'TRANSFER' => 'bg-blue-100 text-blue-800',
+                                                'PEMINJAMAN' => 'bg-purple-100 text-purple-800',
+                                                'PENGEMBALIAN' => 'bg-orange-100 text-orange-800',
+                                                default => 'bg-gray-100 text-gray-800'
+                                            };
+                                        @endphp
+                                        <span class="px-2 py-1 text-sm font-semibold rounded-full {{ $tipeBadge }}">
+                                            {{ $suratJalan->tipe }}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Tanggal Kirim</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ \Carbon\Carbon::parse($suratJalan->tanggal)->format('d F Y') }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Nama Driver</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->nama_driver ?? '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Jenis Kendaraan</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->jenis_kendaraan ?? '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Nomor Plat</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->nomor_plat ?? '-' }}</dd>
+                                </div>
+                                @if($suratJalan->catatan)
+                                <div>
+                                    <dt class="text-sm text-gray-500">Catatan</dt>
+                                    <dd class="mt-1 text-gray-900">{{ $suratJalan->catatan }}</dd>
+                                </div>
                                 @endif
-                            </p>
+                            </dl>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500">Tanggal</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->tanggal?->format('Y-m-d') ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Tipe</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->tipe ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Status</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->status ?? '-' }}</p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <p class="text-sm text-gray-500">Catatan</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->catatan ?? '-' }}</p>
+                            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Ringkasan</h3>
+                            <dl class="space-y-3">
+                                <div>
+                                    <dt class="text-sm text-gray-500">Tanggal</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->tanggal?->format('Y-m-d') ?? '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Tipe</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->tipe ?? '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Status</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->status ?? '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm text-gray-500">Catatan</dt>
+                                    <dd class="mt-1 text-gray-900 font-medium">{{ $suratJalan->catatan ?? '-' }}</dd>
+                                </div>
+                            </dl>
                         </div>
                     </div>
                 </div>
