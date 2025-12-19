@@ -45,11 +45,10 @@
             text-align: right;
         }
 
-        .company-name {
-            font-size: 18px;
-            font-weight: bold;
-            color: #035b71;
-            margin-bottom: 3px;
+        .company-logo {
+            height: 45px;
+            width: auto;
+            margin-bottom: 5px;
         }
 
         .company-subtitle {
@@ -290,7 +289,18 @@
         <!-- Header -->
         <div class="header">
             <div class="header-left">
-                <div class="company-name">PT PLN (Persero)</div>
+                @php
+                    $logoPath = public_path('Logo_PLN_800.png');
+                    $logoData = '';
+                    if (file_exists($logoPath)) {
+                        $logoData = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));
+                    }
+                @endphp
+                @if($logoData)
+                    <img src="{{ $logoData }}" alt="PLN Logo" class="company-logo">
+                @else
+                    <div style="font-size: 18px; font-weight: bold; color: #035b71;">PT PLN (Persero)</div>
+                @endif
                 <div class="company-subtitle">Sistem Manajemen Gudang - {{ $suratJalan->gudangAsal->nama ?? 'Gudang' }}
                 </div>
             </div>
