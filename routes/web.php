@@ -6,6 +6,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\SuratJalanController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PicController;
+use App\Http\Controllers\SecurityController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -79,6 +80,17 @@ Route::get('/dashboard', function () {
                 ->limit(6)
                 ->get()
             : collect(),
+        // Stats untuk Security
+        'stats' => [
+            'diterima_hari_ini' => Schema::hasTable('surat_jalans')
+                ? SuratJalan::where('status', 'DITERIMA')
+                    ->whereDate('updated_at', today())
+                    ->count()
+                : 0,
+            'menunggu' => Schema::hasTable('surat_jalans')
+                ? SuratJalan::where('status', 'DIKIRIM')->count()
+                : 0,
+        ],
     ];
 
     // Mengirim variabel $data ke view dashboard
@@ -117,8 +129,10 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {
-        Route::get('/scan-qr', function() { return "Halaman Scan QR Surat Jalan"; })->name('scan');
-        Route::post('/validasi-gate/{id}', function() { return "Konfirmasi Barang Lewat Gate"; })->name('validasi');
+        Route::post('/search', [SecurityController::class, 'search'])->name('search');
+        Route::get('/surat-jalan/{id}', [SecurityController::class, 'show'])->whereNumber('id')->name('show');
+        Route::post('/surat-jalan/{id}/terima', [SecurityController::class, 'terima'])->whereNumber('id')->name('terima');
+        Route::post('/surat-jalan/{id}/tolak', [SecurityController::class, 'tolak'])->whereNumber('id')->name('tolak');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

@@ -792,9 +792,6 @@
             formDataObj: {},
             submitting: false,
             submitDraft() {
-                console.log('submitDraft called');
-                console.log('formDataObj:', this.formDataObj);
-
                 if (Object.keys(this.formDataObj).length === 0) {
                     alert('Data form tidak ditemukan. Silakan tutup preview dan coba lagi.');
                     return;
@@ -825,8 +822,6 @@
             }
          }"
          @open-preview.window="
-            console.log('open-preview event received');
-            console.log('formData received:', $event.detail.formData);
             previewUrl = $event.detail.url;
             formDataObj = $event.detail.formData;
             showPreview = true;

@@ -66,7 +66,6 @@
                     ],
                     'security' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
-                        ['label' => 'Konfirmasi Surat Jalan', 'route' => 'security.scan', 'icon' => 'shield'],
                     ],
                 ];
                 $navItems = $menuByRole[$role] ?? [['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid']];
