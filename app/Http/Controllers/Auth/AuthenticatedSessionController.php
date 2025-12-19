@@ -37,7 +37,7 @@ class AuthenticatedSessionController extends Controller
 
             // Kembalikan ke halaman login dengan pesan error
             return redirect('/login')->withErrors([
-                'email' => 'Akun Anda telah dinonaktifkan. Silakan hubungi Admin.',
+                'username' => 'Akun Anda telah dinonaktifkan. Silakan hubungi Admin.',
             ]);
         }
 

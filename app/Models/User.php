@@ -23,6 +23,16 @@ class User extends Authenticatable
         'is_active' => 'boolean',
     ];
 
+    /**
+     * Get the name of the unique identifier for the user.
+     *
+     * @return string
+     */
+    public function username()
+    {
+        return 'username';
+    }
+
     // Relasi: User milik satu Gudang (kecuali Admin)
     public function gudang()
     {
