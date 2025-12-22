@@ -60,7 +60,15 @@
                     ],
                     'operator_gudang' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
-                        ['label' => 'Manajemen Barang', 'route' => 'gudang.stok.index', 'icon' => 'clipboard'],
+                        [
+                            'label' => 'Manajemen Barang',
+                            'route' => 'gudang.stok.index',
+                            'icon' => 'clipboard',
+                            'children' => [
+                                ['label' => 'Barang Dipinjamkan', 'route' => 'gudang.stok.barang-dipinjamkan'],
+                                ['label' => 'Barang Pinjaman', 'route' => 'gudang.stok.barang-pinjaman'],
+                            ]
+                        ],
                         ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
                         ['label' => 'Riwayat', 'route' => 'gudang.riwayat', 'icon' => 'clock'],
                     ],
@@ -76,68 +84,112 @@
                     $hasRoute = isset($item['route']) && Route::has($item['route']);
                     $url = $hasRoute ? route($item['route']) : ($item['url'] ?? '#');
                     $isActive = $hasRoute ? request()->routeIs($item['route'] . '*') : false;
+                    $hasChildren = !empty($item['children']);
+
+                    // Check if any child is active
+                    $childActive = false;
+                    if ($hasChildren) {
+                        foreach ($item['children'] as $child) {
+                            if (isset($child['route']) && Route::has($child['route']) && request()->routeIs($child['route'] . '*')) {
+                                $childActive = true;
+                                break;
+                            }
+                        }
+                    }
+                    $isActive = $isActive || $childActive;
                 @endphp
 
+                @if($hasChildren)
+                {{-- Menu with submenu --}}
+                <div x-data="{ open: {{ $childActive ? 'true' : 'false' }} }" class="relative">
+                    <a href="{{ $url }}"
+                       @mouseenter="open = true"
+                       class="group flex items-center px-3 py-3 rounded-lg transition-all duration-200 relative overflow-hidden
+                       {{ $isActive
+                          ? 'bg-gradient-to-r from-pln-primary/10 to-transparent text-pln-primary font-bold'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-pln-light' }}"
+                       :class="!sidebarOpen ? 'justify-start md:justify-center' : ''">
+
+                        @if($isActive)
+                        <div class="absolute left-0 top-1 bottom-1 w-1 bg-pln-yellow rounded-r shadow-[0_0_10px_rgba(255,255,0,0.6)]"></div>
+                        @endif
+
+                        @include('layouts.partials.nav-icon', ['icon' => $item['icon'], 'isActive' => $isActive])
+
+                        <span x-show="sidebarOpen"
+                              class="ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 origin-left flex-1">
+                            {{ $item['label'] }}
+                        </span>
+
+                        {{-- Dropdown arrow --}}
+                        <svg x-show="sidebarOpen" class="w-4 h-4 ml-auto transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+
+                        <div x-show="!sidebarOpen" class="hidden md:block absolute left-14 ml-2 bg-pln-primary text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap shadow-lg border-l-2 border-pln-yellow">
+                            {{ $item['label'] }}
+                        </div>
+                    </a>
+
+                    {{-- Submenu items --}}
+                    <div x-show="open && sidebarOpen"
+                         x-collapse
+                         @mouseleave="open = {{ $childActive ? 'true' : 'false' }}"
+                         class="pl-6 mt-1 space-y-1">
+                        @foreach($item['children'] as $child)
+                            @php
+                                $childHasRoute = isset($child['route']) && Route::has($child['route']);
+                                $childUrl = $childHasRoute ? route($child['route']) : '#';
+                                $isChildActive = $childHasRoute && request()->routeIs($child['route'] . '*');
+                            @endphp
+                            <a href="{{ $childUrl }}"
+                               class="flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200
+                               {{ $isChildActive
+                                  ? 'bg-pln-primary/10 text-pln-primary font-semibold'
+                                  : 'text-gray-500 hover:bg-gray-50 hover:text-pln-light' }}">
+                                <span class="w-1.5 h-1.5 rounded-full mr-3 {{ $isChildActive ? 'bg-pln-primary' : 'bg-gray-300' }}"></span>
+                                {{ $child['label'] }}
+                            </a>
+                        @endforeach
+                    </div>
+
+                    {{-- Hover submenu for collapsed sidebar --}}
+                    <div x-show="open && !sidebarOpen"
+                         @mouseleave="open = false"
+                         class="hidden md:block absolute left-full top-0 ml-2 bg-white rounded-lg shadow-xl border border-gray-100 py-2 min-w-[180px] z-50">
+                        <div class="px-3 py-2 text-xs font-bold text-gray-400 uppercase">{{ $item['label'] }}</div>
+                        @foreach($item['children'] as $child)
+                            @php
+                                $childHasRoute = isset($child['route']) && Route::has($child['route']);
+                                $childUrl = $childHasRoute ? route($child['route']) : '#';
+                                $isChildActive = $childHasRoute && request()->routeIs($child['route'] . '*');
+                            @endphp
+                            <a href="{{ $childUrl }}"
+                               class="flex items-center px-3 py-2 text-sm transition-all duration-200
+                               {{ $isChildActive
+                                  ? 'bg-pln-primary/10 text-pln-primary font-semibold'
+                                  : 'text-gray-600 hover:bg-gray-50 hover:text-pln-primary' }}">
+                                {{ $child['label'] }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+                @else
+                {{-- Regular menu item --}}
                 <a href="{{ $url }}"
                    class="group flex items-center px-3 py-3 rounded-lg transition-all duration-200 relative overflow-hidden
-                   {{ $isActive 
-                      ? 'bg-gradient-to-r from-pln-primary/10 to-transparent text-pln-primary font-bold' 
+                   {{ $isActive
+                      ? 'bg-gradient-to-r from-pln-primary/10 to-transparent text-pln-primary font-bold'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-pln-light' }}"
                    :class="!sidebarOpen ? 'justify-start md:justify-center' : ''">
-                    
+
                     @if($isActive)
                     <div class="absolute left-0 top-1 bottom-1 w-1 bg-pln-yellow rounded-r shadow-[0_0_10px_rgba(255,255,0,0.6)]"></div>
                     @endif
 
-                    @switch($item['icon'])
-                        @case('users')
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-1a6 6 0 00-9-5.197M12 7a4 4 0 11-8 0 4 4 0 018 0zm9 4a4 4 0 10-8 0 4 4 0 008 0zM6 21v-1a6 6 0 0112 0v1"></path>
-                            </svg>
-                            @break
-                        @case('boxes')
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 5 9-5M3 17l9 5 9-5M3 7v10m9-5v10m9-10v10"></path>
-                            </svg>
-                            @break
-                        @case('id')
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zm9 3h3m-3 4h3M8 8h.01M8 12h5m-5 4h5"></path>
-                            </svg>
-                            @break
-                        @case('clipboard')
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-6 4h6m-6 4h6m-3 4H7a2 2 0 01-2-2V7a2 2 0 012-2h2m6 0h2a2 2 0 012 2v10a2 2 0 01-2 2h-4"></path>
-                            </svg>
-                            @break
-                        @case('truck')
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17h6m-6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 104 0m-4 0h4v-5l-3-4h-5v9m0-9H5v9h4"></path>
-                            </svg>
-                            @break
-                        @case('clock')
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            @break
-                        @case('shield')
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V6l-8-4-8 4v6c0 6 8 10 8 10zM9 12l2 2 4-4"></path>
-                            </svg>
-                            @break
-                        @case('user')
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                            @break
-                        @case('grid')
-                        @default
-                            <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
-                            </svg>
-                    @endswitch
+                    @include('layouts.partials.nav-icon', ['icon' => $item['icon'], 'isActive' => $isActive])
 
-                    <span x-show="sidebarOpen" 
+                    <span x-show="sidebarOpen"
                           class="ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 origin-left">
                         {{ $item['label'] }}
                     </span>
@@ -146,6 +198,7 @@
                         {{ $item['label'] }}
                     </div>
                 </a>
+                @endif
             @endforeach
         </div>
     </div>

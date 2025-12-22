@@ -72,11 +72,12 @@ class SuratJalanController extends Controller
                 ->get()
             : collect();
 
+        // Only show peminjaman that have been received (DITERIMA) and not yet returned
         $activePeminjamans = Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
             ? Peminjaman::query()
                 ->with(['items.item', 'gudangPemilik'])
                 ->where('gudang_peminjam_id', $gudangId)
-                ->whereIn('status', ['DIKIRIM', 'DITERIMA'])
+                ->where('status', 'DITERIMA')
                 ->whereNull('surat_jalan_kembali_id')
                 ->orderByDesc('waktu_pengajuan')
                 ->get()
@@ -165,7 +166,7 @@ class SuratJalanController extends Controller
                 'waktu_pengajuan' => now(),
                 'durasi_hari' => $tanggalKembali ? $tanggalKirim->diffInDays($tanggalKembali) : null,
                 'durasi_jam' => $tanggalKembali ? $tanggalKirim->diffInHours($tanggalKembali) : null,
-                'waktu_pengembalian' => $tanggalKembali ? $tanggalKembali->toDateString() : null,
+                'batas_waktu_kembali' => $tanggalKembali,
                 'catatan_pengiriman' => $validated['catatan'] ?? null,
                 'created_by' => Auth::id(),
             ]);
@@ -218,7 +219,7 @@ class SuratJalanController extends Controller
                 'integer',
                 Rule::exists('peminjamans', 'id')->where(function ($query) use ($gudangId) {
                     $query->where('gudang_peminjam_id', $gudangId)
-                        ->whereIn('status', ['DIKIRIM', 'DITERIMA'])
+                        ->where('status', 'DITERIMA')
                         ->whereNull('surat_jalan_kembali_id');
                 }),
             ],
@@ -279,10 +280,9 @@ class SuratJalanController extends Controller
 
             SuratJalanItem::insert($rows);
 
+            // Only link the surat jalan to peminjaman, status change happens on approve
             $peminjaman->update([
                 'surat_jalan_kembali_id' => $suratJalan->id,
-                'status' => 'DIKEMBALIKAN',
-                'waktu_pengembalian' => $tanggalKirim->toDateString(),
             ]);
         });
 
@@ -303,7 +303,27 @@ class SuratJalanController extends Controller
 
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
-            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+            $peminjaman = Peminjaman::with([
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+            ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::with([
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+            ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
         }
 
         return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman'));
@@ -456,7 +476,7 @@ class SuratJalanController extends Controller
                         'gudang_peminjam_id' => (int) $validated['gudang_tujuan_id'],
                         'durasi_hari' => $tanggalKembali ? $tanggalKirim->diffInDays($tanggalKembali) : null,
                         'durasi_jam' => $tanggalKembali ? $tanggalKirim->diffInHours($tanggalKembali) : null,
-                        'waktu_pengembalian' => $tanggalKembali?->toDateString(),
+                        'batas_waktu_kembali' => $tanggalKembali,
                         'catatan_pengiriman' => $validated['catatan'] ?? null,
                     ]);
                 }
@@ -495,53 +515,225 @@ class SuratJalanController extends Controller
                     ->groupBy('item_id')
                     ->map(fn ($rows) => $rows->sum('jumlah'));
 
-                // Validasi stok terlebih dahulu (per item total)
-                foreach ($itemTotals as $itemId => $qty) {
-                    $stock = ItemStock::where('gudang_id', $gudangId)
-                        ->where('item_id', $itemId)
-                        ->lockForUpdate()
-                        ->first();
+                // Untuk PENGEMBALIAN, tidak perlu validasi stok (barang dikembalikan)
+                if ($suratJalan->tipe !== 'PENGEMBALIAN') {
+                    // Validasi stok terlebih dahulu (per item total)
+                    foreach ($itemTotals as $itemId => $qty) {
+                        $stock = ItemStock::where('gudang_id', $gudangId)
+                            ->where('item_id', $itemId)
+                            ->lockForUpdate()
+                            ->first();
 
-                    $available = $stock?->jumlah ?? 0;
-                    if ($available < $qty) {
-                        $itemName = $suratJalan->items->firstWhere('item_id', $itemId)?->item->nama ?? "Item ID {$itemId}";
-                        throw new \RuntimeException("Stok tidak cukup untuk {$itemName}.");
+                        $available = $stock?->jumlah ?? 0;
+                        if ($available < $qty) {
+                            $itemName = $suratJalan->items->firstWhere('item_id', $itemId)?->item->nama ?? "Item ID {$itemId}";
+                            throw new \RuntimeException("Stok tidak cukup untuk {$itemName}.");
+                        }
                     }
-                }
 
-                // Kurangi stok dan catat movement (per item total)
-                foreach ($itemTotals as $itemId => $qty) {
-                    $stock = ItemStock::where('gudang_id', $gudangId)
-                        ->where('item_id', $itemId)
-                        ->first();
+                    // Kurangi stok dan catat movement (per item total)
+                    foreach ($itemTotals as $itemId => $qty) {
+                        $stock = ItemStock::where('gudang_id', $gudangId)
+                            ->where('item_id', $itemId)
+                            ->first();
 
-                    $stokSebelum = $stock->jumlah;
-                    $stokSesudah = $stokSebelum - $qty;
+                        $stokSebelum = $stock->jumlah;
+                        $stokSesudah = $stokSebelum - $qty;
 
-                    $stock->decrement('jumlah', $qty);
+                        $stock->decrement('jumlah', $qty);
 
-                    StockMovement::create([
-                        'item_id' => $itemId,
-                        'gudang_id' => $gudangId,
-                        'tipe' => 'OUT',
-                        'jumlah' => $qty,
-                        'stok_sebelum' => $stokSebelum,
-                        'stok_sesudah' => $stokSesudah,
-                        'referensi_type' => 'SuratJalan',
-                        'referensi_id' => $suratJalan->id,
-                        'created_by' => Auth::id(),
-                        'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$suratJalan->gudangTujuan->nama}"
-                    ]);
-                }
+                        StockMovement::create([
+                            'item_id' => $itemId,
+                            'gudang_id' => $gudangId,
+                            'tipe' => 'OUT',
+                            'jumlah' => $qty,
+                            'stok_sebelum' => $stokSebelum,
+                            'stok_sesudah' => $stokSesudah,
+                            'referensi_type' => 'SuratJalan',
+                            'referensi_id' => $suratJalan->id,
+                            'created_by' => Auth::id(),
+                            'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$suratJalan->gudangTujuan->nama}"
+                        ]);
+                    }
 
+                    // Update status to DIKIRIM for TRANSFER/PEMINJAMAN
                 $suratJalan->update([
                     'status' => 'DIKIRIM',
+                    'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
+                    'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                 ]);
+
+                    // Update peminjaman status if applicable
+                    if ($suratJalan->tipe === 'PEMINJAMAN') {
+                        $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                        if ($peminjaman) {
+                            $peminjaman->update([
+                                'status' => 'DIKIRIM',
+                                'waktu_kirim' => now(),
+                            ]);
+                        }
+                    }
+                } else {
+                    // PENGEMBALIAN: Update status to DIKEMBALIKAN
+                    $suratJalan->update([
+                        'status' => 'DIKEMBALIKAN',
+                    ]);
+
+                    // Update peminjaman status
+                    $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                    if ($peminjaman) {
+                        $peminjaman->update([
+                            'status' => 'DIKEMBALIKAN',
+                            'waktu_pengembalian' => now(),
+                        ]);
+                    }
+                }
             });
+
+            $message = $suratJalan->tipe === 'PENGEMBALIAN'
+                ? 'Surat Jalan Pengembalian berhasil dikirim.'
+                : 'Surat Jalan disetujui dan stok berhasil dikurangi.';
 
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
-                ->with('success', 'Surat Jalan disetujui dan stok berhasil dikurangi.');
+                ->with('success', $message);
+        } catch (\RuntimeException $e) {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Operator gudang tujuan menerima barang (DIPERIKSA -> DITERIMA)
+     * Operator gudang pemilik menerima kembali barang pengembalian (DIPERIKSA -> SELESAI)
+     */
+    public function terima($id)
+    {
+        $suratJalan = SuratJalan::with('items.item')->findOrFail($id);
+
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId || $suratJalan->gudang_tujuan_id !== $gudangId) {
+            abort(403, 'Anda tidak berhak menerima surat jalan ini.');
+        }
+
+        if ($suratJalan->status !== 'DIPERIKSA') {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', 'Surat Jalan ini belum diperiksa oleh security.');
+        }
+
+        try {
+            DB::transaction(function () use ($suratJalan, $gudangId) {
+                $itemTotals = $suratJalan->items
+                    ->groupBy('item_id')
+                    ->map(fn ($rows) => $rows->sum('jumlah'));
+
+                if ($suratJalan->tipe === 'PENGEMBALIAN') {
+                    // PENGEMBALIAN: Tambah stok ke gudang pemilik dan set status SELESAI
+                    foreach ($itemTotals as $itemId => $qty) {
+                        $stock = ItemStock::firstOrCreate(
+                            ['gudang_id' => $gudangId, 'item_id' => $itemId],
+                            ['jumlah' => 0, 'stok_minimum' => 0]
+                        );
+
+                        $stokSebelum = $stock->jumlah;
+                        $stokSesudah = $stokSebelum + $qty;
+
+                        $stock->increment('jumlah', $qty);
+
+                        StockMovement::create([
+                            'item_id' => $itemId,
+                            'gudang_id' => $gudangId,
+                            'tipe' => 'IN',
+                            'jumlah' => $qty,
+                            'stok_sebelum' => $stokSebelum,
+                            'stok_sesudah' => $stokSesudah,
+                            'referensi_type' => 'SuratJalan',
+                            'referensi_id' => $suratJalan->id,
+                            'created_by' => Auth::id(),
+                            'keterangan' => "Pengembalian via {$suratJalan->nomor} dari {$suratJalan->gudangAsal->nama}"
+                        ]);
+                    }
+
+                    $suratJalan->update([
+                        'status' => 'SELESAI',
+                        'ttd_penerima_id' => $suratJalan->ttd_penerima_id ?? Auth::id(),
+                        'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
+                    ]);
+
+                    // Update peminjaman status to SELESAI
+                    $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                    if ($peminjaman) {
+                        $peminjaman->update([
+                            'status' => 'SELESAI',
+                            'waktu_selesai' => now(),
+                        ]);
+
+                        // Also update the original surat jalan kirim status to SELESAI
+                        if ($peminjaman->surat_jalan_kirim_id) {
+                            SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
+                                ->update(['status' => 'SELESAI']);
+                        }
+                    }
+                } else {
+                    // TRANSFER/PEMINJAMAN: Tambah stok ke gudang tujuan dan set status DITERIMA
+                    foreach ($itemTotals as $itemId => $qty) {
+                        $stock = ItemStock::firstOrCreate(
+                            ['gudang_id' => $gudangId, 'item_id' => $itemId],
+                            ['jumlah' => 0, 'stok_minimum' => 0]
+                        );
+
+                        $stokSebelum = $stock->jumlah;
+                        $stokSesudah = $stokSebelum + $qty;
+
+                        $stock->increment('jumlah', $qty);
+
+                        StockMovement::create([
+                            'item_id' => $itemId,
+                            'gudang_id' => $gudangId,
+                            'tipe' => 'IN',
+                            'jumlah' => $qty,
+                            'stok_sebelum' => $stokSebelum,
+                            'stok_sesudah' => $stokSesudah,
+                            'referensi_type' => 'SuratJalan',
+                            'referensi_id' => $suratJalan->id,
+                            'created_by' => Auth::id(),
+                            'keterangan' => "Penerimaan via {$suratJalan->nomor} dari {$suratJalan->gudangAsal->nama}"
+                        ]);
+                    }
+
+                    $suratJalan->update([
+                        'status' => 'DITERIMA',
+                        'ttd_penerima_id' => $suratJalan->ttd_penerima_id ?? Auth::id(),
+                        'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
+                    ]);
+
+                    // Update peminjaman status if applicable
+                    if ($suratJalan->tipe === 'PEMINJAMAN') {
+                        $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                        if ($peminjaman) {
+                            $peminjaman->update([
+                                'status' => 'DITERIMA',
+                                'waktu_diterima' => now(),
+                            ]);
+                        }
+                    } elseif ($suratJalan->tipe === 'TRANSFER') {
+                        // For TRANSFER, mark as SELESAI after receiving
+                        $suratJalan->update([
+                            'status' => 'SELESAI',
+                        ]);
+                    }
+                }
+            });
+
+            $message = $suratJalan->tipe === 'PENGEMBALIAN'
+                ? 'Barang pengembalian berhasil diterima. Peminjaman selesai.'
+                : 'Barang berhasil diterima dan stok telah ditambahkan.';
+
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('success', $message);
         } catch (\RuntimeException $e) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
@@ -565,13 +757,21 @@ class SuratJalanController extends Controller
         }
 
         DB::transaction(function () use ($suratJalan) {
-            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)
-                ->orWhere('surat_jalan_kembali_id', $suratJalan->id)
-                ->first();
+            if ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
 
-            if ($peminjaman) {
-                $peminjaman->items()->delete();
-                $peminjaman->delete();
+                if ($peminjaman) {
+                    $peminjaman->update([
+                        'surat_jalan_kembali_id' => null,
+                        'status' => $this->resolvePeminjamanStatusAfterReturnDraftDelete($peminjaman),
+                    ]);
+                }
+            } else {
+                $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                if ($peminjaman) {
+                    $peminjaman->items()->delete();
+                    $peminjaman->delete();
+                }
             }
 
             $suratJalan->items()->delete();
@@ -722,6 +922,19 @@ class SuratJalanController extends Controller
         return $warnings;
     }
 
+    private function resolvePeminjamanStatusAfterReturnDraftDelete(Peminjaman $peminjaman): string
+    {
+        if ($peminjaman->waktu_diterima || $peminjaman->waktu_ttd_penerima) {
+            return 'DITERIMA';
+        }
+
+        if ($peminjaman->waktu_kirim || $peminjaman->waktu_ttd_pengirim) {
+            return 'DIKIRIM';
+        }
+
+        return 'DIAJUKAN';
+    }
+
     private function generateSuratJalanNomor(Carbon $tanggal): string
     {
         do {
@@ -754,7 +967,7 @@ class SuratJalanController extends Controller
      */
     public function generatePdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima'])
             ->findOrFail($id);
 
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
@@ -768,7 +981,7 @@ class SuratJalanController extends Controller
      */
     public function previewPdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima'])
             ->findOrFail($id);
 
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));

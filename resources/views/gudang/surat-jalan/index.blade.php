@@ -86,11 +86,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                                 </svg>
                                 <span>Surat Keluar</span>
-                                @if(($countKeluar['draft'] ?? 0) > 0)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
-                                        {{ $countKeluar['draft'] }} draft
-                                    </span>
-                                @endif
+                
                             </div>
                         </a>
                         <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
@@ -100,11 +96,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
                                 </svg>
                                 <span>Surat Masuk</span>
-                                @if(($countMasuk['menunggu'] ?? 0) > 0)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
-                                        {{ $countMasuk['menunggu'] }} menunggu
-                                    </span>
-                                @endif
+
                             </div>
                         </a>
                     </nav>
@@ -303,15 +295,15 @@
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 <option value="">Semua</option>
                                 @if($tab === 'keluar')
-                                    @foreach(['DRAFT','DIKIRIM','DITERIMA','SELESAI'] as $statusOption)
+                                    @foreach(['DRAFT','DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                         <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
                                             {{ $statusOption }}
                                         </option>
                                     @endforeach
                                 @else
-                                    @foreach(['DIKIRIM','DITERIMA','SELESAI'] as $statusOption)
+                                    @foreach(['DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                         <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                            {{ $statusOption === 'DIKIRIM' ? 'MENUNGGU' : $statusOption }}
+                                            {{ in_array($statusOption, ['DIKIRIM', 'DIKEMBALIKAN']) ? 'MENUNGGU PEMERIKSAAN' : $statusOption }}
                                         </option>
                                     @endforeach
                                 @endif
@@ -403,19 +395,16 @@
                             @forelse($suratJalans as $index => $sj)
                                 @php
                                     $status = $sj->status ?? 'DRAFT';
-                                    $displayStatus = $sj->tipe === 'PENGEMBALIAN' && $status === 'DIKIRIM'
-                                        ? 'DIKEMBALIKAN'
-                                        : $status;
                                     $statusClass = match ($status) {
                                         'DRAFT' => 'bg-gray-100 text-gray-800',
                                         'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                                        'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
+                                        'DIPERIKSA' => 'bg-purple-100 text-purple-800',
                                         'DITERIMA' => 'bg-yellow-100 text-yellow-800',
+                                        'DITOLAK' => 'bg-red-100 text-red-800',
                                         'SELESAI' => 'bg-green-100 text-green-800',
                                         default => 'bg-gray-100 text-gray-800',
                                     };
-                                    if ($displayStatus === 'DIKEMBALIKAN') {
-                                        $statusClass = 'bg-indigo-100 text-indigo-800';
-                                    }
                                 @endphp
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
@@ -450,7 +439,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}">
-                                            {{ $displayStatus }}
+                                            {{ $status }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -510,302 +499,214 @@
 
     <x-modal name="create-surat-jalan" focusable>
         <div class="p-6"
-             x-data="{
+            x-data="{
                 mode: @js(old('mode', 'transfer')),
                 items: @js(old('items', [['item_id' => '', 'jumlah' => 1, 'keterangan' => '']])),
+                
+                // State untuk Gudang Tujuan
+                gudangOpen: false,
                 selectedGudang: @js(old('gudang_tujuan_id', '')),
+                gudangSearch: '',
+                allGudangs: @js($gudangs),
+                
+                // State untuk PIC Tujuan
+                picOpen: false,
                 selectedPic: @js(old('pic_tujuan_id', '')),
-                itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
-                    return [$stock->item_id => ($stock->item->satuan ?? '')];
-                })),
-                itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
-                    return [$stock->item_id => (int) ($stock->jumlah ?? 0)];
-                })),
-                pics: @js(($pics ?? collect())->map(fn($pic) => [
-                    'id' => $pic->id,
-                    'nama' => $pic->nama,
-                    'jabatan' => $pic->jabatan,
-                    'gudang_id' => $pic->gudang_id,
-                    'no_hp' => $pic->no_hp,
-                ])->values()),
+                picSearch: '',
+                allPics: @js(($pics ?? collect())->values()),
+
+                // Data Pendukung
+                itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
+                itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
+
                 addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
-                filteredPics() {
-                    if (!this.selectedGudang) return [];
-                    return this.pics.filter(pic => String(pic.gudang_id) === String(this.selectedGudang));
+                
+                get filteredGudangs() {
+                    return this.allGudangs.filter(g => 
+                        g.nama.toLowerCase().includes(this.gudSearch?.toLowerCase() || '') || 
+                        g.kode.toLowerCase().includes(this.gudSearch?.toLowerCase() || '')
+                    );
                 },
-                unitFor(itemId) {
-                    if (!itemId) return '';
-                    return this.itemUnits[itemId] ?? '';
-                },
-                stockFor(itemId) {
-                    if (!itemId) return 0;
-                    return this.itemStocks[itemId] ?? 0;
-                },
-                handleGudangChange() {
-                    if (!this.selectedGudang) {
-                        this.selectedPic = '';
-                        return;
+                
+                get filteredPics() {
+                    let pics = this.allPics;
+                    // Jika Gudang dipilih dari list (ID Angka), filter PIC-nya
+                    if (!isNaN(this.selectedGudang) && this.selectedGudang !== '') {
+                        pics = pics.filter(p => String(p.gudang_id) === String(this.selectedGudang));
                     }
-                    const match = this.filteredPics().some(pic => String(pic.id) === String(this.selectedPic));
-                    if (!match) {
-                        this.selectedPic = '';
-                    }
-                }
-             }">
+                    return pics.filter(p => p.nama.toLowerCase().includes(this.picSearch?.toLowerCase() || ''));
+                },
+
+                unitFor(id) { return this.itemUnits[id] ?? ''; },
+                stockFor(id) { return this.itemStocks[id] ?? 0; }
+            }">
+            
             <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="text-lg font-bold text-gray-900">Buat Surat Jalan Baru</h3>
-                    <p class="text-sm text-gray-500 mt-1">
-                        Pilih jenis proses: Transfer Barang (antar gudang) atau Peminjaman Barang (ada tanggal pengembalian).
-                    </p>
-                </div>
-                <button type="button" class="text-gray-400 hover:text-gray-600"
-                        x-on:click="$dispatch('close-modal', 'create-surat-jalan')">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
+                <h3 class="text-lg font-bold text-gray-900">Buat Surat Jalan Baru</h3>
+                <button type="button" @click="$dispatch('close-modal', 'create-surat-jalan')" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-3 mb-6">
-                <button type="button"
-                        class="flex-1 px-4 py-3 rounded-lg border text-sm font-semibold transition"
-                        :class="mode === 'transfer' ? 'border-pln-primary bg-pln-primary/10 text-pln-primary' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'"
-                        @click="mode = 'transfer'">
-                    Transfer Barang
-                    <div class="text-xs font-normal mt-1 text-gray-500">Perpindahan barang antar gudang (tanpa tanggal kembali)</div>
+            {{-- Mode Switcher --}}
+            <div class="flex gap-3 mb-6">
+                <button type="button" @click="mode = 'transfer'" :class="mode === 'transfer' ? 'border-pln-primary bg-pln-primary/5 text-pln-primary' : 'border-gray-200'" class="flex-1 p-3 border rounded-lg text-left transition">
+                    <p class="font-bold text-sm">Transfer Barang</p>
+                    <p class="text-xs opacity-70">Antar gudang internal</p>
                 </button>
-                <button type="button"
-                        class="flex-1 px-4 py-3 rounded-lg border text-sm font-semibold transition"
-                        :class="mode === 'peminjaman' ? 'border-pln-primary bg-pln-primary/10 text-pln-primary' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'"
-                        @click="mode = 'peminjaman'">
-                    Peminjaman Barang
-                    <div class="text-xs font-normal mt-1 text-gray-500">Peminjaman sementara (wajib tanggal pengembalian)</div>
+                <button type="button" @click="mode = 'peminjaman'" :class="mode === 'peminjaman' ? 'border-pln-primary bg-pln-primary/5 text-pln-primary' : 'border-gray-200'" class="flex-1 p-3 border rounded-lg text-left transition">
+                    <p class="font-bold text-sm">Peminjaman</p>
+                    <p class="text-xs opacity-70">Wajib tanggal kembali</p>
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" class="space-y-6" x-ref="createForm">
+            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5">
                 @csrf
                 <input type="hidden" name="mode" :value="mode">
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    
+                    {{-- Custom Combobox Gudang Tujuan --}}
+                    <div class="relative" x-data="{ labelGudang: '' }">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Tujuan</label>
-                        <select name="gudang_tujuan_id"
-                                x-model="selectedGudang"
-                                @change="handleGudangChange()"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                            <option value="">Pilih gudang tujuan...</option>
-                            @foreach($gudangs as $gudang)
-                                <option value="{{ $gudang->id }}" {{ (string)old('gudang_tujuan_id') === (string)$gudang->id ? 'selected' : '' }}>
-                                    {{ $gudang->kode }} - {{ $gudang->nama }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="text-xs text-gray-500 mt-1">Gudang asal otomatis dari user login.</p>
+                        <div class="relative">
+                            <input type="text" 
+                                x-model="labelGudang" 
+                                @input="gudangOpen = true; selectedGudang = labelGudang" 
+                                @click="gudangOpen = true" 
+                                @click.away="gudangOpen = false"
+                                placeholder="Cari atau ketik manual..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            
+                            <input type="hidden" name="gudang_tujuan_id" :value="selectedGudang">
+
+                            <div x-show="gudangOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
+                                <template x-for="g in allGudangs.filter(g => g.nama.toLowerCase().includes(labelGudang.toLowerCase()))" :key="g.id">
+                                    <button type="button" 
+                                            @click="selectedGudang = g.id; labelGudang = g.nama; gudangOpen = false" 
+                                            class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
+                                        <span x-text="g.kode + ' - ' + g.nama"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
                     </div>
 
-                    <div>
+                    {{-- Custom Combobox PIC Tujuan --}}
+                    <div class="relative" x-data="{ labelPic: '' }">
                         <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
-                        <select name="pic_tujuan_id"
-                                x-model="selectedPic"
+                        <div class="relative">
+                            <input type="text" 
+                                x-model="labelPic" 
+                                @input="picOpen = true; selectedPic = labelPic" 
+                                @click="picOpen = true" 
+                                @click.away="picOpen = false"
                                 required
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                            <option value="">Pilih PIC...</option>
-                            <template x-for="pic in filteredPics()" :key="pic.id">
-                                <option :value="pic.id" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
-                            </template>
-                        </select>
-                        <p class="text-xs text-gray-500 mt-1">PIC wajib dipilih sesuai gudang tujuan.</p>
-                    </div>
+                                placeholder="Cari atau ketik manual..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            
+                            <input type="hidden" name="pic_tujuan_id" :value="selectedPic">
 
+                            <div x-show="picOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
+                                <template x-for="p in allPics.filter(p => p.nama.toLowerCase().includes(labelPic.toLowerCase()))" :key="p.id">
+                                    <button type="button" 
+                                            @click="selectedPic = p.id; labelPic = p.nama; picOpen = false" 
+                                            class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
+                                        <span x-text="p.nama + (p.jabatan ? ' ('+p.jabatan+')' : '')"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
-                        <input type="date"
-                               name="tanggal_kirim"
-                               value="{{ old('tanggal_kirim', now()->toDateString()) }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kirim</label>
+                        <input type="date" name="tanggal_kirim" value="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
                     </div>
 
                     <div x-show="mode === 'peminjaman'">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengembalian</label>
-                        <input type="date"
-                               name="tanggal_kembali"
-                               value="{{ old('tanggal_kembali') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                        <p class="text-xs text-gray-500 mt-1">Dipakai untuk menghitung durasi peminjaman.</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kembali</label>
+                        <input type="date" name="tanggal_kembali" class="w-full rounded-md border-gray-300">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver</label>
-                        <input type="text"
-                               name="nama_driver"
-                               value="{{ old('nama_driver') }}"
-                               placeholder="Contoh: Budi Santoso"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Driver & No. Plat</label>
+                        <div class="flex gap-2">
+                            <input type="text" name="nama_driver" placeholder="Driver" class="w-2/3 rounded-md border-gray-300">
+                            <input type="text" name="nomor_plat" placeholder="B 1234 XX" class="w-1/3 rounded-md border-gray-300">
+                        </div>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
-                        <input type="text"
-                               name="jenis_kendaraan"
-                               value="{{ old('jenis_kendaraan') }}"
-                               placeholder="Contoh: Truk Box"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat</label>
-                        <input type="text"
-                               name="nomor_plat"
-                               value="{{ old('nomor_plat') }}"
-                               placeholder="Contoh: B 1234 CD"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                        <input type="text" name="jenis_kendaraan" placeholder="Contoh: Truk Box" class="w-full rounded-md border-gray-300">
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
-                    <textarea name="catatan"
-                              rows="3"
-                              placeholder="Contoh: Untuk kebutuhan operasional / proyek ..."
-                              class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">{{ old('catatan') }}</textarea>
-                </div>
-
-                <div class="bg-gray-50 rounded-lg border border-gray-200">
-                    <div class="p-4 flex items-center justify-between">
-                        <div>
-                            <p class="font-semibold text-gray-900">Daftar Barang</p>
-                            <p class="text-xs text-gray-500">Minimal 1 item. Sumber item dari stok gudang Anda.</p>
-                        </div>
-                        <button type="button"
-                                class="bg-pln-primary hover:bg-pln-light text-white text-sm font-semibold px-4 py-2 rounded-md transition"
-                                @click="addRow()">
-                            + Tambah Baris
-                        </button>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-white">
+                {{-- Table Items --}}
+                <div class="border rounded-lg overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Barang</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-24">Jumlah</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <template x-for="(row, idx) in items" :key="idx">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Satuan</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jumlah</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Aksi</th>
+                                    <td class="px-4 py-2">
+                                        <select x-model="row.item_id" :name="`items[${idx}][item_id]`" required class="w-full text-sm rounded-md border-gray-300">
+                                            <option value="">Pilih Item Stok...</option>
+                                            @foreach($availableStocks as $stock)
+                                                <option value="{{ $stock->item_id }}">{{ $stock->item->nama }} (Sisa: {{ $stock->jumlah }})</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-2">
+                                        <input type="number" x-model="row.jumlah" :name="`items[${idx}][jumlah]`" min="1" class="w-full text-sm rounded-md border-gray-300">
+                                    </td>
+                                    <td class="px-4 py-2 text-right">
+                                        <button type="button" @click="removeRow(idx)" class="text-red-500 hover:text-red-700">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        </button>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <template x-for="(row, idx) in items" :key="idx">
-                                    <tr>
-                                        <td class="px-4 py-3">
-                                            <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50"
-                                                    x-model="row.item_id"
-                                                    :name="`items[${idx}][item_id]`">
-                                                <option value="">Pilih item...</option>
-                                                @foreach($availableStocks as $stock)
-                                                    <option value="{{ $stock->item_id }}">
-                                                        {{ $stock->item->kode ?? '-' }} - {{ $stock->item->nama ?? 'Item' }} (Stok: {{ $stock->jumlah }})
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </td>
-                                        <td class="px-4 py-3">
-                                            <input type="text"
-                                                   class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
-                                                   :value="unitFor(row.item_id)"
-                                                   placeholder="-"
-                                                   readonly>
-                                        </td>
-                                        <td class="px-4 py-3">
-                                            <input type="number"
-                                                   min="1"
-                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50"
-                                                   x-model="row.jumlah"
-                                                   :name="`items[${idx}][jumlah]`">
-                                            <p x-show="row.item_id && row.jumlah > stockFor(row.item_id)"
-                                               class="mt-1 text-xs text-red-600">
-                                                Stok tidak cukup (tersedia <span x-text="stockFor(row.item_id)"></span>)
-                                            </p>
-                                        </td>
-                                        <td class="px-4 py-3">
-                                            <input type="text"
-                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50"
-                                                   placeholder="Opsional..."
-                                                   x-model="row.keterangan"
-                                                   :name="`items[${idx}][keterangan]`">
-                                        </td>
-                                        <td class="px-4 py-3">
-                                            <button type="button"
-                                                    class="text-red-600 hover:text-red-900"
-                                                    title="Hapus baris"
-                                                    @click="removeRow(idx)">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
+                            </template>
+                        </tbody>
+                    </table>
+                    <button type="button" @click="addRow()" class="w-full py-2 bg-gray-50 text-xs font-bold text-pln-primary hover:bg-gray-100 uppercase">+ Tambah Barang</button>
                 </div>
 
-                <div class="flex items-center justify-end gap-3">
-                    <button type="button"
-                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
-                            x-on:click="$dispatch('close-modal', 'create-surat-jalan')">
-                        Batal
-                    </button>
-                    <button type="button"
-                            class="bg-pln-primary hover:bg-pln-light text-white font-semibold py-2 px-4 rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            x-data="{ loading: false }"
-                            :disabled="loading"
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" @click="$dispatch('close-modal', 'create-surat-jalan')" class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md">Batal</button>
+                    <button type="button" 
+                            x-data="{ loading: false }" 
                             @click="
                                 loading = true;
-
-                                // Collect form data
                                 const formData = new FormData($refs.createForm);
-
-                                // Store form data as object BEFORE fetch (FormData may be consumed by fetch in some browsers)
                                 const formDataObj = {};
-                                for (const [key, value] of formData.entries()) {
-                                    formDataObj[key] = value;
-                                }
+                                formData.forEach((v, k) => formDataObj[k] = v);
 
-                                // Open preview in new window
-                                const previewUrl = '{{ route('gudang.surat-jalan.preview-draft') }}';
-
-                                fetch(previewUrl, {
+                                fetch('{{ route('gudang.surat-jalan.preview-draft') }}', {
                                     method: 'POST',
                                     body: formData,
-                                    headers: {
-                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                    }
+                                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                                 })
-                                .then(response => {
-                                    if (!response.ok) throw new Error('Network response was not ok');
-                                    return response.blob();
-                                })
+                                .then(res => res.blob())
                                 .then(blob => {
                                     const url = URL.createObjectURL(blob);
                                     $dispatch('open-preview', { url: url, formData: formDataObj });
                                     loading = false;
                                 })
-                                .catch(error => {
-                                    console.error('Error:', error);
-                                    alert('Gagal membuat preview. Silakan coba lagi.');
-                                    loading = false;
-                                });
-                            ">
-                        <svg x-show="loading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span x-text="loading ? 'Membuat Preview...' : 'Preview & Simpan Draft'"></span>
+                                .catch(() => { alert('Gagal memproses'); loading = false; });
+                            "
+                            class="px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light flex items-center gap-2">
+                        <span x-show="loading" class="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span>
+                        Preview & Simpan
                     </button>
                 </div>
             </form>
@@ -994,7 +895,7 @@
                                 <option :value="p.id" x-text="p.kode"></option>
                             </template>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Hanya peminjaman dengan status Dikirim/Diterima.</p>
+                        <p class="text-xs text-gray-500 mt-1">Hanya peminjaman dengan status Diterima yang bisa dikembalikan.</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Pemilik</label>

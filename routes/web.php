@@ -7,6 +7,7 @@ use App\Http\Controllers\SuratJalanController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PicController;
 use App\Http\Controllers\SecurityController;
+use App\Http\Controllers\PublicSuratJalanController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 
 Route::redirect('/', '/login');
+
+Route::get('/surat-jalan/ttd/{id}/{token}/{role}', [PublicSuratJalanController::class, 'signature'])
+    ->whereNumber('id')
+    ->name('surat-jalan.signature');
 
 // === UPDATE ROUTE DASHBOARD ===
 Route::get('/dashboard', function () {
@@ -111,8 +116,11 @@ Route::middleware('auth')->group(function () {
     // ... (Area Operator & Security tetap sama)
     
     Route::middleware('role:operator_gudang,admin')->prefix('gudang')->name('gudang.')->group(function () {
-        Route::resource('stok', StokController::class);
+        // Routes spesifik HARUS sebelum resource route
+        Route::get('/stok/barang-dipinjamkan', [StokController::class, 'barangDipinjamkan'])->name('stok.barang-dipinjamkan');
+        Route::get('/stok/barang-pinjaman', [StokController::class, 'barangPinjaman'])->name('stok.barang-pinjaman');
         Route::get('/riwayat', [StokController::class, 'riwayat'])->name('riwayat');
+        Route::resource('stok', StokController::class);
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
         Route::get('/surat-jalan/index', [SuratJalanController::class, 'index'])->name('surat-jalan.index');
         Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
@@ -125,11 +133,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/surat-jalan/{id}/pdf', [SuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
         Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
         Route::post('/surat-jalan/preview', [SuratJalanController::class, 'previewDraft'])->name('surat-jalan.preview-draft');
-        Route::post('/terima-barang/{id}', function() { return "Proses Terima"; })->name('barang.terima');
+        Route::post('/surat-jalan/{id}/terima', [SuratJalanController::class, 'terima'])->whereNumber('id')->name('surat-jalan.terima');
     });
 
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {
         Route::post('/search', [SecurityController::class, 'search'])->name('search');
+        Route::get('/surat-jalan/{id}/qr/{token}', [SecurityController::class, 'showByToken'])->whereNumber('id')->name('qr');
         Route::get('/surat-jalan/{id}', [SecurityController::class, 'show'])->whereNumber('id')->name('show');
         Route::post('/surat-jalan/{id}/terima', [SecurityController::class, 'terima'])->whereNumber('id')->name('terima');
         Route::post('/surat-jalan/{id}/tolak', [SecurityController::class, 'tolak'])->whereNumber('id')->name('tolak');
