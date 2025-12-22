@@ -40,4 +40,14 @@ class Peminjaman extends Model
     {
         return $this->belongsTo(Gudang::class, 'gudang_pemilik_id');
     }
+
+    public function suratJalanKirim()
+    {
+        return $this->belongsTo(SuratJalan::class, 'surat_jalan_kirim_id');
+    }
+
+    public function suratJalanKembali()
+    {
+        return $this->belongsTo(SuratJalan::class, 'surat_jalan_kembali_id');
+    }
 }
