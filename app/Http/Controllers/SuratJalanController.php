@@ -103,14 +103,26 @@ class SuratJalanController extends Controller
             'gudang_tujuan_id' => ['required', 'integer', 'exists:gudangs,id', 'not_in:' . $gudangId],
             'pic_tujuan_id' => [
                 'required',
-                'integer',
-                Rule::exists('pics', 'id')->where(function ($query) use ($request) {
-                    $gudangTujuan = $request->input('gudang_tujuan_id');
-                    if ($gudangTujuan) {
-                        $query->where('gudang_id', $gudangTujuan);
-                    }
-                }),
+                Rule::when(
+                    $request->input('pic_tujuan_id') !== 'lainnya',
+                    [
+                        'integer',
+                        Rule::exists('pics', 'id')->where(function ($query) use ($request) {
+                            $gudangTujuan = $request->input('gudang_tujuan_id');
+                            if ($gudangTujuan) {
+                                $query->where('gudang_id', $gudangTujuan);
+                            }
+                        }),
+                    ]
+                ),
+                Rule::when(
+                    $request->input('pic_tujuan_id') === 'lainnya',
+                    ['in:lainnya']
+                ),
             ],
+            'pic_custom_nama' => ['required_if:pic_tujuan_id,lainnya', 'string', 'max:255'],
+            'pic_custom_jabatan' => ['required_if:pic_tujuan_id,lainnya', 'string', 'max:255'],
+            'pic_custom_no_hp' => ['required_if:pic_tujuan_id,lainnya', 'string', 'max:50'],
             'tanggal_kirim' => ['required', 'date'],
             'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
@@ -130,19 +142,33 @@ class SuratJalanController extends Controller
             'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
             'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang yang dipilih.',
             'pic_tujuan_id.integer' => 'PIC tujuan tidak valid.',
+            'pic_custom_nama.required_if' => 'Nama PIC wajib diisi.',
+            'pic_custom_jabatan.required_if' => 'Jabatan PIC wajib diisi.',
+            'pic_custom_no_hp.required_if' => 'No HP PIC wajib diisi.',
         ]);
+
+        $picTujuanId = $validated['pic_tujuan_id'];
+        if ($picTujuanId === 'lainnya') {
+            $picTujuan = Pic::create([
+                'nama' => $validated['pic_custom_nama'],
+                'jabatan' => $validated['pic_custom_jabatan'],
+                'no_hp' => $validated['pic_custom_no_hp'],
+                'gudang_id' => (int) $validated['gudang_tujuan_id'],
+            ]);
+            $picTujuanId = $picTujuan->id;
+        }
 
         $warningItems = $this->buildStockWarnings($gudangId, $validated['items']);
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
         $tanggalKembali = !empty($validated['tanggal_kembali']) ? Carbon::parse($validated['tanggal_kembali'])->startOfDay() : null;
 
-        DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $tanggalKembali) {
+        DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $tanggalKembali, $picTujuanId) {
             if ($validated['mode'] === 'transfer') {
                 $suratJalan = SuratJalan::create([
                     'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
                     'gudang_asal_id' => $gudangId,
                     'gudang_tujuan_id' => (int) $validated['gudang_tujuan_id'],
-                    'pic_tujuan_id' => $validated['pic_tujuan_id'] ?? null,
+                    'pic_tujuan_id' => $picTujuanId,
                     'tipe' => 'TRANSFER',
                     'status' => 'DRAFT',
                     'tanggal' => $tanggalKirim->toDateString(),
@@ -175,7 +201,7 @@ class SuratJalanController extends Controller
                 'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
                 'gudang_asal_id' => $gudangId,
                 'gudang_tujuan_id' => (int) $validated['gudang_tujuan_id'],
-                'pic_tujuan_id' => $validated['pic_tujuan_id'] ?? null,
+                'pic_tujuan_id' => $picTujuanId,
                 'tipe' => 'PEMINJAMAN',
                 'status' => 'DRAFT',
                 'tanggal' => $tanggalKirim->toDateString(),
@@ -1018,7 +1044,20 @@ class SuratJalanController extends Controller
         // Load relations
         $suratJalan->setRelation('gudangAsal', Gudang::find($gudangId));
         $suratJalan->setRelation('gudangTujuan', Gudang::find($request->input('gudang_tujuan_id')));
-        $suratJalan->setRelation('picTujuan', Pic::find($request->input('pic_tujuan_id')));
+
+        $picInput = $request->input('pic_tujuan_id');
+        if ($picInput === 'lainnya') {
+            $picTujuan = new Pic([
+                'nama' => $request->input('pic_custom_nama'),
+                'jabatan' => $request->input('pic_custom_jabatan'),
+                'no_hp' => $request->input('pic_custom_no_hp'),
+                'gudang_id' => (int) $request->input('gudang_tujuan_id'),
+            ]);
+        } else {
+            $picTujuan = Pic::find((int) $picInput);
+        }
+
+        $suratJalan->setRelation('picTujuan', $picTujuan);
         $suratJalan->setRelation('pembuat', Auth::user());
 
         // Build items collection

@@ -62,9 +62,9 @@
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
                         [
                             'label' => 'Manajemen Barang',
-                            'route' => 'gudang.stok.index',
                             'icon' => 'clipboard',
                             'children' => [
+                                ['label' => 'Kelola Barang', 'route' => 'gudang.stok.index'],
                                 ['label' => 'Barang Dipinjamkan', 'route' => 'gudang.stok.barang-dipinjamkan'],
                                 ['label' => 'Barang Pinjaman', 'route' => 'gudang.stok.barang-pinjaman'],
                             ]
@@ -100,15 +100,15 @@
                 @endphp
 
                 @if($hasChildren)
-                {{-- Menu with submenu --}}
+                {{-- Menu with submenu (click-based) --}}
                 <div x-data="{ open: {{ $childActive ? 'true' : 'false' }} }" class="relative">
-                    <a href="{{ $url }}"
-                       @mouseenter="open = true"
-                       class="group flex items-center px-3 py-3 rounded-lg transition-all duration-200 relative overflow-hidden
-                       {{ $isActive
-                          ? 'bg-gradient-to-r from-pln-primary/10 to-transparent text-pln-primary font-bold'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-pln-light' }}"
-                       :class="!sidebarOpen ? 'justify-start md:justify-center' : ''">
+                    <button @click="open = !open"
+                            type="button"
+                            class="w-full group flex items-center px-3 py-3 rounded-lg transition-all duration-200 relative overflow-hidden
+                            {{ $isActive
+                               ? 'bg-gradient-to-r from-pln-primary/10 to-transparent text-pln-primary font-bold'
+                               : 'text-gray-600 hover:bg-gray-50 hover:text-pln-light' }}"
+                            :class="!sidebarOpen ? 'justify-start md:justify-center' : ''">
 
                         @if($isActive)
                         <div class="absolute left-0 top-1 bottom-1 w-1 bg-pln-yellow rounded-r shadow-[0_0_10px_rgba(255,255,0,0.6)]"></div>
@@ -117,7 +117,7 @@
                         @include('layouts.partials.nav-icon', ['icon' => $item['icon'], 'isActive' => $isActive])
 
                         <span x-show="sidebarOpen"
-                              class="ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 origin-left flex-1">
+                              class="ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 origin-left flex-1 text-left">
                             {{ $item['label'] }}
                         </span>
 
@@ -129,12 +129,11 @@
                         <div x-show="!sidebarOpen" class="hidden md:block absolute left-14 ml-2 bg-pln-primary text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap shadow-lg border-l-2 border-pln-yellow">
                             {{ $item['label'] }}
                         </div>
-                    </a>
+                    </button>
 
-                    {{-- Submenu items --}}
+                    {{-- Submenu items (expanded sidebar) --}}
                     <div x-show="open && sidebarOpen"
                          x-collapse
-                         @mouseleave="open = {{ $childActive ? 'true' : 'false' }}"
                          class="pl-6 mt-1 space-y-1">
                         @foreach($item['children'] as $child)
                             @php
@@ -153,9 +152,9 @@
                         @endforeach
                     </div>
 
-                    {{-- Hover submenu for collapsed sidebar --}}
+                    {{-- Click submenu for collapsed sidebar --}}
                     <div x-show="open && !sidebarOpen"
-                         @mouseleave="open = false"
+                         @click.away="open = false"
                          class="hidden md:block absolute left-full top-0 ml-2 bg-white rounded-lg shadow-xl border border-gray-100 py-2 min-w-[180px] z-50">
                         <div class="px-3 py-2 text-xs font-bold text-gray-400 uppercase">{{ $item['label'] }}</div>
                         @foreach($item['children'] as $child)
