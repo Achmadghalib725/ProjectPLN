@@ -86,11 +86,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                                 </svg>
                                 <span>Surat Keluar</span>
-                                @if(($countKeluar['draft'] ?? 0) > 0)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
-                                        {{ $countKeluar['draft'] }} draft
-                                    </span>
-                                @endif
+                
                             </div>
                         </a>
                         <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
@@ -100,11 +96,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
                                 </svg>
                                 <span>Surat Masuk</span>
-                                @if(($countMasuk['menunggu'] ?? 0) > 0)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
-                                        {{ $countMasuk['menunggu'] }} menunggu
-                                    </span>
-                                @endif
+
                             </div>
                         </a>
                     </nav>

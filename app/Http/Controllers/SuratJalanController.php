@@ -731,13 +731,21 @@ class SuratJalanController extends Controller
         }
 
         DB::transaction(function () use ($suratJalan) {
-            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)
-                ->orWhere('surat_jalan_kembali_id', $suratJalan->id)
-                ->first();
+            if ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
 
-            if ($peminjaman) {
-                $peminjaman->items()->delete();
-                $peminjaman->delete();
+                if ($peminjaman) {
+                    $peminjaman->update([
+                        'surat_jalan_kembali_id' => null,
+                        'status' => $this->resolvePeminjamanStatusAfterReturnDraftDelete($peminjaman),
+                    ]);
+                }
+            } else {
+                $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                if ($peminjaman) {
+                    $peminjaman->items()->delete();
+                    $peminjaman->delete();
+                }
             }
 
             $suratJalan->items()->delete();
@@ -886,6 +894,19 @@ class SuratJalanController extends Controller
         }
 
         return $warnings;
+    }
+
+    private function resolvePeminjamanStatusAfterReturnDraftDelete(Peminjaman $peminjaman): string
+    {
+        if ($peminjaman->waktu_diterima || $peminjaman->waktu_ttd_penerima) {
+            return 'DITERIMA';
+        }
+
+        if ($peminjaman->waktu_kirim || $peminjaman->waktu_ttd_pengirim) {
+            return 'DIKIRIM';
+        }
+
+        return 'DIAJUKAN';
     }
 
     private function generateSuratJalanNomor(Carbon $tanggal): string
