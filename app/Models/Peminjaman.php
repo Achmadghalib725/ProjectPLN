@@ -17,6 +17,7 @@ class Peminjaman extends Model
         'waktu_pengajuan' => 'datetime',
         'waktu_kirim' => 'datetime',
         'waktu_diterima' => 'datetime',
+        'batas_waktu_kembali' => 'datetime',
         'waktu_pengembalian' => 'datetime',
         'waktu_selesai' => 'datetime',
         'waktu_ttd_pengirim' => 'datetime',

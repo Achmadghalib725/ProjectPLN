@@ -166,7 +166,7 @@ class SuratJalanController extends Controller
                 'waktu_pengajuan' => now(),
                 'durasi_hari' => $tanggalKembali ? $tanggalKirim->diffInDays($tanggalKembali) : null,
                 'durasi_jam' => $tanggalKembali ? $tanggalKirim->diffInHours($tanggalKembali) : null,
-                'waktu_pengembalian' => $tanggalKembali ? $tanggalKembali->toDateString() : null,
+                'batas_waktu_kembali' => $tanggalKembali,
                 'catatan_pengiriman' => $validated['catatan'] ?? null,
                 'created_by' => Auth::id(),
             ]);
@@ -476,7 +476,7 @@ class SuratJalanController extends Controller
                         'gudang_peminjam_id' => (int) $validated['gudang_tujuan_id'],
                         'durasi_hari' => $tanggalKembali ? $tanggalKirim->diffInDays($tanggalKembali) : null,
                         'durasi_jam' => $tanggalKembali ? $tanggalKirim->diffInHours($tanggalKembali) : null,
-                        'waktu_pengembalian' => $tanggalKembali?->toDateString(),
+                        'batas_waktu_kembali' => $tanggalKembali,
                         'catatan_pengiriman' => $validated['catatan'] ?? null,
                     ]);
                 }
