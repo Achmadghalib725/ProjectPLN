@@ -79,33 +79,49 @@
             @php
                 $tipe = strtoupper($suratJalan->tipe ?? '');
                 $status = strtoupper($suratJalan->status ?? 'DRAFT');
+                $isRejected = $status === 'DITOLAK';
 
-                if ($tipe === 'TRANSFER') {
-                    $steps = ['Draft', 'Dikirim', 'Diterima', 'Selesai'];
+                if ($isRejected) {
+                    // Show rejection path
+                    $steps = ['Draft', 'Dikirim', 'Ditolak'];
                     $statusIndexMap = [
                         'DRAFT' => 0,
                         'DIKIRIM' => 1,
-                        'DITERIMA' => 2,
+                        'DITOLAK' => 2,
+                    ];
+                    $currentStep = 2;
+                } elseif ($tipe === 'TRANSFER') {
+                    $steps = ['Draft', 'Dikirim', 'Diperiksa', 'Selesai'];
+                    $statusIndexMap = [
+                        'DRAFT' => 0,
+                        'DIKIRIM' => 1,
+                        'DIPERIKSA' => 2,
                         'SELESAI' => 3,
                     ];
+                    $currentStep = $statusIndexMap[$status] ?? 0;
+                } elseif ($tipe === 'PENGEMBALIAN') {
+                    // PENGEMBALIAN: Draft -> Dikembalikan -> Diperiksa -> Selesai
+                    $steps = ['Draft', 'Dikembalikan', 'Diperiksa', 'Selesai'];
+                    $statusIndexMap = [
+                        'DRAFT' => 0,
+                        'DIKEMBALIKAN' => 1,
+                        'DIPERIKSA' => 2,
+                        'SELESAI' => 3,
+                    ];
+                    $currentStep = $statusIndexMap[$status] ?? 0;
                 } else {
-                    // PEMINJAMAN dan PENGEMBALIAN pakai 1 garis yang sama
-                    $steps = ['Draft', 'Dikirim', 'Diterima', 'Dikembalikan', 'Selesai'];
+                    // PEMINJAMAN: Draft -> Dikirim -> Diperiksa -> Diterima -> (menunggu pengembalian) -> Selesai
+                    $steps = ['Draft', 'Dikirim', 'Diperiksa', 'Diterima', 'Selesai'];
                     $statusIndexMap = [
                         'DRAFT' => 0,
                         'DIKIRIM' => 1,
-                        'DITERIMA' => 2,
-                        'DIKEMBALIKAN' => 3,
+                        'DIPERIKSA' => 2,
+                        'DITERIMA' => 3,
                         'SELESAI' => 4,
                     ];
-
-                    // Jika tipe Pengembalian, anggap sudah di langkah Dikembalikan kecuali sudah Selesai
-                    if ($tipe === 'PENGEMBALIAN' && $status !== 'SELESAI') {
-                        $status = 'DIKEMBALIKAN';
-                    }
+                    $currentStep = $statusIndexMap[$status] ?? 0;
                 }
 
-                $currentStep = $statusIndexMap[$status] ?? 0;
                 $maxStep = count($steps) - 1;
                 if ($currentStep > $maxStep) {
                     $currentStep = $maxStep;
@@ -123,18 +139,32 @@
                             @php
                                 $isCompleted = $index < $currentStep;
                                 $isActive = $index === $currentStep;
-                                $stateClass = $isCompleted ? 'bg-green-500 text-white'
-                                    : ($isActive ? 'bg-pln-primary text-white' : 'bg-gray-200 text-gray-600');
+
+                                if ($isRejected && $index === $currentStep) {
+                                    $stateClass = 'bg-red-500 text-white';
+                                } elseif ($isCompleted) {
+                                    $stateClass = 'bg-green-500 text-white';
+                                } elseif ($isActive) {
+                                    $stateClass = 'bg-pln-primary text-white';
+                                } else {
+                                    $stateClass = 'bg-gray-200 text-gray-600';
+                                }
                             @endphp
                             <div class="flex items-center w-full">
                                 <div class="flex flex-col items-center">
                                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold {{ $stateClass }}">
-                                        {{ $index + 1 }}
+                                        @if($isRejected && $index === $currentStep)
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        @else
+                                            {{ $index + 1 }}
+                                        @endif
                                     </div>
-                                    <span class="mt-2 text-xs font-semibold {{ $isCompleted || $isActive ? 'text-gray-900' : 'text-gray-500' }}">{{ $label }}</span>
+                                    <span class="mt-2 text-xs font-semibold {{ $isCompleted || $isActive ? ($isRejected && $isActive ? 'text-red-600' : 'text-gray-900') : 'text-gray-500' }}">{{ $label }}</span>
                                 </div>
                                 @if($index < count($steps) - 1)
-                                    <div class="flex-1 h-1 mx-2 rounded-full {{ $index < $currentStep ? 'bg-green-500' : 'bg-gray-200' }}"></div>
+                                    <div class="flex-1 h-1 mx-2 rounded-full {{ $index < $currentStep ? ($isRejected ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-200' }}"></div>
                                 @endif
                             </div>
                         @endforeach
@@ -235,6 +265,104 @@
                     </table>
                 </div>
             </div>
+
+            {{-- Action Buttons for Operator --}}
+            @php
+                $userGudangId = Auth::user()?->gudang_id;
+                $isGudangTujuan = $userGudangId === $suratJalan->gudang_tujuan_id;
+                $isGudangAsal = $userGudangId === $suratJalan->gudang_asal_id;
+            @endphp
+
+            {{-- Tombol Terima Barang untuk Operator Gudang Tujuan (status DIPERIKSA) --}}
+            @if($suratJalan->status === 'DIPERIKSA' && $isGudangTujuan)
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">Konfirmasi Penerimaan</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            @if($suratJalan->tipe === 'PENGEMBALIAN')
+                                Barang pengembalian telah diperiksa oleh security. Klik tombol di bawah untuk menerima barang dan menyelesaikan proses peminjaman.
+                            @else
+                                Barang telah diperiksa oleh security. Klik tombol di bawah untuk menerima barang ke gudang Anda.
+                            @endif
+                        </p>
+                        <form method="POST" action="{{ route('gudang.surat-jalan.terima', $suratJalan->id) }}"
+                              x-data="{ submitting: false }"
+                              @submit="submitting = true">
+                            @csrf
+                            <button type="submit"
+                                    :disabled="submitting"
+                                    class="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-bold rounded-lg shadow-sm transition duration-150 flex items-center justify-center gap-3">
+                                <svg x-show="!submitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <svg x-show="submitting" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="submitting ? 'Memproses...' : '{{ $suratJalan->tipe === "PENGEMBALIAN" ? "Terima & Selesaikan Peminjaman" : "Terima Barang" }}'"></span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam (status DITERIMA, tipe PEMINJAMAN) --}}
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && $isGudangTujuan)
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">Pengembalian Barang</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            Barang peminjaman sudah diterima. Jika sudah selesai digunakan, Anda dapat membuat surat jalan pengembalian.
+                        </p>
+                        <a href="{{ route('gudang.surat-jalan.index') }}?open_return=1&peminjaman_id={{ $peminjaman?->id }}"
+                           class="inline-flex items-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg shadow-sm transition duration-150 gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                            </svg>
+                            Pengembalian Pinjaman
+                        </a>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Status Info Cards --}}
+            @if($suratJalan->status === 'DIKIRIM' || $suratJalan->status === 'DIKEMBALIKAN')
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center mt-6">
+                    <div class="inline-flex items-center px-6 py-3 bg-blue-100 text-blue-800 rounded-lg">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="font-semibold">Menunggu pemeriksaan oleh Security</span>
+                    </div>
+                </div>
+            @elseif($suratJalan->status === 'DITERIMA' && $suratJalan->tipe === 'PEMINJAMAN' && !$isGudangTujuan)
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mt-6">
+                    <div class="inline-flex items-center px-6 py-3 bg-yellow-100 text-yellow-800 rounded-lg">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="font-semibold">Barang dipinjam - Menunggu pengembalian</span>
+                    </div>
+                </div>
+            @elseif($suratJalan->status === 'SELESAI')
+                <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center mt-6">
+                    <div class="inline-flex items-center px-6 py-3 bg-green-100 text-green-800 rounded-lg">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="font-semibold">Surat Jalan telah SELESAI</span>
+                    </div>
+                </div>
+            @elseif($suratJalan->status === 'DITOLAK')
+                <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center mt-6">
+                    <div class="inline-flex items-center px-6 py-3 bg-red-100 text-red-800 rounded-lg">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="font-semibold">Surat Jalan telah DITOLAK</span>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

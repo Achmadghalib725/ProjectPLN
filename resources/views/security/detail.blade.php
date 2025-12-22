@@ -42,37 +42,52 @@
             @php
                 $tipe = strtoupper($suratJalan->tipe ?? '');
                 $status = strtoupper($suratJalan->status ?? 'DRAFT');
+                $isRejected = $status === 'DITOLAK';
 
-                if ($status === 'DITOLAK') {
-                    $steps = ['Draft', 'Dikirim', 'Ditolak'];
+                if ($isRejected) {
+                    // Show rejection path
+                    if ($tipe === 'PENGEMBALIAN') {
+                        $steps = ['Draft', 'Dikembalikan', 'Ditolak'];
+                    } else {
+                        $steps = ['Draft', 'Dikirim', 'Ditolak'];
+                    }
                     $statusIndexMap = [
                         'DRAFT' => 0,
                         'DIKIRIM' => 1,
+                        'DIKEMBALIKAN' => 1,
                         'DITOLAK' => 2,
                     ];
                     $currentStep = 2;
-                    $isRejected = true;
                 } elseif ($tipe === 'TRANSFER') {
-                    $steps = ['Draft', 'Dikirim', 'Diterima', 'Selesai'];
+                    $steps = ['Draft', 'Dikirim', 'Diperiksa', 'Selesai'];
                     $statusIndexMap = [
                         'DRAFT' => 0,
                         'DIKIRIM' => 1,
-                        'DITERIMA' => 2,
+                        'DIPERIKSA' => 2,
                         'SELESAI' => 3,
                     ];
                     $currentStep = $statusIndexMap[$status] ?? 0;
-                    $isRejected = false;
+                } elseif ($tipe === 'PENGEMBALIAN') {
+                    // PENGEMBALIAN: Draft -> Dikembalikan -> Diperiksa -> Selesai
+                    $steps = ['Draft', 'Dikembalikan', 'Diperiksa', 'Selesai'];
+                    $statusIndexMap = [
+                        'DRAFT' => 0,
+                        'DIKEMBALIKAN' => 1,
+                        'DIPERIKSA' => 2,
+                        'SELESAI' => 3,
+                    ];
+                    $currentStep = $statusIndexMap[$status] ?? 0;
                 } else {
-                    $steps = ['Draft', 'Dikirim', 'Diterima', 'Dikembalikan', 'Selesai'];
+                    // PEMINJAMAN: Draft -> Dikirim -> Diperiksa -> Diterima -> Selesai
+                    $steps = ['Draft', 'Dikirim', 'Diperiksa', 'Diterima', 'Selesai'];
                     $statusIndexMap = [
                         'DRAFT' => 0,
                         'DIKIRIM' => 1,
-                        'DITERIMA' => 2,
-                        'DIKEMBALIKAN' => 3,
+                        'DIPERIKSA' => 2,
+                        'DITERIMA' => 3,
                         'SELESAI' => 4,
                     ];
                     $currentStep = $statusIndexMap[$status] ?? 0;
-                    $isRejected = false;
                 }
 
                 $maxStep = count($steps) - 1;
@@ -233,10 +248,10 @@
             </div>
 
             {{-- Action Buttons --}}
-            @if($suratJalan->status === 'DIKIRIM')
+            @if(in_array($suratJalan->status, ['DIKIRIM', 'DIKEMBALIKAN']))
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
                     <div class="p-6">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">Konfirmasi Penerimaan</h3>
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">Konfirmasi Pemeriksaan</h3>
                         <div class="flex flex-col sm:flex-row gap-4">
                             {{-- Terima Button --}}
                             <form action="{{ route('security.terima', $suratJalan->id) }}" method="POST" class="flex-1"
@@ -253,7 +268,7 @@
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    <span x-text="submitting ? 'Memproses...' : 'Konfirmasi Diterima'"></span>
+                                    <span x-text="submitting ? 'Memproses...' : 'Konfirmasi Diperiksa'"></span>
                                 </button>
                             </form>
 
@@ -319,13 +334,22 @@
                         </div>
                     </div>
                 </div>
+            @elseif($suratJalan->status === 'DIPERIKSA')
+                <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center mt-6">
+                    <div class="inline-flex items-center px-6 py-3 bg-green-100 text-green-800 rounded-lg">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="font-semibold">Surat Jalan ini sudah DIPERIKSA - Menunggu konfirmasi operator</span>
+                    </div>
+                </div>
             @elseif($suratJalan->status === 'DITERIMA')
                 <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center mt-6">
                     <div class="inline-flex items-center px-6 py-3 bg-green-100 text-green-800 rounded-lg">
                         <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                         </svg>
-                        <span class="font-semibold">Surat Jalan ini sudah dikonfirmasi DITERIMA</span>
+                        <span class="font-semibold">Surat Jalan ini sudah DITERIMA oleh operator</span>
                     </div>
                 </div>
             @elseif($suratJalan->status === 'DITOLAK')

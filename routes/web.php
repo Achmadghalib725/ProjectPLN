@@ -125,7 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/surat-jalan/{id}/pdf', [SuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
         Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
         Route::post('/surat-jalan/preview', [SuratJalanController::class, 'previewDraft'])->name('surat-jalan.preview-draft');
-        Route::post('/terima-barang/{id}', function() { return "Proses Terima"; })->name('barang.terima');
+        Route::post('/surat-jalan/{id}/terima', [SuratJalanController::class, 'terima'])->whereNumber('id')->name('surat-jalan.terima');
     });
 
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {

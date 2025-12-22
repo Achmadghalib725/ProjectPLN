@@ -303,15 +303,15 @@
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 <option value="">Semua</option>
                                 @if($tab === 'keluar')
-                                    @foreach(['DRAFT','DIKIRIM','DITERIMA','SELESAI'] as $statusOption)
+                                    @foreach(['DRAFT','DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                         <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
                                             {{ $statusOption }}
                                         </option>
                                     @endforeach
                                 @else
-                                    @foreach(['DIKIRIM','DITERIMA','SELESAI'] as $statusOption)
+                                    @foreach(['DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                         <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                            {{ $statusOption === 'DIKIRIM' ? 'MENUNGGU' : $statusOption }}
+                                            {{ in_array($statusOption, ['DIKIRIM', 'DIKEMBALIKAN']) ? 'MENUNGGU PEMERIKSAAN' : $statusOption }}
                                         </option>
                                     @endforeach
                                 @endif
@@ -403,19 +403,16 @@
                             @forelse($suratJalans as $index => $sj)
                                 @php
                                     $status = $sj->status ?? 'DRAFT';
-                                    $displayStatus = $sj->tipe === 'PENGEMBALIAN' && $status === 'DIKIRIM'
-                                        ? 'DIKEMBALIKAN'
-                                        : $status;
                                     $statusClass = match ($status) {
                                         'DRAFT' => 'bg-gray-100 text-gray-800',
                                         'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                                        'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
+                                        'DIPERIKSA' => 'bg-purple-100 text-purple-800',
                                         'DITERIMA' => 'bg-yellow-100 text-yellow-800',
+                                        'DITOLAK' => 'bg-red-100 text-red-800',
                                         'SELESAI' => 'bg-green-100 text-green-800',
                                         default => 'bg-gray-100 text-gray-800',
                                     };
-                                    if ($displayStatus === 'DIKEMBALIKAN') {
-                                        $statusClass = 'bg-indigo-100 text-indigo-800';
-                                    }
                                 @endphp
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
@@ -450,7 +447,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}">
-                                            {{ $displayStatus }}
+                                            {{ $status }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -994,7 +991,7 @@
                                 <option :value="p.id" x-text="p.kode"></option>
                             </template>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Hanya peminjaman dengan status Dikirim/Diterima.</p>
+                        <p class="text-xs text-gray-500 mt-1">Hanya peminjaman dengan status Diterima yang bisa dikembalikan.</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Pemilik</label>
