@@ -303,7 +303,27 @@ class SuratJalanController extends Controller
 
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
-            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+            $peminjaman = Peminjaman::with([
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+            ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::with([
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+            ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
         }
 
         return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman'));
