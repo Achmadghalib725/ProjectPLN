@@ -228,7 +228,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6" x-data="{ showDetail: false }">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-bold text-gray-900">Proggress Pengiriman</h3>
+                        <h3 class="text-lg font-bold text-gray-900">Riwayat Status</h3>
                         <button @click="showDetail = !showDetail"
                                 class="text-sm text-pln-primary hover:text-pln-primary/80 font-medium flex items-center gap-1 transition">
                             <span x-text="showDetail ? 'Sembunyikan Detail' : 'Lihat Detail'"></span>
