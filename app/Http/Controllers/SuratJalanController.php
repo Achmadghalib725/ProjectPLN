@@ -537,9 +537,11 @@ class SuratJalanController extends Controller
                     }
 
                     // Update status to DIKIRIM for TRANSFER/PEMINJAMAN
-                    $suratJalan->update([
-                        'status' => 'DIKIRIM',
-                    ]);
+                $suratJalan->update([
+                    'status' => 'DIKIRIM',
+                    'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
+                    'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
+                ]);
 
                     // Update peminjaman status if applicable
                     if ($suratJalan->tipe === 'PEMINJAMAN') {
@@ -636,6 +638,8 @@ class SuratJalanController extends Controller
 
                     $suratJalan->update([
                         'status' => 'SELESAI',
+                        'ttd_penerima_id' => $suratJalan->ttd_penerima_id ?? Auth::id(),
+                        'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
                     ]);
 
                     // Update peminjaman status to SELESAI
@@ -681,6 +685,8 @@ class SuratJalanController extends Controller
 
                     $suratJalan->update([
                         'status' => 'DITERIMA',
+                        'ttd_penerima_id' => $suratJalan->ttd_penerima_id ?? Auth::id(),
+                        'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
                     ]);
 
                     // Update peminjaman status if applicable
@@ -941,7 +947,7 @@ class SuratJalanController extends Controller
      */
     public function generatePdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima'])
             ->findOrFail($id);
 
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
@@ -955,7 +961,7 @@ class SuratJalanController extends Controller
      */
     public function previewPdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima'])
             ->findOrFail($id);
 
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));

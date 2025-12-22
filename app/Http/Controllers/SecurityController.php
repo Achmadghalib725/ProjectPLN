@@ -44,6 +44,19 @@ class SecurityController extends Controller
     }
 
     /**
+     * Show detail of a surat jalan by QR token
+     */
+    public function showByToken($id, $token)
+    {
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item'])
+            ->where('id', $id)
+            ->where('qr_token', $token)
+            ->firstOrFail();
+
+        return view('security.detail', compact('suratJalan'));
+    }
+
+    /**
      * Security approve - change status to DIPERIKSA
      * For DIKIRIM (peminjaman/transfer) -> DIPERIKSA
      * For DIKEMBALIKAN (pengembalian) -> DIPERIKSA

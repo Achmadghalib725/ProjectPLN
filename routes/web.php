@@ -7,6 +7,7 @@ use App\Http\Controllers\SuratJalanController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PicController;
 use App\Http\Controllers\SecurityController;
+use App\Http\Controllers\PublicSuratJalanController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 
 Route::redirect('/', '/login');
+
+Route::get('/surat-jalan/ttd/{id}/{token}/{role}', [PublicSuratJalanController::class, 'signature'])
+    ->whereNumber('id')
+    ->name('surat-jalan.signature');
 
 // === UPDATE ROUTE DASHBOARD ===
 Route::get('/dashboard', function () {
@@ -130,6 +135,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {
         Route::post('/search', [SecurityController::class, 'search'])->name('search');
+        Route::get('/surat-jalan/{id}/qr/{token}', [SecurityController::class, 'showByToken'])->whereNumber('id')->name('qr');
         Route::get('/surat-jalan/{id}', [SecurityController::class, 'show'])->whereNumber('id')->name('show');
         Route::post('/surat-jalan/{id}/terima', [SecurityController::class, 'terima'])->whereNumber('id')->name('terima');
         Route::post('/surat-jalan/{id}/tolak', [SecurityController::class, 'tolak'])->whereNumber('id')->name('tolak');

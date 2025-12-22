@@ -21,6 +21,8 @@
 
         .container {
             padding: 20px 30px;
+            position: relative;
+            z-index: 1;
         }
 
         /* Header */
@@ -69,11 +71,28 @@
             color: #333;
         }
 
+        .qr-image {
+            width: 90px;
+            height: 90px;
+            margin-bottom: 6px;
+        }
+
         /* Info Section */
         .info-section {
             display: table;
             width: 100%;
             margin-bottom: 20px;
+        }
+
+        .intro-section {
+            margin-bottom: 18px;
+            font-size: 11px;
+            color: #333;
+            text-align: justify;
+        }
+
+        .intro-section strong {
+            color: #035b71;
         }
 
         .info-box {
@@ -235,7 +254,7 @@
             font-size: 10px;
             font-weight: bold;
             color: #333;
-            margin-bottom: 60px;
+            margin-bottom: 0px;
         }
 
         .signature-line {
@@ -246,11 +265,25 @@
 
         .signature-name {
             font-weight: bold;
+            text-decoration: underline;
         }
 
         .signature-position {
             font-size: 9px;
             color: #666;
+        }
+
+        .signature-heading {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .signature-qr {
+            height: 86px;
+            margin-bottom: 6px;
         }
 
         /* Footer */
@@ -281,11 +314,49 @@
             font-weight: bold;
             color: #d97706;
         }
+
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 100px;
+            font-weight: bold;
+            color: #000;
+            opacity: 0.07;
+            letter-spacing: 8px;
+            z-index: 0;
+            white-space: nowrap;
+        }
     </style>
 </head>
 
 <body>
+    <div class="watermark">SURAT JALAN</div>
     <div class="container">
+        @php
+            $buildQrWithLogo = function (string $url, int $size = 90) {
+                $renderer = new \BaconQrCode\Renderer\ImageRenderer(
+                    new \BaconQrCode\Renderer\RendererStyle\RendererStyle($size, 1),
+                    new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+                );
+                $writer = new \BaconQrCode\Writer($renderer);
+                $qrSvg = $writer->writeString($url);
+
+                $logoPath = public_path('Logo_PLN.png');
+                if (file_exists($logoPath)) {
+                    $logoData = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));
+                    $logoSize = (int) round($size * 0.26);
+                    $logoPos = ($size - $logoSize) / 2;
+                    $logoSvg = '<image x="' . $logoPos . '" y="' . $logoPos . '" width="' . $logoSize . '" height="' . $logoSize . '" href="' . $logoData . '" />';
+                    if (str_contains($qrSvg, '</svg>')) {
+                        $qrSvg = str_replace('</svg>', $logoSvg . '</svg>', $qrSvg);
+                    }
+                }
+
+                return 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
+            };
+        @endphp
         <!-- Header -->
         <div class="header">
             <div class="header-left">
@@ -301,23 +372,41 @@
                 @else
                     <div style="font-size: 18px; font-weight: bold; color: #035b71;">PT PLN (Persero)</div>
                 @endif
-                <div class="company-subtitle">Sistem Manajemen Gudang - {{ $suratJalan->gudangAsal->nama ?? 'Gudang' }}
+                <div class="company-subtitle">ULPLTD/G Tanjung Karang
                 </div>
             </div>
             <div class="header-right">
-                <div class="doc-title">SURAT JALAN</div>
+                @php
+                    $qrImage = null;
+                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token)) {
+                        $qrUrl = route('security.qr', ['id' => $suratJalan->id, 'token' => $suratJalan->qr_token]);
+                        $qrImage = $buildQrWithLogo($qrUrl, 90);
+                    }
+                @endphp
+                @if($qrImage)
+                    <img src="{{ $qrImage }}" alt="QR Surat Jalan" class="qr-image">
+                @endif
                 <div class="doc-number">{{ $suratJalan->nomor ?? 'DRAFT' }}</div>
             </div>
         </div>
 
         <!-- Info Section -->
+        @php
+            $tanggalSurat = $suratJalan->tanggal ? $suratJalan->tanggal->format('d F Y') : now()->format('d F Y');
+            $hariSurat = ($suratJalan->tanggal ?? now())->locale('id')->translatedFormat('l');
+        @endphp
+
+        <div class="intro-section">
+            Pada hari ini, <strong>{{ $hariSurat }}</strong> tanggal <strong>{{ $tanggalSurat }}</strong>, kami yang bertanda tangan di bawah ini menyatakan telah dilakukan pengiriman barang sesuai Surat Jalan dengan rincian informasi berikut.
+        </div>
+
         <div class="info-section">
             <div class="info-box">
                 <div class="info-title">Informasi Pengiriman</div>
                 <div class="info-row">
                     <div class="info-label">Tanggal</div>
                     <div class="info-value">:
-                        {{ $suratJalan->tanggal ? $suratJalan->tanggal->format('d F Y') : now()->format('d F Y') }}
+                        {{ $tanggalSurat }}
                     </div>
                 </div>
                 <div class="info-row">
@@ -459,24 +548,79 @@
         <div class="signatures">
             <div class="signature-box">
                 <div class="signature-title">Pengirim</div>
+                @php
+                    $pengirimQr = null;
+                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $suratJalan->waktu_ttd_pembuat) {
+                        $pengirimUrl = route('surat-jalan.signature', [
+                            'id' => $suratJalan->id,
+                            'token' => $suratJalan->qr_token,
+                            'role' => 'pengirim',
+                        ]);
+                        $pengirimQr = $buildQrWithLogo($pengirimUrl, 80);
+                    }
+
+                    $pengirimJabatan = $suratJalan->ttdPembuat?->jabatan
+                        ?? $suratJalan->pembuat?->jabatan
+                        ?? '';
+                    $pengirimJabatanLines = $pengirimJabatan
+                        ? preg_split("/\r\n|\r|\n/", $pengirimJabatan)
+                        : [];
+                @endphp
                 <div class="signature-line">
-                    <div class="signature-name">{{ $suratJalan->pembuat->name ?? '________________' }}</div>
+                    @if(!empty($pengirimJabatanLines))
+                        <div class="signature-heading">
+                            @foreach($pengirimJabatanLines as $line)
+                                @if(trim($line) !== '')
+                                    <div>{{ strtoupper(trim($line)) }}</div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                    <div class="signature-qr">
+                        @if($pengirimQr)
+                            <img src="{{ $pengirimQr }}" alt="QR TTD Pengirim" style="width: 80px; height: 80px;">
+                        @endif
+                    </div>
+                    <div class="signature-name">{{ $suratJalan->ttdPembuat->name ?? $suratJalan->pembuat->name ?? '________________' }}</div>
                     <div class="signature-position">{{ $suratJalan->gudangAsal->nama ?? '' }}</div>
                 </div>
             </div>
             <div class="signature-box">
-                <div class="signature-title">Pengantar</div>
-                <div class="signature-line">
-                    <div class="signature-name">{{ $suratJalan->nama_driver ?? '________________' }}</div>
-                    <div class="signature-position">
-                        {{ $suratJalan->nomor_plat ? 'Driver - ' . $suratJalan->nomor_plat : 'Driver' }}
-                    </div>
-                </div>
-            </div>
-            <div class="signature-box">
                 <div class="signature-title">Penerima</div>
+                @php
+                    $penerimaQr = null;
+                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $suratJalan->waktu_ttd_penerima) {
+                        $penerimaUrl = route('surat-jalan.signature', [
+                            'id' => $suratJalan->id,
+                            'token' => $suratJalan->qr_token,
+                            'role' => 'penerima',
+                        ]);
+                        $penerimaQr = $buildQrWithLogo($penerimaUrl, 80);
+                    }
+
+                    $penerimaJabatan = $suratJalan->ttdPenerima?->jabatan
+                        ?? $suratJalan->picTujuan?->jabatan
+                        ?? '';
+                    $penerimaJabatanLines = $penerimaJabatan
+                        ? preg_split("/\r\n|\r|\n/", $penerimaJabatan)
+                        : [];
+                @endphp
                 <div class="signature-line">
-                    <div class="signature-name">{{ $suratJalan->picTujuan->nama ?? '________________' }}</div>
+                    @if(!empty($penerimaJabatanLines))
+                        <div class="signature-heading">
+                            @foreach($penerimaJabatanLines as $line)
+                                @if(trim($line) !== '')
+                                    <div>{{ strtoupper(trim($line)) }}</div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                    <div class="signature-qr">
+                        @if($penerimaQr)
+                            <img src="{{ $penerimaQr }}" alt="QR TTD Penerima" style="width: 80px; height: 80px;">
+                        @endif
+                    </div>
+                    <div class="signature-name">{{ $suratJalan->ttdPenerima->name ?? $suratJalan->picTujuan->nama ?? '________________' }}</div>
                     <div class="signature-position">{{ $suratJalan->picTujuan->jabatan ?? '' }}</div>
                 </div>
             </div>
@@ -484,8 +628,7 @@
 
         <!-- Footer -->
         <div class="footer">
-            Dokumen ini dicetak pada {{ now()->format('d F Y H:i') }} WIB |
-            Sistem Manajemen Gudang PLN
+            Dokumen ini dicetak pada {{ now()->format('d F Y H:i') }} WIB
         </div>
     </div>
 </body>
