@@ -17,6 +17,7 @@ class Peminjaman extends Model
         'waktu_pengajuan' => 'datetime',
         'waktu_kirim' => 'datetime',
         'waktu_diterima' => 'datetime',
+        'batas_waktu_kembali' => 'datetime',
         'waktu_pengembalian' => 'datetime',
         'waktu_selesai' => 'datetime',
         'waktu_ttd_pengirim' => 'datetime',
@@ -39,5 +40,15 @@ class Peminjaman extends Model
     public function gudangPemilik()
     {
         return $this->belongsTo(Gudang::class, 'gudang_pemilik_id');
+    }
+
+    public function suratJalanKirim()
+    {
+        return $this->belongsTo(SuratJalan::class, 'surat_jalan_kirim_id');
+    }
+
+    public function suratJalanKembali()
+    {
+        return $this->belongsTo(SuratJalan::class, 'surat_jalan_kembali_id');
     }
 }
