@@ -380,7 +380,13 @@
                     $qrImage = null;
                     if (!empty($suratJalan->id) && !empty($suratJalan->qr_token)) {
                         $qrUrl = route('security.qr', ['id' => $suratJalan->id, 'token' => $suratJalan->qr_token]);
-                        $qrImage = $buildQrWithLogo($qrUrl, 90);
+                        $renderer = new \BaconQrCode\Renderer\ImageRenderer(
+                            new \BaconQrCode\Renderer\RendererStyle\RendererStyle(90, 1),
+                            new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+                        );
+                        $writer = new \BaconQrCode\Writer($renderer);
+                        $qrSvg = $writer->writeString($qrUrl);
+                        $qrImage = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
                     }
                 @endphp
                 @if($qrImage)

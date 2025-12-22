@@ -514,6 +514,11 @@
                 selectedPic: @js(old('pic_tujuan_id', '')),
                 picSearch: '',
                 allPics: @js(($pics ?? collect())->values()),
+                customPic: {
+                    nama: @js(old('pic_custom_nama', '')),
+                    jabatan: @js(old('pic_custom_jabatan', '')),
+                    no_hp: @js(old('pic_custom_no_hp', '')),
+                },
 
                 // Data Pendukung
                 itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
@@ -530,12 +535,15 @@
                 },
                 
                 get filteredPics() {
-                    let pics = this.allPics;
-                    // Jika Gudang dipilih dari list (ID Angka), filter PIC-nya
-                    if (!isNaN(this.selectedGudang) && this.selectedGudang !== '') {
-                        pics = pics.filter(p => String(p.gudang_id) === String(this.selectedGudang));
+                    if (isNaN(this.selectedGudang) || this.selectedGudang === '') {
+                        return [];
                     }
-                    return pics.filter(p => p.nama.toLowerCase().includes(this.picSearch?.toLowerCase() || ''));
+                    return this.allPics
+                        .filter(p => String(p.gudang_id) === String(this.selectedGudang))
+                        .filter(p => p.nama.toLowerCase().includes(this.picSearch?.toLowerCase() || ''));
+                },
+                get isCustomPic() {
+                    return this.selectedPic === 'lainnya';
                 },
 
                 unitFor(id) { return this.itemUnits[id] ?? ''; },
@@ -573,10 +581,10 @@
                         <div class="relative">
                             <input type="text" 
                                 x-model="labelGudang" 
-                                @input="gudangOpen = true; selectedGudang = labelGudang" 
+                                @input="gudangOpen = true; selectedGudang = ''" 
                                 @click="gudangOpen = true" 
                                 @click.away="gudangOpen = false"
-                                placeholder="Cari atau ketik manual..."
+                                placeholder="Cari gudang..."
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             
                             <input type="hidden" name="gudang_tujuan_id" :value="selectedGudang">
@@ -585,7 +593,7 @@
                                 <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
                                 <template x-for="g in allGudangs.filter(g => g.nama.toLowerCase().includes(labelGudang.toLowerCase()))" :key="g.id">
                                     <button type="button" 
-                                            @click="selectedGudang = g.id; labelGudang = g.nama; gudangOpen = false" 
+                                            @click="selectedGudang = g.id; labelGudang = g.nama; gudangOpen = false; selectedPic = ''; picSearch=''; customPic = { nama: '', jabatan: '', no_hp: '' }" 
                                             class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
                                         <span x-text="g.kode + ' - ' + g.nama"></span>
                                     </button>
@@ -599,25 +607,53 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
                         <div class="relative">
                             <input type="text" 
-                                x-model="labelPic" 
-                                @input="picOpen = true; selectedPic = labelPic" 
+                                x-model="labelPic"
                                 @click="picOpen = true" 
                                 @click.away="picOpen = false"
                                 required
-                                placeholder="Cari atau ketik manual..."
+                                placeholder="Pilih dari daftar..."
+                                readonly
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             
                             <input type="hidden" name="pic_tujuan_id" :value="selectedPic">
 
                             <div x-show="picOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                 <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
-                                <template x-for="p in allPics.filter(p => p.nama.toLowerCase().includes(labelPic.toLowerCase()))" :key="p.id">
+                                <template x-for="p in filteredPics" :key="p.id">
                                     <button type="button" 
                                             @click="selectedPic = p.id; labelPic = p.nama; picOpen = false" 
                                             class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
                                         <span x-text="p.nama + (p.jabatan ? ' ('+p.jabatan+')' : '')"></span>
                                     </button>
                                 </template>
+                                <div class="border-t" x-show="!isNaN(selectedGudang) && selectedGudang !== ''">
+                                    <button type="button"
+                                            @click="selectedPic = 'lainnya'; labelPic = 'Lainnya'; picOpen = false"
+                                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
+                                        Lainnya...
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-show="isCustomPic" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC</label>
+                                <input type="text" name="pic_custom_nama" x-model="customPic.nama"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                                <input type="text" name="pic_custom_jabatan" x-model="customPic.jabatan"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">No HP</label>
+                                <input type="text" name="pic_custom_no_hp" x-model="customPic.no_hp"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             </div>
                         </div>
                     </div>
