@@ -1,3 +1,4 @@
+@use('Illuminate\Support\Facades\Storage')
 <x-app-layout>
     <div class="py-12">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
@@ -103,7 +104,7 @@
                         }
                      }">
 
-                    <form method="POST" action="{{ route('gudang.surat-jalan.update', $suratJalan->id) }}" class="space-y-6">
+                    <form method="POST" action="{{ route('gudang.surat-jalan.update', $suratJalan->id) }}" class="space-y-6" enctype="multipart/form-data">
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="tipe" value="{{ $suratJalan->tipe }}">
@@ -374,6 +375,56 @@
                                 </div>
                             </div>
                         @endif
+
+                        {{-- Lampiran Gambar --}}
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <div class="mb-4">
+                                <p class="font-semibold text-gray-900">Lampiran Gambar</p>
+                                <p class="text-xs text-gray-500">Maksimal 3 gambar. Wajib ada minimal 1 gambar sebelum mengirim surat jalan.</p>
+                            </div>
+
+                            {{-- Existing Attachments --}}
+                            @if($suratJalan->attachments->count() > 0)
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                                    @foreach($suratJalan->attachments as $attachment)
+                                        <div class="relative group">
+                                            <img src="{{ Storage::url($attachment->file_path) }}"
+                                                 alt="{{ $attachment->file_name }}"
+                                                 class="w-full h-32 object-cover rounded-lg border border-gray-200">
+                                            <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                <form action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}" method="POST" class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium"
+                                                            onclick="return confirm('Hapus lampiran ini?')">
+                                                        Hapus
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1 truncate">{{ $attachment->file_name }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            {{-- Upload New --}}
+                            @if($suratJalan->attachments->count() < 3)
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Tambah Lampiran <span class="text-gray-400 font-normal">(Sisa {{ 3 - $suratJalan->attachments->count() }} slot)</span>
+                                    </label>
+                                    <input type="file"
+                                           name="attachments[]"
+                                           multiple
+                                           accept="image/jpeg,image/jpg,image/png"
+                                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                                    <p class="text-xs text-gray-500 mt-1">Format: JPG, JPEG, PNG. Maksimal 10MB per file.</p>
+                                </div>
+                            @else
+                                <p class="text-sm text-yellow-600">Slot lampiran sudah penuh (3/3). Hapus salah satu untuk menambah yang baru.</p>
+                            @endif
+                        </div>
 
                         <div class="flex items-center justify-end gap-3">
                             <a href="{{ route('gudang.surat-jalan.show', $suratJalan->id) }}"

@@ -1,3 +1,4 @@
+@use('Illuminate\Support\Facades\Storage')
 <x-app-layout>
     <div class="py-12">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
@@ -545,6 +546,52 @@
                     </table>
                 </div>
             </div>
+
+            {{-- Lampiran Gambar --}}
+            @if($suratJalan->attachments->count() > 0)
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
+                    <div class="p-6 border-b border-gray-100">
+                        <h3 class="text-lg font-bold text-gray-900">Lampiran Dokumentasi</h3>
+                        <p class="text-sm text-gray-500">{{ $suratJalan->attachments->count() }} gambar</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            @foreach($suratJalan->attachments as $attachment)
+                                <div class="relative group">
+                                    <a href="{{ Storage::url($attachment->file_path) }}" target="_blank">
+                                        <img src="{{ Storage::url($attachment->file_path) }}"
+                                             alt="{{ $attachment->file_name }}"
+                                             class="w-full h-40 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition">
+                                    </a>
+                                    <p class="text-xs text-gray-500 mt-2 truncate">{{ $attachment->file_name }}</p>
+                                    @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
+                                        <form action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}"
+                                              method="POST"
+                                              class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="bg-red-500 hover:bg-red-600 text-white p-1 rounded-md"
+                                                    onclick="return confirm('Hapus lampiran ini?')">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @elseif($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg mt-6 p-4">
+                    <p class="text-yellow-800 text-sm">
+                        <strong>Perhatian:</strong> Belum ada lampiran gambar. Upload minimal 1 gambar sebelum mengirim surat jalan.
+                        <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}" class="underline font-semibold">Edit draft untuk upload gambar</a>.
+                    </p>
+                </div>
+            @endif
 
             {{-- Action Buttons for Operator --}}
             @php
