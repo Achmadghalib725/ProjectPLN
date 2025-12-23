@@ -618,6 +618,8 @@ class SuratJalanController extends Controller
                     // PENGEMBALIAN: Update status to DIKEMBALIKAN
                     $suratJalan->update([
                         'status' => 'DIKEMBALIKAN',
+                        'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
+                        'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                     ]);
 
                     // Update peminjaman status
