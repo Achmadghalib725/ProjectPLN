@@ -288,7 +288,7 @@
                                         <option value="">Pilih Role</option>
                                         <option value="admin">Admin</option>
                                         <option value="operator_gudang">Operator Gudang</option>
-                                        <option value="security">Security</option>
+                                        <option value="security">Security/Pemliharaan </option>
                                     </select>
                                 </div>
 

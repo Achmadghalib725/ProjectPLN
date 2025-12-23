@@ -17,9 +17,9 @@
 
             <div class="flex flex-col items-center mb-6">
                 <a href="/" class="flex flex-col items-center gap-2">
-                    <img src="{{ asset('Logo_PLN.png') }}"
+                    <img src="{{ asset('Logo_PLN_NusantaraPower.png') }}"
                          alt="PLN Logo"
-                         class="h-20 mb-2">
+                         class="h-24 mb-2">
                         <div class="text-center mt-2">
                         <h1 class="text-1xl font-extrabold text-[#00aff0] tracking-wide uppercase">E-Storage</h1>
                     </div>
