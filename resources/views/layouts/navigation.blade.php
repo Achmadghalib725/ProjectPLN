@@ -9,18 +9,19 @@
             <div class="absolute top-0 right-0 -mt-2 -mr-2 w-20 h-20 bg-pln-yellow opacity-10 rounded-full blur-2xl transition-opacity duration-300" :class="sidebarOpen ? 'opacity-10' : 'opacity-0'"></div>
             
             <div class="flex items-center z-10 overflow-hidden w-full" :class="sidebarOpen ? 'justify-start space-x-3' : 'justify-center'">
-                <a href="{{ route('dashboard') }}" class="shrink-0 bg-white p-1.5 rounded-full shadow-lg border-2 border-pln-yellow transition-transform duration-300 hover:scale-105">
-                    <x-application-logo class="block h-7 w-auto fill-current text-pln-primary" />
+                <a href="{{ route('dashboard') }}" class="shrink-0 transition-transform duration-300 hover:scale-105">
+                    <img src="{{ asset('Logo_PLN.png') }}" class="h-9 w-auto" alt="Logo">
                 </a>
                 
                 <div x-show="sidebarOpen" 
                      class="text-white whitespace-nowrap overflow-hidden transition-opacity duration-300 delay-100">
-                    <h1 class="font-bold text-xl leading-tight tracking-wide">E-Gudang</h1>
+                    <h1 class="font-bold text-xl leading-tight tracking-wide">E-STORAGE</h1>
                     <p class="text-[10px] font-bold text-pln-yellow tracking-widest">ULPLTD/G Tanjung Karang</p>
                 </div>
             </div>
 
             <button @click="sidebarOpen = false" 
+                    x-show="sidebarOpen"
                     class="md:hidden text-white hover:bg-white/20 rounded-full p-1 transition focus:outline-none z-20 absolute right-4">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -28,6 +29,7 @@
             </button>
 
             <button @click="sidebarOpen = false" 
+                    x-show="sidebarOpen"
                     class="hidden md:block text-white hover:bg-white/20 rounded-full p-1 transition focus:outline-none z-20 absolute right-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -86,7 +88,6 @@
                     $isActive = $hasRoute ? request()->routeIs($item['route'] . '*') : false;
                     $hasChildren = !empty($item['children']);
 
-                    // Check if any child is active
                     $childActive = false;
                     if ($hasChildren) {
                         foreach ($item['children'] as $child) {
@@ -100,7 +101,6 @@
                 @endphp
 
                 @if($hasChildren)
-                {{-- Menu with submenu (click-based) --}}
                 <div x-data="{ open: {{ $childActive ? 'true' : 'false' }} }" class="relative">
                     <button @click="open = !open"
                             type="button"
@@ -121,7 +121,6 @@
                             {{ $item['label'] }}
                         </span>
 
-                        {{-- Dropdown arrow --}}
                         <svg x-show="sidebarOpen" class="w-4 h-4 ml-auto transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                         </svg>
@@ -131,7 +130,6 @@
                         </div>
                     </button>
 
-                    {{-- Submenu items (expanded sidebar) --}}
                     <div x-show="open && sidebarOpen"
                          x-collapse
                          class="pl-6 mt-1 space-y-1">
@@ -151,30 +149,8 @@
                             </a>
                         @endforeach
                     </div>
-
-                    {{-- Click submenu for collapsed sidebar --}}
-                    <div x-show="open && !sidebarOpen"
-                         @click.away="open = false"
-                         class="hidden md:block absolute left-full top-0 ml-2 bg-white rounded-lg shadow-xl border border-gray-100 py-2 min-w-[180px] z-50">
-                        <div class="px-3 py-2 text-xs font-bold text-gray-400 uppercase">{{ $item['label'] }}</div>
-                        @foreach($item['children'] as $child)
-                            @php
-                                $childHasRoute = isset($child['route']) && Route::has($child['route']);
-                                $childUrl = $childHasRoute ? route($child['route']) : '#';
-                                $isChildActive = $childHasRoute && request()->routeIs($child['route'] . '*');
-                            @endphp
-                            <a href="{{ $childUrl }}"
-                               class="flex items-center px-3 py-2 text-sm transition-all duration-200
-                               {{ $isChildActive
-                                  ? 'bg-pln-primary/10 text-pln-primary font-semibold'
-                                  : 'text-gray-600 hover:bg-gray-50 hover:text-pln-primary' }}">
-                                {{ $child['label'] }}
-                            </a>
-                        @endforeach
-                    </div>
                 </div>
                 @else
-                {{-- Regular menu item --}}
                 <a href="{{ $url }}"
                    class="group flex items-center px-3 py-3 rounded-lg transition-all duration-200 relative overflow-hidden
                    {{ $isActive
@@ -204,7 +180,6 @@
 
     <div class="p-4 border-t border-gray-100 bg-gray-50/80">
         <div class="flex items-center transition-all duration-300" :class="!sidebarOpen ? 'justify-start md:justify-center flex-row md:flex-col md:space-y-3 space-x-3 md:space-x-0' : 'space-x-3'">
-
             <a href="{{ route('profile.edit') }}" class="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-pln-primary to-pln-light flex items-center justify-center text-white font-bold shadow-md ring-2 ring-pln-light/30 hover:scale-105 transition-transform cursor-pointer" title="Profile">
                 {{ substr(Auth::user()->name, 0, 1) }}
             </a>
