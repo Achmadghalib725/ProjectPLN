@@ -1054,6 +1054,47 @@ class SuratJalanController extends Controller
         }
     }
 
+    public function finalizeRejected($id)
+    {
+        $suratJalan = SuratJalan::findOrFail($id);
+
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
+            abort(403, 'Anda tidak berhak menyelesaikan surat jalan gudang lain.');
+        }
+
+        if ($suratJalan->status !== 'DITOLAK') {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', 'Surat Jalan ini belum berstatus Ditolak.');
+        }
+
+        DB::transaction(function () use ($suratJalan) {
+            $suratJalan->update([
+                'status' => 'SELESAI',
+            ]);
+
+            if ($suratJalan->tipe === 'PEMINJAMAN') {
+                $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+            } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            } else {
+                $peminjaman = null;
+            }
+
+            if ($peminjaman) {
+                $peminjaman->update([
+                    'status' => 'SELESAI',
+                    'waktu_selesai' => now(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('gudang.surat-jalan.show', $suratJalan->id)
+            ->with('success', 'Surat Jalan yang ditolak telah diselesaikan.');
+    }
+
     public function destroy($id)
     {
         $suratJalan = SuratJalan::with('items')->findOrFail($id);

@@ -305,6 +305,23 @@
                     }
                 }
 
+                if ($isRejected) {
+                    $periksaIndexes = collect($steps)
+                        ->keys()
+                        ->filter(fn ($index) => ($steps[$index]['label'] ?? '') === 'Diperiksa')
+                        ->values();
+
+                    if ($periksaIndexes->count() > 1) {
+                        $rejectedStep = $suratJalan->tipe === 'PENGEMBALIAN'
+                            ? $periksaIndexes->last()
+                            : $periksaIndexes->first();
+                    } else {
+                        $rejectedStep = $periksaIndexes->first();
+                    }
+
+                    $currentStep = $rejectedStep === null ? 0 : $rejectedStep;
+                }
+
                 $maxStep = count($steps) - 1;
             @endphp
 
@@ -337,7 +354,7 @@
                     {{-- Horizontal Progress Bar --}}
                     <div class="relative">
                         <div class="absolute top-5 left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
-                        <div class="absolute top-5 left-0 h-1 bg-green-500 rounded-full transition-all duration-500"
+                        <div class="absolute top-5 left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
                              style="width: {{ $currentStep > 0 ? min((($currentStep - 1) / $maxStep) * 100, 100) : 0 }}%"></div>
 
                         <div class="relative flex justify-between">
@@ -357,6 +374,11 @@
                                         $circleClass = 'bg-white text-gray-400 border-gray-300';
                                         $labelClass = 'text-gray-400';
                                     }
+
+                                    if ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) {
+                                        $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
+                                        $labelClass = 'text-red-700 font-bold';
+                                    }
                                 @endphp
                                 <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
                                     <div class="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold {{ $circleClass }} z-10">
@@ -368,11 +390,14 @@
                                             {{ $index + 1 }}
                                         @endif
                                     </div>
-                                    <span class="mt-2 text-xs text-center {{ $labelClass }}">{{ $step['label'] }}</span>
+                                    <span class="mt-2 text-xs text-center {{ $labelClass }}">
+                                        {{ ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) ? 'Diperiksa: Ditolak' : $step['label'] }}
+                                    </span>
                                 </div>
                             @endforeach
                         </div>
                     </div>
+
 
                     {{-- Timeline Detail (Collapsible) --}}
                     <div x-show="showDetail"
@@ -656,6 +681,34 @@
                             </svg>
                             Pengembalian Pinjaman
                         </a>
+                    </div>
+                </div>
+            @endif
+
+            @if($suratJalan->status === 'DITOLAK' && $isGudangAsal)
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">Penyelesaian Surat Ditolak</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            Surat jalan ini ditolak oleh security. Klik tombol di bawah untuk menandai proses sebagai selesai.
+                        </p>
+                        <form method="POST" action="{{ route('gudang.surat-jalan.finalize-rejected', $suratJalan->id) }}"
+                              x-data="{ submitting: false }"
+                              @submit="submitting = true">
+                            @csrf
+                            <button type="submit"
+                                    :disabled="submitting"
+                                    class="inline-flex items-center px-6 py-3 bg-gray-700 hover:bg-gray-800 disabled:bg-gray-500 text-white font-bold rounded-lg shadow-sm transition duration-150 gap-2">
+                                <svg x-show="!submitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <svg x-show="submitting" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="submitting ? 'Memproses...' : 'Selesaikan'"></span>
+                            </button>
+                        </form>
                     </div>
                 </div>
             @endif
