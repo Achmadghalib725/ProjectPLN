@@ -1,7 +1,7 @@
 {{-- Load QR Scanner Library --}}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
-<div class="w-full max-w-lg mx-auto px-4 sm:px-0" x-data="{
+<div class="w-full max-w-lg lg:max-w-4xl mx-auto px-4 sm:px-6 lg:px-8" x-data="{
     nomor: '',
     searching: false,
     scannerActive: false,
