@@ -491,11 +491,19 @@
                         </div>
                         @if(($suratJalan->tipe ?? '') === 'PEMINJAMAN')
                             <div>
-                                <p class="text-sm text-gray-500">Tanggal Pengembalian</p>
+                                <p class="text-sm text-gray-500">Rencana Pengembalian</p>
                                 <p class="font-semibold text-gray-900">
-                                    {{ $peminjaman?->waktu_pengembalian?->format('Y-m-d') ?? '-' }}
+                                    {{ $peminjaman?->batas_waktu_kembali?->format('Y-m-d') ?? '-' }}
                                 </p>
                             </div>
+                            @if($peminjaman?->waktu_pengembalian)
+                            <div>
+                                <p class="text-sm text-gray-500">Tanggal Dikembalikan</p>
+                                <p class="font-semibold text-gray-900">
+                                    {{ $peminjaman->waktu_pengembalian->format('Y-m-d') }}
+                                </p>
+                            </div>
+                            @endif
                         @endif
                         <div>
                             <p class="text-sm text-gray-500">Tipe</p>

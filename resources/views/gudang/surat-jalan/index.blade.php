@@ -739,6 +739,14 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
                         <input type="text" name="jenis_kendaraan" placeholder="Contoh: Truk Box" class="w-full rounded-md border-gray-300">
                     </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                        <textarea name="catatan"
+                                  rows="2"
+                                  placeholder="Catatan tambahan untuk surat jalan..."
+                                  class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">{{ old('catatan') }}</textarea>
+                    </div>
                 </div>
 
                 {{-- Table Items --}}

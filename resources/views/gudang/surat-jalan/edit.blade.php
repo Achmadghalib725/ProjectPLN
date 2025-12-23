@@ -48,8 +48,8 @@
                             'keterangan' => $item->keterangan,
                         ])->values())),
                         gudangMode: @js(old('gudang_tujuan_mode', $suratJalan->gudang_tujuan_is_custom ? 'custom' : 'existing')),
-                        selectedGudang: @js(old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id)),
-                        selectedPic: @js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id)),
+                        selectedGudang: String(@js(old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id)) || ''),
+                        selectedPic: String(@js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id)) || ''),
                         customGudang: {
                             nama: @js(old('gudang_custom_nama', $suratJalan->gudang_tujuan_custom_nama)),
                             alamat: @js(old('gudang_custom_alamat', $suratJalan->gudang_tujuan_custom_alamat)),
@@ -228,7 +228,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengembalian (Rencana)</label>
                                     <input type="date"
                                            name="tanggal_kembali"
-                                           value="{{ old('tanggal_kembali', $peminjaman?->waktu_pengembalian?->format('Y-m-d')) }}"
+                                           value="{{ old('tanggal_kembali', $peminjaman?->batas_waktu_kembali?->format('Y-m-d')) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 </div>
                             @endif
@@ -392,15 +392,11 @@
                                                  alt="{{ $attachment->file_name }}"
                                                  class="w-full h-32 object-cover rounded-lg border border-gray-200">
                                             <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                                <form action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}" method="POST" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit"
-                                                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium"
-                                                            onclick="return confirm('Hapus lampiran ini?')">
-                                                        Hapus
-                                                    </button>
-                                                </form>
+                                                <button type="button"
+                                                        class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium"
+                                                        onclick="deleteAttachment({{ $attachment->id }}, '{{ $attachment->file_name }}')">
+                                                    Hapus
+                                                </button>
                                             </div>
                                             <p class="text-xs text-gray-500 mt-1 truncate">{{ $attachment->file_name }}</p>
                                         </div>
@@ -441,4 +437,20 @@
             </div>
         </div>
     </div>
+
+    {{-- Hidden forms for attachment deletion (outside main form) --}}
+    @foreach($suratJalan->attachments as $attachment)
+        <form id="delete-attachment-{{ $attachment->id }}" action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}" method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+    @endforeach
+
+    <script>
+        function deleteAttachment(id, fileName) {
+            if (confirm('Hapus lampiran "' + fileName + '"?')) {
+                document.getElementById('delete-attachment-' + id).submit();
+            }
+        }
+    </script>
 </x-app-layout>
