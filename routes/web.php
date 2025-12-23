@@ -134,6 +134,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
         Route::post('/surat-jalan/preview', [SuratJalanController::class, 'previewDraft'])->name('surat-jalan.preview-draft');
         Route::post('/surat-jalan/{id}/terima', [SuratJalanController::class, 'terima'])->whereNumber('id')->name('surat-jalan.terima');
+        Route::post('/surat-jalan/{id}/confirm-return', [SuratJalanController::class, 'confirmReturnExternal'])->whereNumber('id')->name('surat-jalan.confirm-return');
+        Route::post('/surat-jalan/{id}/finalize-rejected', [SuratJalanController::class, 'finalizeRejected'])->whereNumber('id')->name('surat-jalan.finalize-rejected');
+        Route::delete('/surat-jalan/attachment/{id}', [SuratJalanController::class, 'deleteAttachment'])->whereNumber('id')->name('surat-jalan.delete-attachment');
     });
 
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {

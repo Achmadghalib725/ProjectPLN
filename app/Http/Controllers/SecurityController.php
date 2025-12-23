@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ItemStock;
 use App\Models\Peminjaman;
+use App\Models\StockMovement;
 use App\Models\SuratJalan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -98,12 +100,37 @@ class SecurityController extends Controller
      */
     public function showByToken($id, $token)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item', 'pembuat'])
             ->where('id', $id)
             ->where('qr_token', $token)
             ->firstOrFail();
 
-        return view('security.detail', compact('suratJalan'));
+        $peminjaman = null;
+        if ($suratJalan->tipe === 'PEMINJAMAN') {
+            $peminjaman = Peminjaman::with([
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+            ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::with([
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+            ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+        }
+
+        return view('security.detail', compact('suratJalan', 'peminjaman'));
     }
 
     /**
@@ -113,7 +140,13 @@ class SecurityController extends Controller
      */
     public function terima(Request $request, $id)
     {
-        $suratJalan = SuratJalan::findOrFail($id);
+        $suratJalan = SuratJalan::with(['items.item', 'gudangAsal'])->findOrFail($id);
+
+        // Check if security's gudang matches the destination gudang
+        $user = Auth::user();
+        if ($user->gudang_id !== $suratJalan->gudang_tujuan_id) {
+            return back()->with('error', 'Anda tidak memiliki akses untuk mengkonfirmasi surat jalan ini. Surat jalan ini ditujukan ke gudang lain.');
+        }
 
         // Check valid status for security approval
         $validStatuses = ['DIKIRIM', 'DIKEMBALIKAN'];
@@ -156,6 +189,12 @@ class SecurityController extends Controller
 
         $suratJalan = SuratJalan::findOrFail($id);
 
+        // Check if security's gudang matches the destination gudang
+        $user = Auth::user();
+        if ($user->gudang_id !== $suratJalan->gudang_tujuan_id) {
+            return back()->with('error', 'Anda tidak memiliki akses untuk menolak surat jalan ini. Surat jalan ini ditujukan ke gudang lain.');
+        }
+
         // Check valid status for rejection
         $validStatuses = ['DIKIRIM', 'DIKEMBALIKAN'];
         if (!in_array($suratJalan->status, $validStatuses)) {
@@ -167,6 +206,37 @@ class SecurityController extends Controller
                 'status' => 'DITOLAK',
                 'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[DITOLAK: " . $request->alasan . "]",
             ]);
+
+            if ($suratJalan->tipe !== 'PENGEMBALIAN') {
+                $itemTotals = $suratJalan->items
+                    ->groupBy('item_id')
+                    ->map(fn ($rows) => $rows->sum('jumlah'));
+
+                foreach ($itemTotals as $itemId => $qty) {
+                    $stock = ItemStock::firstOrCreate(
+                        ['gudang_id' => $suratJalan->gudang_asal_id, 'item_id' => $itemId],
+                        ['jumlah' => 0, 'stok_minimum' => 0]
+                    );
+
+                    $stokSebelum = $stock->jumlah;
+                    $stokSesudah = $stokSebelum + $qty;
+
+                    $stock->increment('jumlah', $qty);
+
+                    StockMovement::create([
+                        'item_id' => $itemId,
+                        'gudang_id' => $suratJalan->gudang_asal_id,
+                        'tipe' => 'IN',
+                        'jumlah' => $qty,
+                        'stok_sebelum' => $stokSebelum,
+                        'stok_sesudah' => $stokSesudah,
+                        'referensi_type' => 'SuratJalan',
+                        'referensi_id' => $suratJalan->id,
+                        'created_by' => Auth::id(),
+                        'keterangan' => "Pengembalian stok karena surat jalan ditolak ({$suratJalan->nomor})",
+                    ]);
+                }
+            }
 
             // Update peminjaman status if applicable
             if ($suratJalan->tipe === 'PEMINJAMAN') {

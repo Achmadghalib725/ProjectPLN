@@ -17,6 +17,7 @@ class SuratJalan extends Model
         'tanggal' => 'date:Y-m-d',
         'waktu_ttd_pembuat' => 'datetime',
         'waktu_ttd_penerima' => 'datetime',
+        'gudang_tujuan_is_custom' => 'boolean',
     ];
 
     protected static function booted()
@@ -62,5 +63,10 @@ class SuratJalan extends Model
     public function ttdPenerima()
     {
         return $this->belongsTo(User::class, 'ttd_penerima_id');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(SuratJalanAttachment::class);
     }
 }

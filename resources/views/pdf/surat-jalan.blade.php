@@ -322,6 +322,7 @@
             transform: translate(-50%, -50%) rotate(-45deg);
             font-size: 100px;
             font-weight: bold;
+            font-family: Helvetica, Arial, sans-serif;
             color: #000;
             opacity: 0.07;
             letter-spacing: 8px;
@@ -380,7 +381,13 @@
                     $qrImage = null;
                     if (!empty($suratJalan->id) && !empty($suratJalan->qr_token)) {
                         $qrUrl = route('security.qr', ['id' => $suratJalan->id, 'token' => $suratJalan->qr_token]);
-                        $qrImage = $buildQrWithLogo($qrUrl, 90);
+                        $renderer = new \BaconQrCode\Renderer\ImageRenderer(
+                            new \BaconQrCode\Renderer\RendererStyle\RendererStyle(90, 1),
+                            new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+                        );
+                        $writer = new \BaconQrCode\Writer($renderer);
+                        $qrSvg = $writer->writeString($qrUrl);
+                        $qrImage = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
                     }
                 @endphp
                 @if($qrImage)
@@ -394,6 +401,12 @@
         @php
             $tanggalSurat = $suratJalan->tanggal ? $suratJalan->tanggal->format('d F Y') : now()->format('d F Y');
             $hariSurat = ($suratJalan->tanggal ?? now())->locale('id')->translatedFormat('l');
+            $gudangTujuanNama = $suratJalan->gudang_tujuan_is_custom
+                ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
+                : ($suratJalan->gudangTujuan->nama ?? '-');
+            $gudangTujuanAlamat = $suratJalan->gudang_tujuan_is_custom
+                ? ($suratJalan->gudang_tujuan_custom_alamat ?? '-')
+                : ($suratJalan->gudangTujuan->alamat ?? '-');
         @endphp
 
         <div class="intro-section">
@@ -458,11 +471,11 @@
                 <div class="info-title">Gudang Tujuan</div>
                 <div class="info-row">
                     <div class="info-label">Nama</div>
-                    <div class="info-value">: {{ $suratJalan->gudangTujuan->nama ?? '-' }}</div>
+                    <div class="info-value">: {{ $gudangTujuanNama }}</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Alamat</div>
-                    <div class="info-value">: {{ $suratJalan->gudangTujuan->alamat ?? '-' }}</div>
+                    <div class="info-value">: {{ $gudangTujuanAlamat }}</div>
                 </div>
             </div>
             <div class="info-box">
@@ -631,6 +644,69 @@
             Dokumen ini dicetak pada {{ now()->format('d F Y H:i') }} WIB
         </div>
     </div>
+
+    <!-- Page 2: Attachments -->
+    @if($suratJalan->attachments && $suratJalan->attachments->count() > 0)
+        <div style="page-break-before: always;"></div>
+        <div class="container">
+            <!-- Header Page 2 -->
+            <div class="header">
+                <div class="header-left">
+                    @php
+                        $logoPath = public_path('Logo_PLN_800.png');
+                    @endphp
+                    @if(file_exists($logoPath))
+                        <img src="{{ $logoPath }}" alt="Logo PLN" class="company-logo">
+                    @endif
+                    <div class="company-subtitle">ULPLTD/G Tanjung Karang</div>
+                </div>
+                <div class="header-right">
+                    <div class="doc-title">LAMPIRAN SURAT JALAN</div>
+                    <div class="doc-number">{{ $suratJalan->nomor ?? 'DRAFT' }}</div>
+                </div>
+            </div>
+
+            <!-- Attachment Content -->
+            <div style="margin-top: 20px;">
+                <div style="font-size: 12px; font-weight: bold; color: #035b71; margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid #adadadff; padding-bottom: 8px;">
+                    Dokumentasi Barang ({{ $suratJalan->attachments->count() }} Gambar)
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        @foreach($suratJalan->attachments as $index => $attachment)
+                            <td style="width: 50%; vertical-align: top; padding: 10px; {{ $index % 2 == 0 ? 'padding-left: 0;' : 'padding-right: 0;' }}">
+                                @php
+                                    $imagePath = storage_path('app/public/' . $attachment->file_path);
+                                @endphp
+                                @if(file_exists($imagePath))
+                                    <div style="border: 1px solid #ddd; border-radius: 5px; overflow: hidden; background: #f9f9f9;">
+                                        <img src="{{ $imagePath }}"
+                                             style="width: 100%; max-height: 280px; object-fit: contain; display: block;"
+                                             alt="{{ $attachment->file_name }}">
+                                        <div style="font-size: 9px; color: #666; padding: 8px; text-align: center; background: #f0f0f0; border-top: 1px solid #ddd;">
+                                            <strong>Gambar {{ $index + 1 }}:</strong> {{ Str::limit($attachment->file_name, 40) }}
+                                        </div>
+                                    </div>
+                                @endif
+                            </td>
+                            @if($index % 2 == 1 && $index < $suratJalan->attachments->count() - 1)
+                                </tr><tr>
+                            @endif
+                        @endforeach
+                        @if($suratJalan->attachments->count() % 2 == 1)
+                            <td style="width: 50%;"></td>
+                        @endif
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Footer Page 2 -->
+            <div class="footer">
+                Lampiran Surat Jalan {{ $suratJalan->nomor ?? 'DRAFT' }} - Halaman 2
+            </div>
+        </div>
+    @endif
 </body>
 
 </html>

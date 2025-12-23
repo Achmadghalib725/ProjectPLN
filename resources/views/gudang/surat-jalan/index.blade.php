@@ -295,7 +295,7 @@
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 <option value="">Semua</option>
                                 @if($tab === 'keluar')
-                                    @foreach(['DRAFT','DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
+                                    @foreach(['DRAFT','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                         <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
                                             {{ $statusOption }}
                                         </option>
@@ -399,6 +399,7 @@
                                         'DRAFT' => 'bg-gray-100 text-gray-800',
                                         'DIKIRIM' => 'bg-blue-100 text-blue-800',
                                         'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
+                                        'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
                                         'DIPERIKSA' => 'bg-purple-100 text-purple-800',
                                         'DITERIMA' => 'bg-yellow-100 text-yellow-800',
                                         'DITOLAK' => 'bg-red-100 text-red-800',
@@ -418,7 +419,7 @@
                                         {{ $sj->gudangAsal->nama ?? '-' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $sj->gudangTujuan->nama ?? '-' }}
+                                        {{ $sj->gudang_tujuan_is_custom ? ($sj->gudang_tujuan_custom_nama ?? 'Gudang Lainnya') : ($sj->gudangTujuan->nama ?? '-') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $sj->picTujuan->nama ?? '-' }}
@@ -505,15 +506,28 @@
                 
                 // State untuk Gudang Tujuan
                 gudangOpen: false,
+                gudangMode: @js(old('gudang_tujuan_mode', 'existing')),
                 selectedGudang: @js(old('gudang_tujuan_id', '')),
+                labelGudang: '',
                 gudangSearch: '',
                 allGudangs: @js($gudangs),
+                customGudang: {
+                    nama: @js(old('gudang_custom_nama', '')),
+                    alamat: @js(old('gudang_custom_alamat', '')),
+                    telepon: @js(old('gudang_custom_telepon', '')),
+                },
                 
                 // State untuk PIC Tujuan
                 picOpen: false,
                 selectedPic: @js(old('pic_tujuan_id', '')),
+                labelPic: '',
                 picSearch: '',
                 allPics: @js(($pics ?? collect())->values()),
+                customPic: {
+                    nama: @js(old('pic_custom_nama', '')),
+                    jabatan: @js(old('pic_custom_jabatan', '')),
+                    no_hp: @js(old('pic_custom_no_hp', '')),
+                },
 
                 // Data Pendukung
                 itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
@@ -530,16 +544,41 @@
                 },
                 
                 get filteredPics() {
-                    let pics = this.allPics;
-                    // Jika Gudang dipilih dari list (ID Angka), filter PIC-nya
-                    if (!isNaN(this.selectedGudang) && this.selectedGudang !== '') {
-                        pics = pics.filter(p => String(p.gudang_id) === String(this.selectedGudang));
+                    if (this.isCustomGudang || isNaN(this.selectedGudang) || this.selectedGudang === '') {
+                        return [];
                     }
-                    return pics.filter(p => p.nama.toLowerCase().includes(this.picSearch?.toLowerCase() || ''));
+                    return this.allPics
+                        .filter(p => String(p.gudang_id) === String(this.selectedGudang))
+                        .filter(p => p.nama.toLowerCase().includes(this.picSearch?.toLowerCase() || ''));
+                },
+                get isCustomGudang() {
+                    return this.gudangMode === 'custom';
+                },
+                get isCustomPic() {
+                    return this.selectedPic === 'lainnya';
                 },
 
                 unitFor(id) { return this.itemUnits[id] ?? ''; },
-                stockFor(id) { return this.itemStocks[id] ?? 0; }
+                stockFor(id) { return this.itemStocks[id] ?? 0; },
+                init() {
+                    if (this.gudangMode === 'custom') {
+                        this.labelGudang = 'Lainnya';
+                    } else if (this.selectedGudang !== '') {
+                        const gudang = this.allGudangs.find(g => String(g.id) === String(this.selectedGudang));
+                        if (gudang) {
+                            this.labelGudang = gudang.nama;
+                        }
+                    }
+
+                    if (this.selectedPic === 'lainnya') {
+                        this.labelPic = 'Lainnya';
+                    } else if (this.selectedPic !== '') {
+                        const pic = this.allPics.find(p => String(p.id) === String(this.selectedPic));
+                        if (pic) {
+                            this.labelPic = pic.nama;
+                        }
+                    }
+                }
             }">
             
             <div class="flex items-center justify-between mb-4">
@@ -561,63 +600,120 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5">
+            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="mode" :value="mode">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     
                     {{-- Custom Combobox Gudang Tujuan --}}
-                    <div class="relative" x-data="{ labelGudang: '' }">
+                    <div class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Tujuan</label>
                         <div class="relative">
                             <input type="text" 
                                 x-model="labelGudang" 
-                                @input="gudangOpen = true; selectedGudang = labelGudang" 
+                                @input="gudangOpen = true; selectedGudang = ''" 
                                 @click="gudangOpen = true" 
                                 @click.away="gudangOpen = false"
-                                placeholder="Cari atau ketik manual..."
+                                placeholder="Cari gudang..."
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             
+                            <input type="hidden" name="gudang_tujuan_mode" :value="gudangMode">
                             <input type="hidden" name="gudang_tujuan_id" :value="selectedGudang">
 
                             <div x-show="gudangOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                 <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
                                 <template x-for="g in allGudangs.filter(g => g.nama.toLowerCase().includes(labelGudang.toLowerCase()))" :key="g.id">
                                     <button type="button" 
-                                            @click="selectedGudang = g.id; labelGudang = g.nama; gudangOpen = false" 
+                                            @click="selectedGudang = g.id; labelGudang = g.nama; gudangMode = 'existing'; gudangOpen = false; selectedPic = ''; picSearch=''; customGudang = { nama: '', alamat: '', telepon: '' }; customPic = { nama: '', jabatan: '', no_hp: '' }" 
                                             class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
                                         <span x-text="g.kode + ' - ' + g.nama"></span>
                                     </button>
                                 </template>
+                                <div class="border-t">
+                                    <button type="button"
+                                            @click="gudangMode = 'custom'; selectedGudang = ''; labelGudang = 'Lainnya'; gudangOpen = false; selectedPic = 'lainnya'; labelPic = 'Lainnya'; picSearch = ''; customGudang = { nama: '', alamat: '', telepon: '' }; customPic = { nama: '', jabatan: '', no_hp: '' }"
+                                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
+                                        Lainnya...
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-show="isCustomGudang" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <p class="text-sm font-semibold text-gray-900 mb-3">Gudang Lainnya</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Gudang</label>
+                                <input type="text" name="gudang_custom_nama" x-model="customGudang.nama"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                                <input type="text" name="gudang_custom_alamat" x-model="customGudang.alamat"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">No Telp</label>
+                                <input type="text" name="gudang_custom_telepon" x-model="customGudang.telepon"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             </div>
                         </div>
                     </div>
 
                     {{-- Custom Combobox PIC Tujuan --}}
-                    <div class="relative" x-data="{ labelPic: '' }">
+                    <div class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
                         <div class="relative">
                             <input type="text" 
-                                x-model="labelPic" 
-                                @input="picOpen = true; selectedPic = labelPic" 
+                                x-model="labelPic"
                                 @click="picOpen = true" 
                                 @click.away="picOpen = false"
                                 required
-                                placeholder="Cari atau ketik manual..."
+                                placeholder="Pilih dari daftar..."
+                                readonly
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             
                             <input type="hidden" name="pic_tujuan_id" :value="selectedPic">
 
                             <div x-show="picOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                 <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
-                                <template x-for="p in allPics.filter(p => p.nama.toLowerCase().includes(labelPic.toLowerCase()))" :key="p.id">
+                                <template x-for="p in filteredPics" :key="p.id">
                                     <button type="button" 
                                             @click="selectedPic = p.id; labelPic = p.nama; picOpen = false" 
                                             class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
                                         <span x-text="p.nama + (p.jabatan ? ' ('+p.jabatan+')' : '')"></span>
                                     </button>
                                 </template>
+                                <div class="border-t" x-show="isCustomGudang || (!isNaN(selectedGudang) && selectedGudang !== '')">
+                                    <button type="button"
+                                            @click="selectedPic = 'lainnya'; labelPic = 'Lainnya'; picOpen = false"
+                                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
+                                        Lainnya...
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-show="isCustomPic" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC</label>
+                                <input type="text" name="pic_custom_nama" x-model="customPic.nama"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                                <input type="text" name="pic_custom_jabatan" x-model="customPic.jabatan"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">No HP</label>
+                                <input type="text" name="pic_custom_no_hp" x-model="customPic.no_hp"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             </div>
                         </div>
                     </div>
@@ -642,6 +738,14 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
                         <input type="text" name="jenis_kendaraan" placeholder="Contoh: Truk Box" class="w-full rounded-md border-gray-300">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                        <textarea name="catatan"
+                                  rows="2"
+                                  placeholder="Catatan tambahan untuk surat jalan..."
+                                  class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">{{ old('catatan') }}</textarea>
                     </div>
                 </div>
 
@@ -681,32 +785,24 @@
                     <button type="button" @click="addRow()" class="w-full py-2 bg-gray-50 text-xs font-bold text-pln-primary hover:bg-gray-100 uppercase">+ Tambah Barang</button>
                 </div>
 
+                {{-- Lampiran Gambar --}}
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, maks 3 gambar, maks 10MB/gambar)</span>
+                    </label>
+                    <input type="file"
+                           name="attachments[]"
+                           multiple
+                           accept="image/jpeg,image/jpg,image/png"
+                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
+                </div>
+
                 <div class="flex justify-end gap-3 pt-4 border-t">
                     <button type="button" @click="$dispatch('close-modal', 'create-surat-jalan')" class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md">Batal</button>
-                    <button type="button" 
-                            x-data="{ loading: false }" 
-                            @click="
-                                loading = true;
-                                const formData = new FormData($refs.createForm);
-                                const formDataObj = {};
-                                formData.forEach((v, k) => formDataObj[k] = v);
-
-                                fetch('{{ route('gudang.surat-jalan.preview-draft') }}', {
-                                    method: 'POST',
-                                    body: formData,
-                                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-                                })
-                                .then(res => res.blob())
-                                .then(blob => {
-                                    const url = URL.createObjectURL(blob);
-                                    $dispatch('open-preview', { url: url, formData: formDataObj });
-                                    loading = false;
-                                })
-                                .catch(() => { alert('Gagal memproses'); loading = false; });
-                            "
+                    <button type="submit"
                             class="px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light flex items-center gap-2">
-                        <span x-show="loading" class="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span>
-                        Preview & Simpan
+                        Simpan Draft
                     </button>
                 </div>
             </form>
