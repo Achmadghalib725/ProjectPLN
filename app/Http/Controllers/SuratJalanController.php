@@ -250,25 +250,11 @@ class SuratJalanController extends Controller
                 return $suratJalan->id;
             }
 
-            $peminjaman = Peminjaman::create([
-                'kode' => $this->generatePeminjamanKode($tanggalKirim),
-                'gudang_peminjam_id' => $gudangTujuanId,
-                'gudang_peminjam_is_custom' => $isCustomGudang,
-                'gudang_peminjam_custom_nama' => $isCustomGudang ? $customGudangData['nama'] : null,
-                'gudang_peminjam_custom_alamat' => $isCustomGudang ? $customGudangData['alamat'] : null,
-                'gudang_peminjam_custom_telepon' => $isCustomGudang ? $customGudangData['telepon'] : null,
-                'gudang_pemilik_id' => $gudangId,
-                'status' => 'DIAJUKAN',
-                'waktu_pengajuan' => now(),
-                'durasi_hari' => $tanggalKembali ? $tanggalKirim->diffInDays($tanggalKembali) : null,
-                'durasi_jam' => $tanggalKembali ? $tanggalKirim->diffInHours($tanggalKembali) : null,
-                'batas_waktu_kembali' => $tanggalKembali,
-                'catatan_pengiriman' => $validated['catatan'] ?? null,
-                'created_by' => Auth::id(),
-            ]);
+            // Generate nomor surat jalan terlebih dahulu agar bisa digunakan sebagai kode peminjaman
+            $nomorSuratJalan = $this->generateSuratJalanNomor($tanggalKirim);
 
             $suratJalanKirim = SuratJalan::create([
-                'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
+                'nomor' => $nomorSuratJalan,
                 'gudang_asal_id' => $gudangId,
                 'gudang_tujuan_id' => $gudangTujuanId,
                 'gudang_tujuan_is_custom' => $isCustomGudang,
@@ -287,8 +273,23 @@ class SuratJalanController extends Controller
                 'pdf_path' => null,
             ]);
 
-            $peminjaman->update([
+            // Buat peminjaman dengan kode yang sama dengan nomor surat jalan
+            $peminjaman = Peminjaman::create([
+                'kode' => $nomorSuratJalan, // Gunakan nomor surat jalan sebagai kode peminjaman
+                'gudang_peminjam_id' => $gudangTujuanId,
+                'gudang_peminjam_is_custom' => $isCustomGudang,
+                'gudang_peminjam_custom_nama' => $isCustomGudang ? $customGudangData['nama'] : null,
+                'gudang_peminjam_custom_alamat' => $isCustomGudang ? $customGudangData['alamat'] : null,
+                'gudang_peminjam_custom_telepon' => $isCustomGudang ? $customGudangData['telepon'] : null,
+                'gudang_pemilik_id' => $gudangId,
                 'surat_jalan_kirim_id' => $suratJalanKirim->id,
+                'status' => 'DIAJUKAN',
+                'waktu_pengajuan' => now(),
+                'durasi_hari' => $tanggalKembali ? $tanggalKirim->diffInDays($tanggalKembali) : null,
+                'durasi_jam' => $tanggalKembali ? $tanggalKirim->diffInHours($tanggalKembali) : null,
+                'batas_waktu_kembali' => $tanggalKembali,
+                'catatan_pengiriman' => $validated['catatan'] ?? null,
+                'created_by' => Auth::id(),
             ]);
 
             $this->createSuratJalanItems($suratJalanKirim->id, $validated['items']);
@@ -336,6 +337,8 @@ class SuratJalanController extends Controller
             'nama_driver' => ['nullable', 'string', 'max:100'],
             'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
             'nomor_plat' => ['nullable', 'string', 'max:50'],
+            'attachments' => ['nullable', 'array', 'max:3'],
+            'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], [
             'peminjaman_id.required' => 'Kode peminjaman wajib dipilih.',
             'peminjaman_id.exists' => 'Kode peminjaman tidak valid atau sudah dikembalikan.',
@@ -359,7 +362,7 @@ class SuratJalanController extends Controller
 
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
 
-        DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman) {
+        $suratJalanId = DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman) {
             $suratJalan = SuratJalan::create([
                 'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
                 'gudang_asal_id' => $gudangId,
@@ -391,7 +394,14 @@ class SuratJalanController extends Controller
             $peminjaman->update([
                 'surat_jalan_kembali_id' => $suratJalan->id,
             ]);
+
+            return $suratJalan->id;
         });
+
+        // Handle attachment upload
+        if ($request->hasFile('attachments')) {
+            $this->storeAttachments($suratJalanId, $request->file('attachments'));
+        }
 
         return redirect()
             ->route('gudang.surat-jalan.index')
@@ -1262,19 +1272,14 @@ class SuratJalanController extends Controller
 
     private function generatePeminjamanKode(Carbon $tanggal): string
     {
-        $prefix = 'PMJ-' . $tanggal->format('Ymd') . '-';
-        $latest = Peminjaman::query()
-            ->where('kode', 'like', $prefix . '%')
-            ->orderByDesc('kode')
-            ->value('kode');
+        do {
+            $prefix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+            $tanggalKode = $tanggal->format('ymd');
+            $tahun = $tanggal->format('Y');
+            $kode = $prefix . '/SJ' . $tanggalKode . '/' . $tahun;
+        } while (Peminjaman::where('kode', $kode)->exists());
 
-        $nextNumber = 1;
-        if ($latest) {
-            $suffix = (int) substr($latest, -3);
-            $nextNumber = $suffix + 1;
-        }
-
-        return $prefix . str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
+        return $kode;
     }
 
     private function resolveExternalGudangId(): int
