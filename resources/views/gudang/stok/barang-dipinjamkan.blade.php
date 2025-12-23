@@ -64,6 +64,7 @@
                             <option value="DIKIRIM" {{ request('status') === 'DIKIRIM' ? 'selected' : '' }}>Dikirim</option>
                             <option value="DIPERIKSA" {{ request('status') === 'DIPERIKSA' ? 'selected' : '' }}>Diperiksa</option>
                             <option value="DITERIMA" {{ request('status') === 'DITERIMA' ? 'selected' : '' }}>Diterima</option>
+                            <option value="MENUNGGU_DIKEMBALIKAN" {{ request('status') === 'MENUNGGU_DIKEMBALIKAN' ? 'selected' : '' }}>Menunggu Dikembalikan</option>
                             <option value="DIKEMBALIKAN" {{ request('status') === 'DIKEMBALIKAN' ? 'selected' : '' }}>Dikembalikan</option>
                             <option value="overdue" {{ request('status') === 'overdue' ? 'selected' : '' }}>Overdue</option>
                         </select>
@@ -98,7 +99,7 @@
                             @forelse($peminjamans as $peminjaman)
                                 @php
                                     // Status yang masih aktif (belum selesai)
-                                    $activeStatuses = ['DITERIMA', 'DIKEMBALIKAN'];
+                                    $activeStatuses = ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'];
                                     $isActiveStatus = in_array($peminjaman->status, $activeStatuses);
 
                                     // Cek overdue - berlaku untuk status aktif yang melewati deadline
@@ -106,8 +107,10 @@
                                                  $peminjaman->batas_waktu_kembali->isPast() &&
                                                  $isActiveStatus;
 
-                                    // Durasi dihitung dari waktu DITERIMA, berhenti saat SELESAI
-                                    $startDate = $peminjaman->waktu_diterima;
+                                    // Durasi dihitung dari waktu diterima (atau waktu kirim untuk gudang eksternal).
+                                    $startDate = $peminjaman->gudang_peminjam_is_custom
+                                        ? $peminjaman->waktu_kirim
+                                        : $peminjaman->waktu_diterima;
                                     $endDate = $peminjaman->status === 'SELESAI' ? $peminjaman->waktu_selesai : now();
                                     $canCalculateDuration = $startDate !== null;
                                 @endphp
@@ -117,7 +120,9 @@
                                         <div class="text-xs text-gray-500">{{ $peminjaman->waktu_kirim?->format('d M Y') }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ $peminjaman->gudangPeminjam->nama ?? '-' }}</div>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ $peminjaman->gudang_peminjam_is_custom ? ($peminjaman->gudang_peminjam_custom_nama ?? 'Gudang Lainnya') : ($peminjaman->gudangPeminjam->nama ?? '-') }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4">
                                         @php
@@ -230,6 +235,7 @@
                                                 'DIPERIKSA' => 'bg-cyan-100 text-cyan-800',
                                                 'DITERIMA' => 'bg-yellow-100 text-yellow-800',
                                                 'DIKEMBALIKAN' => 'bg-orange-100 text-orange-800',
+                                                'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
                                                 'SELESAI' => 'bg-green-100 text-green-800',
                                                 default => 'bg-gray-100 text-gray-800'
                                             };

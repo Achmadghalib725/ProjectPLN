@@ -401,6 +401,12 @@
         @php
             $tanggalSurat = $suratJalan->tanggal ? $suratJalan->tanggal->format('d F Y') : now()->format('d F Y');
             $hariSurat = ($suratJalan->tanggal ?? now())->locale('id')->translatedFormat('l');
+            $gudangTujuanNama = $suratJalan->gudang_tujuan_is_custom
+                ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
+                : ($suratJalan->gudangTujuan->nama ?? '-');
+            $gudangTujuanAlamat = $suratJalan->gudang_tujuan_is_custom
+                ? ($suratJalan->gudang_tujuan_custom_alamat ?? '-')
+                : ($suratJalan->gudangTujuan->alamat ?? '-');
         @endphp
 
         <div class="intro-section">
@@ -465,11 +471,11 @@
                 <div class="info-title">Gudang Tujuan</div>
                 <div class="info-row">
                     <div class="info-label">Nama</div>
-                    <div class="info-value">: {{ $suratJalan->gudangTujuan->nama ?? '-' }}</div>
+                    <div class="info-value">: {{ $gudangTujuanNama }}</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Alamat</div>
-                    <div class="info-value">: {{ $suratJalan->gudangTujuan->alamat ?? '-' }}</div>
+                    <div class="info-value">: {{ $gudangTujuanAlamat }}</div>
                 </div>
             </div>
             <div class="info-box">

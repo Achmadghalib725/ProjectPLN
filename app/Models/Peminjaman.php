@@ -24,6 +24,7 @@ class Peminjaman extends Model
         'waktu_ttd_penerima' => 'datetime',
         'waktu_ttd_pengembalian' => 'datetime',
         'waktu_ttd_terima_kembali' => 'datetime',
+        'gudang_peminjam_is_custom' => 'boolean',
     ];
 
     // Relasi ke Item Detail Peminjaman

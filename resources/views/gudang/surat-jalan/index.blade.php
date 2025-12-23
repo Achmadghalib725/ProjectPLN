@@ -295,7 +295,7 @@
                                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 <option value="">Semua</option>
                                 @if($tab === 'keluar')
-                                    @foreach(['DRAFT','DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
+                                    @foreach(['DRAFT','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                         <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
                                             {{ $statusOption }}
                                         </option>
@@ -399,6 +399,7 @@
                                         'DRAFT' => 'bg-gray-100 text-gray-800',
                                         'DIKIRIM' => 'bg-blue-100 text-blue-800',
                                         'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
+                                        'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
                                         'DIPERIKSA' => 'bg-purple-100 text-purple-800',
                                         'DITERIMA' => 'bg-yellow-100 text-yellow-800',
                                         'DITOLAK' => 'bg-red-100 text-red-800',
@@ -418,7 +419,7 @@
                                         {{ $sj->gudangAsal->nama ?? '-' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $sj->gudangTujuan->nama ?? '-' }}
+                                        {{ $sj->gudang_tujuan_is_custom ? ($sj->gudang_tujuan_custom_nama ?? 'Gudang Lainnya') : ($sj->gudangTujuan->nama ?? '-') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $sj->picTujuan->nama ?? '-' }}
@@ -505,13 +506,21 @@
                 
                 // State untuk Gudang Tujuan
                 gudangOpen: false,
+                gudangMode: @js(old('gudang_tujuan_mode', 'existing')),
                 selectedGudang: @js(old('gudang_tujuan_id', '')),
+                labelGudang: '',
                 gudangSearch: '',
                 allGudangs: @js($gudangs),
+                customGudang: {
+                    nama: @js(old('gudang_custom_nama', '')),
+                    alamat: @js(old('gudang_custom_alamat', '')),
+                    telepon: @js(old('gudang_custom_telepon', '')),
+                },
                 
                 // State untuk PIC Tujuan
                 picOpen: false,
                 selectedPic: @js(old('pic_tujuan_id', '')),
+                labelPic: '',
                 picSearch: '',
                 allPics: @js(($pics ?? collect())->values()),
                 customPic: {
@@ -535,19 +544,41 @@
                 },
                 
                 get filteredPics() {
-                    if (isNaN(this.selectedGudang) || this.selectedGudang === '') {
+                    if (this.isCustomGudang || isNaN(this.selectedGudang) || this.selectedGudang === '') {
                         return [];
                     }
                     return this.allPics
                         .filter(p => String(p.gudang_id) === String(this.selectedGudang))
                         .filter(p => p.nama.toLowerCase().includes(this.picSearch?.toLowerCase() || ''));
                 },
+                get isCustomGudang() {
+                    return this.gudangMode === 'custom';
+                },
                 get isCustomPic() {
                     return this.selectedPic === 'lainnya';
                 },
 
                 unitFor(id) { return this.itemUnits[id] ?? ''; },
-                stockFor(id) { return this.itemStocks[id] ?? 0; }
+                stockFor(id) { return this.itemStocks[id] ?? 0; },
+                init() {
+                    if (this.gudangMode === 'custom') {
+                        this.labelGudang = 'Lainnya';
+                    } else if (this.selectedGudang !== '') {
+                        const gudang = this.allGudangs.find(g => String(g.id) === String(this.selectedGudang));
+                        if (gudang) {
+                            this.labelGudang = gudang.nama;
+                        }
+                    }
+
+                    if (this.selectedPic === 'lainnya') {
+                        this.labelPic = 'Lainnya';
+                    } else if (this.selectedPic !== '') {
+                        const pic = this.allPics.find(p => String(p.id) === String(this.selectedPic));
+                        if (pic) {
+                            this.labelPic = pic.nama;
+                        }
+                    }
+                }
             }">
             
             <div class="flex items-center justify-between mb-4">
@@ -576,7 +607,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     
                     {{-- Custom Combobox Gudang Tujuan --}}
-                    <div class="relative" x-data="{ labelGudang: '' }">
+                    <div class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Tujuan</label>
                         <div class="relative">
                             <input type="text" 
@@ -587,23 +618,52 @@
                                 placeholder="Cari gudang..."
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             
+                            <input type="hidden" name="gudang_tujuan_mode" :value="gudangMode">
                             <input type="hidden" name="gudang_tujuan_id" :value="selectedGudang">
 
                             <div x-show="gudangOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                 <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
                                 <template x-for="g in allGudangs.filter(g => g.nama.toLowerCase().includes(labelGudang.toLowerCase()))" :key="g.id">
                                     <button type="button" 
-                                            @click="selectedGudang = g.id; labelGudang = g.nama; gudangOpen = false; selectedPic = ''; picSearch=''; customPic = { nama: '', jabatan: '', no_hp: '' }" 
+                                            @click="selectedGudang = g.id; labelGudang = g.nama; gudangMode = 'existing'; gudangOpen = false; selectedPic = ''; picSearch=''; customGudang = { nama: '', alamat: '', telepon: '' }; customPic = { nama: '', jabatan: '', no_hp: '' }" 
                                             class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
                                         <span x-text="g.kode + ' - ' + g.nama"></span>
                                     </button>
                                 </template>
+                                <div class="border-t">
+                                    <button type="button"
+                                            @click="gudangMode = 'custom'; selectedGudang = ''; labelGudang = 'Lainnya'; gudangOpen = false; selectedPic = 'lainnya'; labelPic = 'Lainnya'; picSearch = ''; customGudang = { nama: '', alamat: '', telepon: '' }; customPic = { nama: '', jabatan: '', no_hp: '' }"
+                                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
+                                        Lainnya...
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-show="isCustomGudang" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <p class="text-sm font-semibold text-gray-900 mb-3">Gudang Lainnya</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Gudang</label>
+                                <input type="text" name="gudang_custom_nama" x-model="customGudang.nama"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                                <input type="text" name="gudang_custom_alamat" x-model="customGudang.alamat"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">No Telp</label>
+                                <input type="text" name="gudang_custom_telepon" x-model="customGudang.telepon"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             </div>
                         </div>
                     </div>
 
                     {{-- Custom Combobox PIC Tujuan --}}
-                    <div class="relative" x-data="{ labelPic: '' }">
+                    <div class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
                         <div class="relative">
                             <input type="text" 
@@ -626,7 +686,7 @@
                                         <span x-text="p.nama + (p.jabatan ? ' ('+p.jabatan+')' : '')"></span>
                                     </button>
                                 </template>
-                                <div class="border-t" x-show="!isNaN(selectedGudang) && selectedGudang !== ''">
+                                <div class="border-t" x-show="isCustomGudang || (!isNaN(selectedGudang) && selectedGudang !== '')">
                                     <button type="button"
                                             @click="selectedPic = 'lainnya'; labelPic = 'Lainnya'; picOpen = false"
                                             class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
@@ -678,6 +738,14 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
                         <input type="text" name="jenis_kendaraan" placeholder="Contoh: Truk Box" class="w-full rounded-md border-gray-300">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                        <textarea name="catatan"
+                                  rows="2"
+                                  placeholder="Catatan tambahan untuk surat jalan..."
+                                  class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">{{ old('catatan') }}</textarea>
                     </div>
                 </div>
 

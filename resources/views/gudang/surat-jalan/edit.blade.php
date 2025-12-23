@@ -47,8 +47,19 @@
                             'jumlah' => $item->jumlah,
                             'keterangan' => $item->keterangan,
                         ])->values())),
-                        selectedGudang: @js(old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id)),
-                        selectedPic: @js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id)),
+                        gudangMode: @js(old('gudang_tujuan_mode', $suratJalan->gudang_tujuan_is_custom ? 'custom' : 'existing')),
+                        selectedGudang: String(@js(old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id)) || ''),
+                        selectedPic: String(@js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id)) || ''),
+                        customGudang: {
+                            nama: @js(old('gudang_custom_nama', $suratJalan->gudang_tujuan_custom_nama)),
+                            alamat: @js(old('gudang_custom_alamat', $suratJalan->gudang_tujuan_custom_alamat)),
+                            telepon: @js(old('gudang_custom_telepon', $suratJalan->gudang_tujuan_custom_telepon)),
+                        },
+                        customPic: {
+                            nama: @js(old('pic_custom_nama', '')),
+                            jabatan: @js(old('pic_custom_jabatan', '')),
+                            no_hp: @js(old('pic_custom_no_hp', '')),
+                        },
                         itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
                             return [$stock->item_id => ($stock->item->satuan ?? '')];
                         })),
@@ -64,8 +75,14 @@
                         addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
                         removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
                         filteredPics() {
-                            if (!this.selectedGudang) return [];
+                            if (this.isCustomGudang || !this.selectedGudang) return [];
                             return this.pics.filter(pic => String(pic.gudang_id) === String(this.selectedGudang));
+                        },
+                        get isCustomGudang() {
+                            return this.gudangMode === 'custom';
+                        },
+                        get isCustomPic() {
+                            return this.selectedPic === 'lainnya';
                         },
                         unitFor(itemId) {
                             if (!itemId) return '';
@@ -76,7 +93,7 @@
                             return this.itemStocks[itemId] ?? 0;
                         },
                         handleGudangChange() {
-                            if (!this.selectedGudang) {
+                            if (this.isCustomGudang || !this.selectedGudang) {
                                 this.selectedPic = '';
                                 return;
                             }
@@ -111,6 +128,16 @@
                             @if($suratJalan->tipe !== 'PENGEMBALIAN')
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Tujuan</label>
+                                    <select name="gudang_tujuan_mode"
+                                            x-model="gudangMode"
+                                            @change="if (isCustomGudang) { selectedGudang = ''; selectedPic = 'lainnya'; }"
+                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                        <option value="existing">Gudang Terdaftar</option>
+                                        <option value="custom">Gudang Lainnya</option>
+                                    </select>
+                                </div>
+                                <div x-show="!isCustomGudang">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Gudang Tujuan</label>
                                     <select name="gudang_tujuan_id"
                                             x-model="selectedGudang"
                                             @change="handleGudangChange()"
@@ -123,12 +150,32 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                <div x-show="isCustomGudang" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <p class="text-sm font-semibold text-gray-900 mb-3">Gudang Lainnya</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Gudang</label>
+                                            <input type="text" name="gudang_custom_nama" x-model="customGudang.nama"
+                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                                            <input type="text" name="gudang_custom_alamat" x-model="customGudang.alamat"
+                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">No Telp</label>
+                                            <input type="text" name="gudang_custom_telepon" x-model="customGudang.telepon"
+                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                        </div>
+                                    </div>
+                                </div>
                             @else
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Tujuan</label>
                                     <input type="text"
                                            class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
-                                           value="{{ $suratJalan->gudangTujuan->nama ?? '-' }}"
+                                           value="{{ $suratJalan->gudang_tujuan_is_custom ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya') : ($suratJalan->gudangTujuan->nama ?? '-') }}"
                                            readonly>
                                 </div>
                             @endif
@@ -143,7 +190,29 @@
                                     <template x-for="pic in filteredPics()" :key="pic.id">
                                         <option :value="pic.id" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
                                     </template>
+                                    <option value="lainnya">Lainnya...</option>
                                 </select>
+                            </div>
+
+                            <div x-show="isCustomPic" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC</label>
+                                        <input type="text" name="pic_custom_nama" x-model="customPic.nama"
+                                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                                        <input type="text" name="pic_custom_jabatan" x-model="customPic.jabatan"
+                                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">No HP</label>
+                                        <input type="text" name="pic_custom_no_hp" x-model="customPic.no_hp"
+                                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
@@ -159,7 +228,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengembalian (Rencana)</label>
                                     <input type="date"
                                            name="tanggal_kembali"
-                                           value="{{ old('tanggal_kembali', $peminjaman?->waktu_pengembalian?->format('Y-m-d')) }}"
+                                           value="{{ old('tanggal_kembali', $peminjaman?->batas_waktu_kembali?->format('Y-m-d')) }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 </div>
                             @endif
@@ -323,15 +392,11 @@
                                                  alt="{{ $attachment->file_name }}"
                                                  class="w-full h-32 object-cover rounded-lg border border-gray-200">
                                             <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                                <form action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}" method="POST" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit"
-                                                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium"
-                                                            onclick="return confirm('Hapus lampiran ini?')">
-                                                        Hapus
-                                                    </button>
-                                                </form>
+                                                <button type="button"
+                                                        class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium"
+                                                        onclick="deleteAttachment({{ $attachment->id }}, '{{ $attachment->file_name }}')">
+                                                    Hapus
+                                                </button>
                                             </div>
                                             <p class="text-xs text-gray-500 mt-1 truncate">{{ $attachment->file_name }}</p>
                                         </div>
@@ -372,4 +437,20 @@
             </div>
         </div>
     </div>
+
+    {{-- Hidden forms for attachment deletion (outside main form) --}}
+    @foreach($suratJalan->attachments as $attachment)
+        <form id="delete-attachment-{{ $attachment->id }}" action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}" method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+    @endforeach
+
+    <script>
+        function deleteAttachment(id, fileName) {
+            if (confirm('Hapus lampiran "' + fileName + '"?')) {
+                document.getElementById('delete-attachment-' + id).submit();
+            }
+        }
+    </script>
 </x-app-layout>
