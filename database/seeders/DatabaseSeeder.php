@@ -95,6 +95,18 @@ class DatabaseSeeder extends Seeder
             'is_active' => true
         ]);
 
+        User::create([
+            'name' => 'Rizal Mahendra',
+            'username' => 'rizal',
+            'email' => 'rizal@egudang.local',
+            'password' => Hash::make('password'),
+            'role' => 'security',
+            'gudang_id' => $gudangTelukBetung->id, // Security di Teluk Betung
+            'jabatan' => 'Petugas Security',
+            'no_hp' => '085678901234',
+            'is_active' => true
+        ]);
+
         // ========================================
         // 5. BUAT MASTER ITEM (Barang)
         // ========================================
@@ -215,17 +227,19 @@ class DatabaseSeeder extends Seeder
         // ========================================
         $tanggalHariIni = Carbon::now()->startOfDay();
         $usedSuratNomors = [];
-        $generateSuratNomor = function () use (&$usedSuratNomors) {
+        $generateSuratNomor = function (Carbon $tanggal) use (&$usedSuratNomors) {
             do {
-                $suffix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
-                $nomor = 'SJ-' . $suffix;
+                $prefix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+                $tanggalKode = $tanggal->format('ymd');
+                $tahun = $tanggal->format('Y');
+                $nomor = $prefix . '/SJ' . $tanggalKode . '/' . $tahun;
             } while (in_array($nomor, $usedSuratNomors, true));
             $usedSuratNomors[] = $nomor;
             return $nomor;
         };
 
         $sj1 = SuratJalan::create([
-            'nomor' => $generateSuratNomor(),
+            'nomor' => $generateSuratNomor($tanggalHariIni),
             'gudang_asal_id' => $gudangTarahan->id,
             'gudang_tujuan_id' => $gudangTelukBetung->id,
             'pic_tujuan_id' => $picTelukBetung->id,
@@ -255,7 +269,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $sj2 = SuratJalan::create([
-            'nomor' => $generateSuratNomor(),
+            'nomor' => $generateSuratNomor($tanggalHariIni->copy()->subDay()),
             'gudang_asal_id' => $gudangTelukBetung->id,
             'gudang_tujuan_id' => $gudangTarahan->id,
             'pic_tujuan_id' => $picTarahan->id,
@@ -280,7 +294,7 @@ class DatabaseSeeder extends Seeder
         // 10. DUMMY PEMINJAMAN AKTIF (TELUK <-> TARAHAN)
         // ========================================
         $sjPeminjamanTeluk = SuratJalan::create([
-            'nomor' => $generateSuratNomor(),
+            'nomor' => $generateSuratNomor($tanggalHariIni->copy()->subDays(2)),
             'gudang_asal_id' => $gudangTarahan->id,
             'gudang_tujuan_id' => $gudangTelukBetung->id,
             'pic_tujuan_id' => $picTelukBetung->id,
@@ -329,7 +343,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $sjPeminjamanTarahan = SuratJalan::create([
-            'nomor' => $generateSuratNomor(),
+            'nomor' => $generateSuratNomor($tanggalHariIni->copy()->subDays(4)),
             'gudang_asal_id' => $gudangTelukBetung->id,
             'gudang_tujuan_id' => $gudangTarahan->id,
             'pic_tujuan_id' => $picTarahan->id,

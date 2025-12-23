@@ -322,6 +322,7 @@
             transform: translate(-50%, -50%) rotate(-45deg);
             font-size: 100px;
             font-weight: bold;
+            font-family: Helvetica, Arial, sans-serif;
             color: #000;
             opacity: 0.07;
             letter-spacing: 8px;

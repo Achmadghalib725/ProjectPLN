@@ -120,9 +120,24 @@ class SuratJalanController extends Controller
                     ['in:lainnya']
                 ),
             ],
-            'pic_custom_nama' => ['required_if:pic_tujuan_id,lainnya', 'string', 'max:255'],
-            'pic_custom_jabatan' => ['required_if:pic_tujuan_id,lainnya', 'string', 'max:255'],
-            'pic_custom_no_hp' => ['required_if:pic_tujuan_id,lainnya', 'string', 'max:50'],
+            'pic_custom_nama' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'required_if:pic_tujuan_id,lainnya',
+                'string',
+                'max:255',
+            ],
+            'pic_custom_jabatan' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'required_if:pic_tujuan_id,lainnya',
+                'string',
+                'max:255',
+            ],
+            'pic_custom_no_hp' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'required_if:pic_tujuan_id,lainnya',
+                'string',
+                'max:50',
+            ],
             'tanggal_kirim' => ['required', 'date'],
             'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
@@ -964,8 +979,10 @@ class SuratJalanController extends Controller
     private function generateSuratJalanNomor(Carbon $tanggal): string
     {
         do {
-            $suffix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
-            $nomor = 'SJ-' . $suffix;
+            $prefix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+            $tanggalKode = $tanggal->format('ymd');
+            $tahun = $tanggal->format('Y');
+            $nomor = $prefix . '/SJ' . $tanggalKode . '/' . $tahun;
         } while (SuratJalan::where('nomor', $nomor)->exists());
 
         return $nomor;
@@ -999,7 +1016,8 @@ class SuratJalanController extends Controller
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
         $pdf->setPaper('A4', 'portrait');
 
-        return $pdf->download('surat-jalan-' . $suratJalan->nomor . '.pdf');
+        $safeNomor = str_replace(['/', '\\'], '-', $suratJalan->nomor);
+        return $pdf->download('surat-jalan-' . $safeNomor . '.pdf');
     }
 
     /**
@@ -1013,7 +1031,8 @@ class SuratJalanController extends Controller
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
         $pdf->setPaper('A4', 'portrait');
 
-        return $pdf->stream('surat-jalan-' . $suratJalan->nomor . '.pdf');
+        $safeNomor = str_replace(['/', '\\'], '-', $suratJalan->nomor);
+        return $pdf->stream('surat-jalan-' . $safeNomor . '.pdf');
     }
 
     /**
