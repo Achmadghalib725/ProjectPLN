@@ -142,6 +142,12 @@ class SecurityController extends Controller
     {
         $suratJalan = SuratJalan::with(['items.item', 'gudangAsal'])->findOrFail($id);
 
+        // Check if security's gudang matches the destination gudang
+        $user = Auth::user();
+        if ($user->gudang_id !== $suratJalan->gudang_tujuan_id) {
+            return back()->with('error', 'Anda tidak memiliki akses untuk mengkonfirmasi surat jalan ini. Surat jalan ini ditujukan ke gudang lain.');
+        }
+
         // Check valid status for security approval
         $validStatuses = ['DIKIRIM', 'DIKEMBALIKAN'];
         if (!in_array($suratJalan->status, $validStatuses)) {
@@ -182,6 +188,12 @@ class SecurityController extends Controller
         ]);
 
         $suratJalan = SuratJalan::findOrFail($id);
+
+        // Check if security's gudang matches the destination gudang
+        $user = Auth::user();
+        if ($user->gudang_id !== $suratJalan->gudang_tujuan_id) {
+            return back()->with('error', 'Anda tidak memiliki akses untuk menolak surat jalan ini. Surat jalan ini ditujukan ke gudang lain.');
+        }
 
         // Check valid status for rejection
         $validStatuses = ['DIKIRIM', 'DIKEMBALIKAN'];
