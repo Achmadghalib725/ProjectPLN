@@ -39,7 +39,7 @@ class SuratJalanController extends Controller
             $stats = [
                 'total' => $suratJalans->count(),
                 'draft' => $suratJalans->where('status', 'DRAFT')->count(),
-                'dikirim' => $suratJalans->where('status', 'DIKIRIM')->count(),
+                'dikirim' => $suratJalans->whereIn('status', ['DIKIRIM', 'MENUNGGU_DIKEMBALIKAN'])->count(),
                 'diterima' => $suratJalans->where('status', 'DITERIMA')->count(),
                 'selesai' => $suratJalans->where('status', 'SELESAI')->count(),
             ];
@@ -57,7 +57,11 @@ class SuratJalanController extends Controller
         $countMasuk = $this->countSuratMasuk($gudangId);
 
         $gudangs = Schema::hasTable('gudangs')
-            ? Gudang::query()->where('id', '!=', $gudangId)->orderBy('nama')->get()
+            ? Gudang::query()
+                ->where('id', '!=', $gudangId)
+                ->where('kode', '!=', 'GDG-EXT')
+                ->orderBy('nama')
+                ->get()
             : collect();
 
         $pics = Schema::hasTable('pics')
@@ -100,7 +104,32 @@ class SuratJalanController extends Controller
 
         $validated = $request->validate([
             'mode' => ['required', Rule::in(['transfer', 'peminjaman'])],
-            'gudang_tujuan_id' => ['required', 'integer', 'exists:gudangs,id', 'not_in:' . $gudangId],
+            'gudang_tujuan_mode' => ['required', Rule::in(['existing', 'custom'])],
+            'gudang_tujuan_id' => [
+                'exclude_unless:gudang_tujuan_mode,existing',
+                'required_if:gudang_tujuan_mode,existing',
+                'integer',
+                'exists:gudangs,id',
+                'not_in:' . $gudangId,
+            ],
+            'gudang_custom_nama' => [
+                'exclude_unless:gudang_tujuan_mode,custom',
+                'required_if:gudang_tujuan_mode,custom',
+                'string',
+                'max:255',
+            ],
+            'gudang_custom_alamat' => [
+                'exclude_unless:gudang_tujuan_mode,custom',
+                'required_if:gudang_tujuan_mode,custom',
+                'string',
+                'max:255',
+            ],
+            'gudang_custom_telepon' => [
+                'exclude_unless:gudang_tujuan_mode,custom',
+                'required_if:gudang_tujuan_mode,custom',
+                'string',
+                'max:50',
+            ],
             'pic_tujuan_id' => [
                 'required',
                 Rule::when(
@@ -154,6 +183,10 @@ class SuratJalanController extends Controller
             'items.*.keterangan' => ['nullable', 'string'],
         ], [
             'items.*.item_id.exists' => 'Item harus berasal dari stok gudang Anda.',
+            'gudang_tujuan_id.required_if' => 'Gudang tujuan wajib dipilih.',
+            'gudang_custom_nama.required_if' => 'Nama gudang wajib diisi.',
+            'gudang_custom_alamat.required_if' => 'Alamat gudang wajib diisi.',
+            'gudang_custom_telepon.required_if' => 'No telp gudang wajib diisi.',
             'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
             'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang yang dipilih.',
             'pic_tujuan_id.integer' => 'PIC tujuan tidak valid.',
@@ -162,13 +195,23 @@ class SuratJalanController extends Controller
             'pic_custom_no_hp.required_if' => 'No HP PIC wajib diisi.',
         ]);
 
+        $isCustomGudang = $validated['gudang_tujuan_mode'] === 'custom';
+        $customGudangData = [
+            'nama' => $validated['gudang_custom_nama'] ?? null,
+            'alamat' => $validated['gudang_custom_alamat'] ?? null,
+            'telepon' => $validated['gudang_custom_telepon'] ?? null,
+        ];
+        $gudangTujuanId = $isCustomGudang
+            ? $this->resolveExternalGudangId()
+            : (int) $validated['gudang_tujuan_id'];
+
         $picTujuanId = $validated['pic_tujuan_id'];
         if ($picTujuanId === 'lainnya') {
             $picTujuan = Pic::create([
                 'nama' => $validated['pic_custom_nama'],
                 'jabatan' => $validated['pic_custom_jabatan'],
                 'no_hp' => $validated['pic_custom_no_hp'],
-                'gudang_id' => (int) $validated['gudang_tujuan_id'],
+                'gudang_id' => $gudangTujuanId,
             ]);
             $picTujuanId = $picTujuan->id;
         }
@@ -177,12 +220,16 @@ class SuratJalanController extends Controller
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
         $tanggalKembali = !empty($validated['tanggal_kembali']) ? Carbon::parse($validated['tanggal_kembali'])->startOfDay() : null;
 
-        DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $tanggalKembali, $picTujuanId) {
+        DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $tanggalKembali, $picTujuanId, $gudangTujuanId, $isCustomGudang, $customGudangData) {
             if ($validated['mode'] === 'transfer') {
                 $suratJalan = SuratJalan::create([
                     'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
                     'gudang_asal_id' => $gudangId,
-                    'gudang_tujuan_id' => (int) $validated['gudang_tujuan_id'],
+                    'gudang_tujuan_id' => $gudangTujuanId,
+                    'gudang_tujuan_is_custom' => $isCustomGudang,
+                    'gudang_tujuan_custom_nama' => $isCustomGudang ? $customGudangData['nama'] : null,
+                    'gudang_tujuan_custom_alamat' => $isCustomGudang ? $customGudangData['alamat'] : null,
+                    'gudang_tujuan_custom_telepon' => $isCustomGudang ? $customGudangData['telepon'] : null,
                     'pic_tujuan_id' => $picTujuanId,
                     'tipe' => 'TRANSFER',
                     'status' => 'DRAFT',
@@ -201,7 +248,11 @@ class SuratJalanController extends Controller
 
             $peminjaman = Peminjaman::create([
                 'kode' => $this->generatePeminjamanKode($tanggalKirim),
-                'gudang_peminjam_id' => (int) $validated['gudang_tujuan_id'],
+                'gudang_peminjam_id' => $gudangTujuanId,
+                'gudang_peminjam_is_custom' => $isCustomGudang,
+                'gudang_peminjam_custom_nama' => $isCustomGudang ? $customGudangData['nama'] : null,
+                'gudang_peminjam_custom_alamat' => $isCustomGudang ? $customGudangData['alamat'] : null,
+                'gudang_peminjam_custom_telepon' => $isCustomGudang ? $customGudangData['telepon'] : null,
                 'gudang_pemilik_id' => $gudangId,
                 'status' => 'DIAJUKAN',
                 'waktu_pengajuan' => now(),
@@ -215,7 +266,11 @@ class SuratJalanController extends Controller
             $suratJalanKirim = SuratJalan::create([
                 'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
                 'gudang_asal_id' => $gudangId,
-                'gudang_tujuan_id' => (int) $validated['gudang_tujuan_id'],
+                'gudang_tujuan_id' => $gudangTujuanId,
+                'gudang_tujuan_is_custom' => $isCustomGudang,
+                'gudang_tujuan_custom_nama' => $isCustomGudang ? $customGudangData['nama'] : null,
+                'gudang_tujuan_custom_alamat' => $isCustomGudang ? $customGudangData['alamat'] : null,
+                'gudang_tujuan_custom_telepon' => $isCustomGudang ? $customGudangData['telepon'] : null,
                 'pic_tujuan_id' => $picTujuanId,
                 'tipe' => 'PEMINJAMAN',
                 'status' => 'DRAFT',
@@ -387,7 +442,11 @@ class SuratJalanController extends Controller
         }
 
         $gudangs = Schema::hasTable('gudangs')
-            ? Gudang::query()->where('id', '!=', $gudangId)->orderBy('nama')->get()
+            ? Gudang::query()
+                ->where('id', '!=', $gudangId)
+                ->where('kode', '!=', 'GDG-EXT')
+                ->orderBy('nama')
+                ->get()
             : collect();
 
         $pics = Schema::hasTable('pics')
@@ -457,16 +516,68 @@ class SuratJalanController extends Controller
         }
 
         $validated = $request->validate([
-            'gudang_tujuan_id' => ['required', 'integer', 'exists:gudangs,id', 'not_in:' . $gudangId],
+            'gudang_tujuan_mode' => ['required', Rule::in(['existing', 'custom'])],
+            'gudang_tujuan_id' => [
+                'exclude_unless:gudang_tujuan_mode,existing',
+                'required_if:gudang_tujuan_mode,existing',
+                'integer',
+                'exists:gudangs,id',
+                'not_in:' . $gudangId,
+            ],
+            'gudang_custom_nama' => [
+                'exclude_unless:gudang_tujuan_mode,custom',
+                'required_if:gudang_tujuan_mode,custom',
+                'string',
+                'max:255',
+            ],
+            'gudang_custom_alamat' => [
+                'exclude_unless:gudang_tujuan_mode,custom',
+                'required_if:gudang_tujuan_mode,custom',
+                'string',
+                'max:255',
+            ],
+            'gudang_custom_telepon' => [
+                'exclude_unless:gudang_tujuan_mode,custom',
+                'required_if:gudang_tujuan_mode,custom',
+                'string',
+                'max:50',
+            ],
             'pic_tujuan_id' => [
                 'required',
-                'integer',
-                Rule::exists('pics', 'id')->where(function ($query) use ($request) {
-                    $gudangTujuan = $request->input('gudang_tujuan_id');
-                    if ($gudangTujuan) {
-                        $query->where('gudang_id', $gudangTujuan);
-                    }
-                }),
+                Rule::when(
+                    $request->input('pic_tujuan_id') !== 'lainnya',
+                    [
+                        'integer',
+                        Rule::exists('pics', 'id')->where(function ($query) use ($request) {
+                            $gudangTujuan = $request->input('gudang_tujuan_id');
+                            if ($gudangTujuan) {
+                                $query->where('gudang_id', $gudangTujuan);
+                            }
+                        }),
+                    ]
+                ),
+                Rule::when(
+                    $request->input('pic_tujuan_id') === 'lainnya',
+                    ['in:lainnya']
+                ),
+            ],
+            'pic_custom_nama' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'required_if:pic_tujuan_id,lainnya',
+                'string',
+                'max:255',
+            ],
+            'pic_custom_jabatan' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'required_if:pic_tujuan_id,lainnya',
+                'string',
+                'max:255',
+            ],
+            'pic_custom_no_hp' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'required_if:pic_tujuan_id,lainnya',
+                'string',
+                'max:50',
             ],
             'tanggal_kirim' => ['required', 'date'],
             'tanggal_kembali' => ['required_if:tipe,PEMINJAMAN', 'nullable', 'date', 'after:tanggal_kirim'],
@@ -485,16 +596,45 @@ class SuratJalanController extends Controller
             'tipe' => ['required', Rule::in(['TRANSFER', 'PEMINJAMAN'])],
         ], [
             'items.*.item_id.exists' => 'Item harus berasal dari stok gudang Anda.',
+            'gudang_tujuan_id.required_if' => 'Gudang tujuan wajib dipilih.',
+            'gudang_custom_nama.required_if' => 'Nama gudang wajib diisi.',
+            'gudang_custom_alamat.required_if' => 'Alamat gudang wajib diisi.',
+            'gudang_custom_telepon.required_if' => 'No telp gudang wajib diisi.',
             'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
             'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang yang dipilih.',
         ]);
 
         $warningItems = $this->buildStockWarnings($gudangId, $validated['items']);
 
-        DB::transaction(function () use ($suratJalan, $validated, $gudangId) {
+        $isCustomGudang = $validated['gudang_tujuan_mode'] === 'custom';
+        $customGudangData = [
+            'nama' => $validated['gudang_custom_nama'] ?? null,
+            'alamat' => $validated['gudang_custom_alamat'] ?? null,
+            'telepon' => $validated['gudang_custom_telepon'] ?? null,
+        ];
+        $gudangTujuanId = $isCustomGudang
+            ? $this->resolveExternalGudangId()
+            : (int) $validated['gudang_tujuan_id'];
+
+        $picTujuanId = $validated['pic_tujuan_id'];
+        if ($picTujuanId === 'lainnya') {
+            $picTujuan = Pic::create([
+                'nama' => $validated['pic_custom_nama'],
+                'jabatan' => $validated['pic_custom_jabatan'],
+                'no_hp' => $validated['pic_custom_no_hp'],
+                'gudang_id' => $gudangTujuanId,
+            ]);
+            $picTujuanId = $picTujuan->id;
+        }
+
+        DB::transaction(function () use ($suratJalan, $validated, $gudangId, $gudangTujuanId, $isCustomGudang, $customGudangData, $picTujuanId) {
             $suratJalan->update([
-                'gudang_tujuan_id' => (int) $validated['gudang_tujuan_id'],
-                'pic_tujuan_id' => (int) $validated['pic_tujuan_id'],
+                'gudang_tujuan_id' => $gudangTujuanId,
+                'gudang_tujuan_is_custom' => $isCustomGudang,
+                'gudang_tujuan_custom_nama' => $isCustomGudang ? $customGudangData['nama'] : null,
+                'gudang_tujuan_custom_alamat' => $isCustomGudang ? $customGudangData['alamat'] : null,
+                'gudang_tujuan_custom_telepon' => $isCustomGudang ? $customGudangData['telepon'] : null,
+                'pic_tujuan_id' => $picTujuanId,
                 'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
                 'catatan' => $validated['catatan'] ?? null,
                 'nama_driver' => $validated['nama_driver'] ?? null,
@@ -514,7 +654,11 @@ class SuratJalanController extends Controller
                     $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
 
                     $peminjaman->update([
-                        'gudang_peminjam_id' => (int) $validated['gudang_tujuan_id'],
+                        'gudang_peminjam_id' => $gudangTujuanId,
+                        'gudang_peminjam_is_custom' => $isCustomGudang,
+                        'gudang_peminjam_custom_nama' => $isCustomGudang ? $customGudangData['nama'] : null,
+                        'gudang_peminjam_custom_alamat' => $isCustomGudang ? $customGudangData['alamat'] : null,
+                        'gudang_peminjam_custom_telepon' => $isCustomGudang ? $customGudangData['telepon'] : null,
                         'durasi_hari' => $tanggalKembali ? $tanggalKirim->diffInDays($tanggalKembali) : null,
                         'durasi_jam' => $tanggalKembali ? $tanggalKirim->diffInHours($tanggalKembali) : null,
                         'batas_waktu_kembali' => $tanggalKembali,
@@ -552,6 +696,11 @@ class SuratJalanController extends Controller
 
         try {
             DB::transaction(function () use ($suratJalan, $gudangId) {
+                $isCustomGudang = (bool) $suratJalan->gudang_tujuan_is_custom;
+                $gudangTujuanNama = $suratJalan->gudang_tujuan_is_custom
+                    ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
+                    : ($suratJalan->gudangTujuan->nama ?? 'Gudang Tujuan');
+
                 $itemTotals = $suratJalan->items
                     ->groupBy('item_id')
                     ->map(fn ($rows) => $rows->sum('jumlah'));
@@ -593,25 +742,40 @@ class SuratJalanController extends Controller
                             'referensi_type' => 'SuratJalan',
                             'referensi_id' => $suratJalan->id,
                             'created_by' => Auth::id(),
-                            'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$suratJalan->gudangTujuan->nama}"
+                            'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$gudangTujuanNama}"
                         ]);
                     }
 
-                    // Update status to DIKIRIM for TRANSFER/PEMINJAMAN
-                $suratJalan->update([
-                    'status' => 'DIKIRIM',
-                    'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
-                    'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
-                ]);
+                    if ($suratJalan->tipe === 'PEMINJAMAN' && $isCustomGudang) {
+                        $suratJalan->update([
+                            'status' => 'MENUNGGU_DIKEMBALIKAN',
+                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
+                            'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
+                        ]);
 
-                    // Update peminjaman status if applicable
-                    if ($suratJalan->tipe === 'PEMINJAMAN') {
                         $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
                         if ($peminjaman) {
                             $peminjaman->update([
-                                'status' => 'DIKIRIM',
+                                'status' => 'MENUNGGU_DIKEMBALIKAN',
                                 'waktu_kirim' => now(),
                             ]);
+                        }
+                    } else {
+                        $suratJalan->update([
+                            'status' => $isCustomGudang && $suratJalan->tipe === 'TRANSFER' ? 'SELESAI' : 'DIKIRIM',
+                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
+                            'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
+                        ]);
+
+                        // Update peminjaman status if applicable
+                        if ($suratJalan->tipe === 'PEMINJAMAN') {
+                            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                            if ($peminjaman) {
+                                $peminjaman->update([
+                                    'status' => 'DIKIRIM',
+                                    'waktu_kirim' => now(),
+                                ]);
+                            }
                         }
                     }
                 } else {
@@ -635,7 +799,9 @@ class SuratJalanController extends Controller
 
             $message = $suratJalan->tipe === 'PENGEMBALIAN'
                 ? 'Surat Jalan Pengembalian berhasil dikirim.'
-                : 'Surat Jalan disetujui dan stok berhasil dikurangi.';
+                : ($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->gudang_tujuan_is_custom
+                    ? 'Surat Jalan disetujui. Menunggu konfirmasi pengembalian.'
+                    : 'Surat Jalan disetujui dan stok berhasil dikurangi.');
 
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
@@ -777,6 +943,84 @@ class SuratJalanController extends Controller
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
                 ->with('success', $message);
+        } catch (\RuntimeException $e) {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    public function confirmReturnExternal($id)
+    {
+        $suratJalan = SuratJalan::with(['items.item', 'gudangAsal'])->findOrFail($id);
+
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
+            abort(403, 'Anda tidak berhak mengonfirmasi pengembalian gudang lain.');
+        }
+
+        if ($suratJalan->tipe !== 'PEMINJAMAN' || !$suratJalan->gudang_tujuan_is_custom) {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', 'Surat Jalan ini bukan peminjaman gudang eksternal.');
+        }
+
+        if ($suratJalan->status !== 'MENUNGGU_DIKEMBALIKAN') {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', 'Status surat jalan tidak sesuai untuk konfirmasi pengembalian.');
+        }
+
+        try {
+            DB::transaction(function () use ($suratJalan, $gudangId) {
+                $itemTotals = $suratJalan->items
+                    ->groupBy('item_id')
+                    ->map(fn ($rows) => $rows->sum('jumlah'));
+
+                foreach ($itemTotals as $itemId => $qty) {
+                    $stock = ItemStock::firstOrCreate(
+                        ['gudang_id' => $gudangId, 'item_id' => $itemId],
+                        ['jumlah' => 0, 'stok_minimum' => 0]
+                    );
+
+                    $stokSebelum = $stock->jumlah;
+                    $stokSesudah = $stokSebelum + $qty;
+
+                    $stock->increment('jumlah', $qty);
+
+                    $tujuanNama = $suratJalan->gudang_tujuan_custom_nama ?? 'Gudang eksternal';
+                    StockMovement::create([
+                        'item_id' => $itemId,
+                        'gudang_id' => $gudangId,
+                        'tipe' => 'IN',
+                        'jumlah' => $qty,
+                        'stok_sebelum' => $stokSebelum,
+                        'stok_sesudah' => $stokSesudah,
+                        'referensi_type' => 'SuratJalan',
+                        'referensi_id' => $suratJalan->id,
+                        'created_by' => Auth::id(),
+                        'keterangan' => "Pengembalian manual dari {$tujuanNama}"
+                    ]);
+                }
+
+                $suratJalan->update([
+                    'status' => 'SELESAI',
+                ]);
+
+                $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                if ($peminjaman) {
+                    $now = now();
+                    $peminjaman->update([
+                        'status' => 'SELESAI',
+                        'waktu_pengembalian' => $now,
+                        'waktu_selesai' => $now,
+                    ]);
+                }
+            });
+
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('success', 'Pengembalian barang telah dikonfirmasi.');
         } catch (\RuntimeException $e) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
@@ -1007,6 +1251,20 @@ class SuratJalanController extends Controller
         return $prefix . str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
     }
 
+    private function resolveExternalGudangId(): int
+    {
+        $gudang = Gudang::firstOrCreate(
+            ['kode' => 'GDG-EXT'],
+            [
+                'nama' => 'Gudang Eksternal',
+                'alamat' => '-',
+                'telepon' => '-',
+            ]
+        );
+
+        return $gudang->id;
+    }
+
     /**
      * Generate PDF for existing Surat Jalan (download)
      */
@@ -1064,7 +1322,23 @@ class SuratJalanController extends Controller
 
         // Load relations
         $suratJalan->setRelation('gudangAsal', Gudang::find($gudangId));
-        $suratJalan->setRelation('gudangTujuan', Gudang::find($request->input('gudang_tujuan_id')));
+
+        $gudangMode = $request->input('gudang_tujuan_mode', 'existing');
+        if ($gudangMode === 'custom') {
+            $suratJalan->gudang_tujuan_is_custom = true;
+            $suratJalan->gudang_tujuan_custom_nama = $request->input('gudang_custom_nama');
+            $suratJalan->gudang_tujuan_custom_alamat = $request->input('gudang_custom_alamat');
+            $suratJalan->gudang_tujuan_custom_telepon = $request->input('gudang_custom_telepon');
+            $gudangTujuan = new Gudang([
+                'nama' => $request->input('gudang_custom_nama'),
+                'alamat' => $request->input('gudang_custom_alamat'),
+                'telepon' => $request->input('gudang_custom_telepon'),
+            ]);
+        } else {
+            $gudangTujuan = Gudang::find($request->input('gudang_tujuan_id'));
+        }
+
+        $suratJalan->setRelation('gudangTujuan', $gudangTujuan);
 
         $picInput = $request->input('pic_tujuan_id');
         if ($picInput === 'lainnya') {

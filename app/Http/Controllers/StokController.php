@@ -182,6 +182,7 @@ class StokController extends Controller
         $status = $request->input('status');
 
         // Get peminjaman where this warehouse is the owner (pemilik)
+        $activeStatuses = ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'];
         $peminjamans = Peminjaman::with([
                 'items.item',
                 'gudangPeminjam',
@@ -190,12 +191,16 @@ class StokController extends Controller
                 'suratJalanKembali'
             ])
             ->where('gudang_pemilik_id', $gudangId)
-            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN'])
+            ->whereIn('status', $activeStatuses)
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('kode', 'like', "%{$search}%")
                         ->orWhereHas('gudangPeminjam', function ($gq) use ($search) {
                             $gq->where('nama', 'like', "%{$search}%");
+                        })
+                        ->orWhere(function ($gq) use ($search) {
+                            $gq->where('gudang_peminjam_is_custom', true)
+                                ->where('gudang_peminjam_custom_nama', 'like', "%{$search}%");
                         })
                         ->orWhereHas('items.item', function ($iq) use ($search) {
                             $iq->where('nama', 'like', "%{$search}%")
@@ -218,7 +223,7 @@ class StokController extends Controller
 
         // Statistics
         $totalAktif = Peminjaman::where('gudang_pemilik_id', $gudangId)
-            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN'])
+            ->whereIn('status', $activeStatuses)
             ->count();
 
         $totalOverdue = Peminjaman::where('gudang_pemilik_id', $gudangId)
