@@ -719,30 +719,9 @@
 
                 <div class="flex justify-end gap-3 pt-4 border-t">
                     <button type="button" @click="$dispatch('close-modal', 'create-surat-jalan')" class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md">Batal</button>
-                    <button type="button" 
-                            x-data="{ loading: false }" 
-                            @click="
-                                loading = true;
-                                const formData = new FormData($refs.createForm);
-                                const formDataObj = {};
-                                formData.forEach((v, k) => formDataObj[k] = v);
-
-                                fetch('{{ route('gudang.surat-jalan.preview-draft') }}', {
-                                    method: 'POST',
-                                    body: formData,
-                                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-                                })
-                                .then(res => res.blob())
-                                .then(blob => {
-                                    const url = URL.createObjectURL(blob);
-                                    $dispatch('open-preview', { url: url, formData: formDataObj });
-                                    loading = false;
-                                })
-                                .catch(() => { alert('Gagal memproses'); loading = false; });
-                            "
+                    <button type="submit"
                             class="px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light flex items-center gap-2">
-                        <span x-show="loading" class="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span>
-                        Preview & Simpan
+                        Simpan Draft
                     </button>
                 </div>
             </form>
