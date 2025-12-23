@@ -63,4 +63,9 @@ class SuratJalan extends Model
     {
         return $this->belongsTo(User::class, 'ttd_penerima_id');
     }
+
+    public function attachments()
+    {
+        return $this->hasMany(SuratJalanAttachment::class);
+    }
 }

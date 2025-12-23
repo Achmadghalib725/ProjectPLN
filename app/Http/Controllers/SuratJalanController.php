@@ -10,8 +10,10 @@ use App\Models\Peminjaman;
 use App\Models\PeminjamanItem;
 use App\Models\StockMovement;
 use App\Models\SuratJalan;
+use App\Models\SuratJalanAttachment;
 use App\Models\SuratJalanItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -152,6 +154,8 @@ class SuratJalanController extends Controller
             ],
             'items.*.jumlah' => ['required', 'integer', 'min:1'],
             'items.*.keterangan' => ['nullable', 'string'],
+            'attachments' => ['nullable', 'array', 'max:3'],
+            'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], [
             'items.*.item_id.exists' => 'Item harus berasal dari stok gudang Anda.',
             'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
@@ -177,7 +181,7 @@ class SuratJalanController extends Controller
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
         $tanggalKembali = !empty($validated['tanggal_kembali']) ? Carbon::parse($validated['tanggal_kembali'])->startOfDay() : null;
 
-        DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $tanggalKembali, $picTujuanId) {
+        $suratJalanId = DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $tanggalKembali, $picTujuanId) {
             if ($validated['mode'] === 'transfer') {
                 $suratJalan = SuratJalan::create([
                     'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
@@ -196,7 +200,7 @@ class SuratJalanController extends Controller
                 ]);
 
                 $this->createSuratJalanItems($suratJalan->id, $validated['items']);
-                return;
+                return $suratJalan->id;
             }
 
             $peminjaman = Peminjaman::create([
@@ -234,7 +238,14 @@ class SuratJalanController extends Controller
 
             $this->createSuratJalanItems($suratJalanKirim->id, $validated['items']);
             $this->createPeminjamanItems($peminjaman->id, $validated['items']);
+
+            return $suratJalanKirim->id;
         });
+
+        // Handle attachment upload
+        if ($request->hasFile('attachments')) {
+            $this->storeAttachments($suratJalanId, $request->file('attachments'));
+        }
 
         $redirect = redirect()
             ->route('gudang.surat-jalan.index')
@@ -334,7 +345,7 @@ class SuratJalanController extends Controller
 
     public function show($id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'])
             ->findOrFail($id);
 
         $gudangId = Auth::user()?->gudang_id;
@@ -372,7 +383,7 @@ class SuratJalanController extends Controller
 
     public function edit($id)
     {
-        $suratJalan = SuratJalan::with(['items.item', 'gudangAsal', 'gudangTujuan', 'picTujuan'])
+        $suratJalan = SuratJalan::with(['items.item', 'gudangAsal', 'gudangTujuan', 'picTujuan', 'attachments'])
             ->findOrFail($id);
 
         $gudangId = Auth::user()?->gudang_id;
@@ -483,10 +494,13 @@ class SuratJalanController extends Controller
             'items.*.jumlah' => ['required', 'integer', 'min:1'],
             'items.*.keterangan' => ['nullable', 'string'],
             'tipe' => ['required', Rule::in(['TRANSFER', 'PEMINJAMAN'])],
+            'attachments' => ['nullable', 'array', 'max:' . (3 - $suratJalan->attachments()->count())],
+            'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], [
             'items.*.item_id.exists' => 'Item harus berasal dari stok gudang Anda.',
             'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
             'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang yang dipilih.',
+            'attachments.max' => 'Maksimal 3 lampiran gambar per surat jalan.',
         ]);
 
         $warningItems = $this->buildStockWarnings($gudangId, $validated['items']);
@@ -524,6 +538,11 @@ class SuratJalanController extends Controller
             }
         });
 
+        // Handle attachment upload
+        if ($request->hasFile('attachments')) {
+            $this->storeAttachments($suratJalan->id, $request->file('attachments'));
+        }
+
         $redirect = redirect()
             ->route('gudang.surat-jalan.show', $suratJalan->id)
             ->with('success', 'Draft surat jalan berhasil diperbarui.');
@@ -548,6 +567,13 @@ class SuratJalanController extends Controller
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini sudah diproses.');
+        }
+
+        // Validasi attachment wajib minimal 1
+        if ($suratJalan->attachments()->count() === 0) {
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum mengirim surat jalan.');
         }
 
         try {
@@ -1012,7 +1038,7 @@ class SuratJalanController extends Controller
      */
     public function generatePdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments'])
             ->findOrFail($id);
 
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
@@ -1027,7 +1053,7 @@ class SuratJalanController extends Controller
      */
     public function previewPdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments'])
             ->findOrFail($id);
 
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
@@ -1093,10 +1119,54 @@ class SuratJalanController extends Controller
             });
 
         $suratJalan->setRelation('items', $items);
+        $suratJalan->setRelation('attachments', collect());
 
         $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
         $pdf->setPaper('A4', 'portrait');
 
         return $pdf->stream('preview-surat-jalan.pdf');
+    }
+
+    /**
+     * Store attachments for a surat jalan
+     */
+    private function storeAttachments(int $suratJalanId, array $files): void
+    {
+        foreach ($files as $file) {
+            $path = $file->store('surat-jalan-attachments', 'public');
+
+            SuratJalanAttachment::create([
+                'surat_jalan_id' => $suratJalanId,
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(),
+            ]);
+        }
+    }
+
+    /**
+     * Delete a single attachment
+     */
+    public function deleteAttachment($id)
+    {
+        $attachment = SuratJalanAttachment::findOrFail($id);
+        $suratJalan = SuratJalan::findOrFail($attachment->surat_jalan_id);
+
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
+            abort(403, 'Anda tidak berhak menghapus lampiran ini.');
+        }
+
+        if ($suratJalan->status !== 'DRAFT') {
+            return redirect()->back()->with('error', 'Lampiran hanya bisa dihapus saat status Draft.');
+        }
+
+        // Delete file from storage
+        if (Storage::disk('public')->exists($attachment->file_path)) {
+            Storage::disk('public')->delete($attachment->file_path);
+        }
+
+        $attachment->delete();
+
+        return redirect()->back()->with('success', 'Lampiran berhasil dihapus.');
     }
 }

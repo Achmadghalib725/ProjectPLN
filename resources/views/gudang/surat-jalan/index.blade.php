@@ -569,7 +569,7 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5">
+            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="mode" :value="mode">
 
@@ -715,6 +715,19 @@
                         </tbody>
                     </table>
                     <button type="button" @click="addRow()" class="w-full py-2 bg-gray-50 text-xs font-bold text-pln-primary hover:bg-gray-100 uppercase">+ Tambah Barang</button>
+                </div>
+
+                {{-- Lampiran Gambar --}}
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, maks 3 gambar, maks 10MB/gambar)</span>
+                    </label>
+                    <input type="file"
+                           name="attachments[]"
+                           multiple
+                           accept="image/jpeg,image/jpg,image/png"
+                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t">
