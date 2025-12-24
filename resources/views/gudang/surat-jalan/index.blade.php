@@ -19,15 +19,16 @@
                 </div>
             @endif
 
+            {{-- Error ditampilkan di dalam modal popup, auto-open modal saat ada error --}}
             @if($errors->any())
-                <div class="mb-4 sm:mb-6 bg-red-50 border border-red-200 text-red-900 px-4 py-3 rounded-xl text-sm sm:text-base">
-                    <p class="font-semibold">Periksa kembali input Anda:</p>
-                    <ul class="list-disc list-inside text-sm mt-1">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
+                <script>
+                    document.addEventListener('alpine:init', () => {
+                        // Dispatch after Alpine is ready
+                        setTimeout(() => {
+                            window.dispatchEvent(new CustomEvent('open-modal', { detail: 'create-surat-jalan' }));
+                        }, 100);
+                    });
+                </script>
             @endif
 
             @if(session('warning'))
@@ -630,7 +631,7 @@
             x-data="{
                 mode: @js(old('mode', 'transfer')),
                 items: @js(old('items', [['item_id' => '', 'jumlah' => 1, 'keterangan' => '']])),
-                
+
                 // State untuk Gudang Tujuan
                 gudangOpen: false,
                 gudangMode: @js(old('gudang_tujuan_mode', 'existing')),
@@ -643,7 +644,7 @@
                     alamat: @js(old('gudang_custom_alamat', '')),
                     telepon: @js(old('gudang_custom_telepon', '')),
                 },
-                
+
                 // State untuk PIC Tujuan
                 picOpen: false,
                 selectedPic: @js(old('pic_tujuan_id', '')),
@@ -660,16 +661,20 @@
                 itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
                 itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
 
+                // Error handling
+                errors: @js($errors->toArray()),
+                submitting: false,
+
                 addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
-                
+
                 get filteredGudangs() {
-                    return this.allGudangs.filter(g => 
-                        g.nama.toLowerCase().includes(this.gudSearch?.toLowerCase() || '') || 
+                    return this.allGudangs.filter(g =>
+                        g.nama.toLowerCase().includes(this.gudSearch?.toLowerCase() || '') ||
                         g.kode.toLowerCase().includes(this.gudSearch?.toLowerCase() || '')
                     );
                 },
-                
+
                 get filteredPics() {
                     if (this.isCustomGudang || isNaN(this.selectedGudang) || this.selectedGudang === '') {
                         return [];
@@ -683,6 +688,15 @@
                 },
                 get isCustomPic() {
                     return this.selectedPic === 'lainnya';
+                },
+                get hasErrors() {
+                    return Object.keys(this.errors).length > 0;
+                },
+                getError(field) {
+                    if (this.errors[field]) {
+                        return Array.isArray(this.errors[field]) ? this.errors[field][0] : this.errors[field];
+                    }
+                    return null;
                 },
 
                 unitFor(id) { return this.itemUnits[id] ?? ''; },
@@ -707,15 +721,37 @@
                     }
                 }
             }">
-            
+
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold text-gray-900">Buat Surat Jalan Baru</h3>
                 <button type="button" @click="$dispatch('close-modal', 'create-surat-jalan')" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
+
+            {{-- Error Alert inside Modal --}}
+            <template x-if="hasErrors">
+                <div class="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        <div>
+                            <p class="font-semibold">Periksa kembali input Anda:</p>
+                            <ul class="list-disc list-inside text-xs mt-1 space-y-0.5">
+                                <template x-for="(errorArr, field) in errors" :key="field">
+                                    <template x-for="error in (Array.isArray(errorArr) ? errorArr : [errorArr])" :key="error">
+                                        <li x-text="error"></li>
+                                    </template>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
             @if($isAdmin)
-                <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                <div class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                     Mode admin: surat jalan akan langsung diselesaikan saat Anda memilih tombol admin.
                 </div>
             @endif
@@ -863,16 +899,36 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Driver & No. Plat</label>
-                        <div class="flex gap-2">
-                            <input type="text" name="nama_driver" placeholder="Driver" class="w-2/3 rounded-md border-gray-300">
-                            <input type="text" name="nomor_plat" placeholder="B 1234 XX" class="w-1/3 rounded-md border-gray-300">
-                        </div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver <span class="text-red-500">*</span></label>
+                        <input type="text" name="nama_driver" placeholder="Nama driver" required
+                               value="{{ old('nama_driver') }}"
+                               class="w-full rounded-md shadow-sm focus:ring-pln-primary focus:border-pln-primary"
+                               :class="getError('nama_driver') ? 'border-red-500' : 'border-gray-300'">
+                        <template x-if="getError('nama_driver')">
+                            <p class="text-xs text-red-500 mt-1" x-text="getError('nama_driver')"></p>
+                        </template>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
-                        <input type="text" name="jenis_kendaraan" placeholder="Contoh: Truk Box" class="w-full rounded-md border-gray-300">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat <span class="text-red-500">*</span></label>
+                        <input type="text" name="nomor_plat" placeholder="B 1234 XX" required
+                               value="{{ old('nomor_plat') }}"
+                               class="w-full rounded-md shadow-sm focus:ring-pln-primary focus:border-pln-primary"
+                               :class="getError('nomor_plat') ? 'border-red-500' : 'border-gray-300'">
+                        <template x-if="getError('nomor_plat')">
+                            <p class="text-xs text-red-500 mt-1" x-text="getError('nomor_plat')"></p>
+                        </template>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan <span class="text-red-500">*</span></label>
+                        <input type="text" name="jenis_kendaraan" placeholder="Contoh: Truk Box" required
+                               value="{{ old('jenis_kendaraan') }}"
+                               class="w-full rounded-md shadow-sm focus:ring-pln-primary focus:border-pln-primary"
+                               :class="getError('jenis_kendaraan') ? 'border-red-500' : 'border-gray-300'">
+                        <template x-if="getError('jenis_kendaraan')">
+                            <p class="text-xs text-red-500 mt-1" x-text="getError('jenis_kendaraan')"></p>
+                        </template>
                     </div>
 
                     <div class="md:col-span-2">
@@ -1335,7 +1391,7 @@
                 {{-- Info --}}
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <p class="text-sm text-blue-700">
-                        <span class="font-medium">Info:</span> Data yang diekspor hanya surat jalan dari gudang Anda.
+                        <span class="font-medium">Info:</span> Data yang diekspor hanya surat keluar.
                     </p>
                 </div>
 

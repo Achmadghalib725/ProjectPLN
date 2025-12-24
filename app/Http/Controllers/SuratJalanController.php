@@ -212,9 +212,9 @@ class SuratJalanController extends Controller
             'tanggal_kirim' => ['required', 'date'],
             'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
-            'nama_driver' => ['nullable', 'string', 'max:100'],
-            'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
-            'nomor_plat' => ['nullable', 'string', 'max:50'],
+            'nama_driver' => ['required', 'string', 'max:100'],
+            'jenis_kendaraan' => ['required', 'string', 'max:100'],
+            'nomor_plat' => ['required', 'string', 'max:50'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => [
                 'required',
@@ -226,19 +226,70 @@ class SuratJalanController extends Controller
             'attachments' => ['nullable', 'array', 'max:3'],
             'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], [
+            // Gudang Asal
             'gudang_asal_id.required' => 'Gudang asal wajib dipilih.',
             'gudang_asal_id.exists' => 'Gudang asal tidak valid.',
-            'items.*.item_id.exists' => 'Item harus berasal dari stok gudang Anda.',
+            'gudang_asal_id.integer' => 'Gudang asal tidak valid.',
+
+            // Mode
+            'mode.required' => 'Tipe surat jalan wajib dipilih.',
+            'mode.in' => 'Tipe surat jalan tidak valid.',
+
+            // Gudang Tujuan
+            'gudang_tujuan_mode.required' => 'Mode gudang tujuan wajib dipilih.',
+            'gudang_tujuan_mode.in' => 'Mode gudang tujuan tidak valid.',
             'gudang_tujuan_id.required_if' => 'Gudang tujuan wajib dipilih.',
+            'gudang_tujuan_id.integer' => 'Gudang tujuan tidak valid.',
+            'gudang_tujuan_id.exists' => 'Gudang tujuan tidak ditemukan.',
+            'gudang_tujuan_id.not_in' => 'Gudang tujuan tidak boleh sama dengan gudang asal.',
             'gudang_custom_nama.required_if' => 'Nama gudang wajib diisi.',
             'gudang_custom_alamat.required_if' => 'Alamat gudang wajib diisi.',
             'gudang_custom_telepon.required_if' => 'No telp gudang wajib diisi.',
+
+            // PIC Tujuan
             'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
             'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang yang dipilih.',
             'pic_tujuan_id.integer' => 'PIC tujuan tidak valid.',
             'pic_custom_nama.required_if' => 'Nama PIC wajib diisi.',
             'pic_custom_jabatan.required_if' => 'Jabatan PIC wajib diisi.',
             'pic_custom_no_hp.required_if' => 'No HP PIC wajib diisi.',
+
+            // Tanggal
+            'tanggal_kirim.required' => 'Tanggal kirim wajib diisi.',
+            'tanggal_kirim.date' => 'Format tanggal kirim tidak valid.',
+            'tanggal_kembali.required_if' => 'Tanggal kembali wajib diisi untuk peminjaman.',
+            'tanggal_kembali.date' => 'Format tanggal kembali tidak valid.',
+            'tanggal_kembali.after' => 'Tanggal kembali harus setelah tanggal kirim.',
+
+            // Driver & Kendaraan
+            'nama_driver.required' => 'Nama driver wajib diisi.',
+            'nama_driver.string' => 'Nama driver harus berupa teks.',
+            'nama_driver.max' => 'Nama driver maksimal 100 karakter.',
+            'jenis_kendaraan.required' => 'Jenis kendaraan wajib diisi.',
+            'jenis_kendaraan.string' => 'Jenis kendaraan harus berupa teks.',
+            'jenis_kendaraan.max' => 'Jenis kendaraan maksimal 100 karakter.',
+            'nomor_plat.required' => 'Nomor plat wajib diisi.',
+            'nomor_plat.string' => 'Nomor plat harus berupa teks.',
+            'nomor_plat.max' => 'Nomor plat maksimal 50 karakter.',
+
+            // Items
+            'items.required' => 'Minimal harus ada 1 barang.',
+            'items.array' => 'Format data barang tidak valid.',
+            'items.min' => 'Minimal harus ada 1 barang.',
+            'items.*.item_id.required' => 'Barang wajib dipilih.',
+            'items.*.item_id.integer' => 'Barang tidak valid.',
+            'items.*.item_id.exists' => 'Barang harus berasal dari stok gudang Anda.',
+            'items.*.jumlah.required' => 'Jumlah barang wajib diisi.',
+            'items.*.jumlah.integer' => 'Jumlah barang harus berupa angka.',
+            'items.*.jumlah.min' => 'Jumlah barang minimal 1.',
+
+            // Attachments
+            'attachments.array' => 'Format lampiran tidak valid.',
+            'attachments.max' => 'Maksimal 3 lampiran gambar.',
+            'attachments.*.file' => 'Lampiran harus berupa file.',
+            'attachments.*.image' => 'Lampiran harus berupa gambar.',
+            'attachments.*.mimes' => 'Format gambar harus JPG, JPEG, atau PNG.',
+            'attachments.*.max' => 'Ukuran gambar maksimal 10MB.',
         ]);
 
         if (!$gudangId && $isAdmin) {
