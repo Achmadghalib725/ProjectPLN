@@ -215,12 +215,6 @@ class DatabaseSeeder extends Seeder
             'gudang_id' => $gudangTelukBetung->id,
         ]);
 
-        Pic::create([
-            'nama' => 'Heri Pranata',
-            'jabatan' => 'PIC Proyek Area',
-            'no_hp' => '0815-7788-9900',
-            'gudang_id' => null,
-        ]);
 
     }
 }

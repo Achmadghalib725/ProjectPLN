@@ -49,16 +49,16 @@
                         ])->values())),
                         gudangMode: @js(old('gudang_tujuan_mode', $suratJalan->gudang_tujuan_is_custom ? 'custom' : 'existing')),
                         selectedGudang: String(@js(old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id)) || ''),
-                        selectedPic: String(@js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id)) || ''),
+                        selectedPic: String(@js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id ?? ($suratJalan->pic_tujuan_custom_nama ? 'lainnya' : ''))) || ''),
                         customGudang: {
                             nama: @js(old('gudang_custom_nama', $suratJalan->gudang_tujuan_custom_nama)),
                             alamat: @js(old('gudang_custom_alamat', $suratJalan->gudang_tujuan_custom_alamat)),
                             telepon: @js(old('gudang_custom_telepon', $suratJalan->gudang_tujuan_custom_telepon)),
                         },
                         customPic: {
-                            nama: @js(old('pic_custom_nama', '')),
-                            jabatan: @js(old('pic_custom_jabatan', '')),
-                            no_hp: @js(old('pic_custom_no_hp', '')),
+                            nama: @js(old('pic_custom_nama', $suratJalan->pic_tujuan_custom_nama)),
+                            jabatan: @js(old('pic_custom_jabatan', $suratJalan->pic_tujuan_custom_jabatan)),
+                            no_hp: @js(old('pic_custom_no_hp', $suratJalan->pic_tujuan_custom_no_hp)),
                         },
                         itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
                             return [$stock->item_id => ($stock->item->satuan ?? '')];

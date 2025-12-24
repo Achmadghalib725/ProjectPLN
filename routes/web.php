@@ -38,6 +38,8 @@ Route::get('/dashboard', function () {
         'totalUsers'   => User::count(),
         'totalItems'   => Item::count(),
         'totalGudangs' => Gudang::count(),
+        // Gudangs list untuk form rekap admin
+        'gudangs'      => Gudang::where('kode', '!=', 'GDG-EXT')->orderBy('nama')->get(),
         'totalStockItems' => $gudangId && Schema::hasTable('item_stocks')
             ? ItemStock::where('gudang_id', $gudangId)->count()
             : 0,
