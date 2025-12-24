@@ -370,11 +370,11 @@
                     {{-- Horizontal Progress Bar - Scrollable on Mobile --}}
                     <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                         <div class="relative min-w-[500px] sm:min-w-0">
-                            <div class="absolute top-5 left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
-                            <div class="absolute top-5 left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
+                            <div class="absolute top-[22px] sm:top-[26px] left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
+                            <div class="absolute top-[22px] sm:top-[26px] left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
                                  style="width: {{ $currentStep > 0 ? min((($currentStep - 1) / $maxStep) * 100, 100) : 0 }}%"></div>
 
-                            <div class="relative flex justify-between">
+                            <div class="relative flex justify-between pt-[6px]">
                                 @foreach($steps as $index => $step)
                                     @php
                                         $isCompleted = $currentStep > $index;
