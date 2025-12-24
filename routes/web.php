@@ -8,6 +8,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PicController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\PublicSuratJalanController;
+use App\Http\Controllers\RekapController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -111,6 +112,10 @@ Route::middleware('auth')->group(function () {
         Route::resource('users', UserController::class);
         Route::resource('items', ItemController::class);
         Route::resource('pics', PicController::class);
+
+        // Rekap Surat Jalan
+        Route::get('/rekap', [RekapController::class, 'index'])->name('rekap.index');
+        Route::get('/rekap/export-excel', [RekapController::class, 'exportExcel'])->name('rekap.export-excel');
     });
 
     // ... (Area Operator & Security tetap sama)
@@ -137,6 +142,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/surat-jalan/{id}/confirm-return', [SuratJalanController::class, 'confirmReturnExternal'])->whereNumber('id')->name('surat-jalan.confirm-return');
         Route::post('/surat-jalan/{id}/finalize-rejected', [SuratJalanController::class, 'finalizeRejected'])->whereNumber('id')->name('surat-jalan.finalize-rejected');
         Route::delete('/surat-jalan/attachment/{id}', [SuratJalanController::class, 'deleteAttachment'])->whereNumber('id')->name('surat-jalan.delete-attachment');
+        Route::get('/surat-jalan/export-excel', [SuratJalanController::class, 'exportExcel'])->name('surat-jalan.export-excel');
     });
 
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {

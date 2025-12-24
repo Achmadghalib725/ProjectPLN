@@ -2,6 +2,14 @@
     {{-- Card Container --}}
     <div class="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-[#035b71]">
         <div class="p-6 sm:p-8">
+            <div class="mb-6 text-center">
+                <a href="/" class="inline-block">
+                    <img src="{{ asset('Logo_PLN_NusantaraPower.png') }}"
+                         alt="PLN Logo"
+                         class="h-20 mx-auto mb-3 bg-white rounded-2xl p-3 shadow">
+                    <h1 class="text-xl font-extrabold text-[#00aff0] tracking-wide uppercase">E-Storage</h1>
+                </a>
+            </div>
             {{-- Session Status --}}
             <x-auth-session-status class="mb-4" :status="session('status')" />
 

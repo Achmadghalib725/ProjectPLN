@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\SuratJalanExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SuratJalanController extends Controller
 {
@@ -1178,7 +1180,8 @@ class SuratJalanController extends Controller
         }
 
         if (!empty($filters['search'])) {
-            $query->where('nomor', 'like', '%' . $filters['search'] . '%');
+            $searchLower = strtolower($filters['search']);
+            $query->whereRaw('LOWER(nomor) LIKE ?', ['%' . $searchLower . '%']);
         }
 
         if (!empty($filters['tipe'])) {
@@ -1488,5 +1491,88 @@ class SuratJalanController extends Controller
         $attachment->delete();
 
         return redirect()->back()->with('success', 'Lampiran berhasil dihapus.');
+    }
+
+    /**
+     * Export Surat Jalan to Excel (Operator Gudang - own gudang only)
+     */
+    public function exportExcel(Request $request)
+    {
+        $gudangId = Auth::user()?->gudang_id;
+        if (!$gudangId) {
+            abort(403, 'User tidak memiliki gudang yang ditugaskan');
+        }
+
+        $validated = $request->validate([
+            'tipe' => ['nullable', 'string', Rule::in(['ALL', 'TRANSFER', 'PEMINJAMAN', 'PENGEMBALIAN'])],
+            'periode' => ['nullable', 'string', Rule::in(['1_minggu', '1_bulan', '3_bulan', '6_bulan', '1_tahun', 'custom'])],
+            'tanggal_mulai' => ['nullable', 'date', 'required_if:periode,custom'],
+            'tanggal_selesai' => ['nullable', 'date', 'required_if:periode,custom', 'after_or_equal:tanggal_mulai'],
+        ]);
+
+        // Calculate date range based on period
+        $dates = $this->calculateDateRange(
+            $validated['periode'] ?? '1_bulan',
+            $validated['tanggal_mulai'] ?? null,
+            $validated['tanggal_selesai'] ?? null
+        );
+
+        $fileName = 'surat-jalan-' . date('Y-m-d-His') . '.xlsx';
+
+        return Excel::download(
+            new SuratJalanExport(
+                $gudangId,
+                $validated['tipe'] ?? null,
+                $dates['start'],
+                $dates['end']
+            ),
+            $fileName
+        );
+    }
+
+    /**
+     * Calculate date range from period option
+     */
+    private function calculateDateRange(string $periode, ?string $tanggalMulai, ?string $tanggalSelesai): array
+    {
+        $now = Carbon::now();
+
+        switch ($periode) {
+            case '1_minggu':
+                return [
+                    'start' => $now->copy()->subWeek()->toDateString(),
+                    'end' => $now->toDateString(),
+                ];
+            case '1_bulan':
+                return [
+                    'start' => $now->copy()->subMonth()->toDateString(),
+                    'end' => $now->toDateString(),
+                ];
+            case '3_bulan':
+                return [
+                    'start' => $now->copy()->subMonths(3)->toDateString(),
+                    'end' => $now->toDateString(),
+                ];
+            case '6_bulan':
+                return [
+                    'start' => $now->copy()->subMonths(6)->toDateString(),
+                    'end' => $now->toDateString(),
+                ];
+            case '1_tahun':
+                return [
+                    'start' => $now->copy()->subYear()->toDateString(),
+                    'end' => $now->toDateString(),
+                ];
+            case 'custom':
+                return [
+                    'start' => $tanggalMulai,
+                    'end' => $tanggalSelesai,
+                ];
+            default:
+                return [
+                    'start' => $now->copy()->subMonth()->toDateString(),
+                    'end' => $now->toDateString(),
+                ];
+        }
     }
 }
