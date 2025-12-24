@@ -92,6 +92,11 @@ class UserController extends Controller
 
         $data = $request->except('password');
 
+        // Admin tidak bisa dinonaktifkan
+        if ($user->role === 'admin') {
+            $data['is_active'] = true;
+        }
+
         // Update email if username changes
         if ($request->username !== $user->username) {
             $data['email'] = $request->username . '@egudang.local';

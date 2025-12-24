@@ -38,14 +38,14 @@
                                 <x-input-error :messages="$errors->get('name')" />
                             </div>
 
-                            {{-- Email --}}
+                            {{-- Username --}}
                             <div class="space-y-2">
-                                <x-input-label for="email" :value="__('Email')" class="text-gray-700 font-semibold" />
-                                <x-text-input id="email"
+                                <x-input-label for="username" :value="__('Username')" class="text-gray-700 font-semibold" />
+                                <x-text-input id="username"
                                     class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all"
-                                    type="email" name="email" :value="old('email')" required
-                                    placeholder="alamat@email.com" />
-                                <x-input-error :messages="$errors->get('email')" />
+                                    type="text" name="username" :value="old('username')" required
+                                    placeholder="Masukkan username..." />
+                                <x-input-error :messages="$errors->get('username')" />
                             </div>
 
                             {{-- Password --}}
