@@ -69,6 +69,14 @@
                                 <span class="sm:hidden">Pengembalian</span>
                                 <span class="hidden sm:inline">Pengembalian Peminjaman</span>
                             </button>
+                            <button type="button"
+                                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md transition duration-150"
+                                    @click="$dispatch('open-modal', 'export-excel')">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Export Excel
+                            </button>
                         </div>
                         @endif
                     </div>
@@ -288,8 +296,8 @@
                                    name="search"
                                    id="search"
                                    value="{{ $filters['search'] ?? '' }}"
-                                   placeholder="Contoh: SJ-2025..."
-                                   class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
+                                   placeholder="Contoh: 705/SJ251223/2025"
+                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                         </div>
 
                         {{-- Status & Tipe in same row on mobile --}}
@@ -1063,7 +1071,7 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6">
+            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -1142,6 +1150,19 @@
                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">{{ old('catatan') }}</textarea>
                 </div>
 
+                {{-- Lampiran Gambar --}}
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, maks 3 gambar, maks 10MB/gambar)</span>
+                    </label>
+                    <input type="file"
+                           name="attachments[]"
+                           multiple
+                           accept="image/jpeg,image/jpg,image/png"
+                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
+                </div>
+
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
                     <div class="p-4">
                         <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
@@ -1187,6 +1208,101 @@
                     <button type="submit"
                             class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
                         Simpan Draft Pengembalian
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+
+    {{-- Export Excel Modal --}}
+    <x-modal name="export-excel" focusable maxWidth="md">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-900">Export Surat Jalan ke Excel</h3>
+                <button type="button"
+                        @click="$dispatch('close-modal', 'export-excel')"
+                        class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="GET"
+                  action="{{ route('gudang.surat-jalan.export-excel') }}"
+                  x-data="{
+                      periode: '1_bulan',
+                      showCustom: false,
+                      updatePeriode() {
+                          this.showCustom = this.periode === 'custom';
+                      }
+                  }"
+                  class="space-y-5">
+
+                {{-- Type Filter --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Surat Jalan</label>
+                    <select name="tipe"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                        <option value="ALL">Semua Tipe</option>
+                        <option value="TRANSFER">Transfer</option>
+                        <option value="PEMINJAMAN">Peminjaman</option>
+                        <option value="PENGEMBALIAN">Pengembalian</option>
+                    </select>
+                </div>
+
+                {{-- Period Filter --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Periode</label>
+                    <select name="periode"
+                            x-model="periode"
+                            @change="updatePeriode()"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                        <option value="1_minggu">1 Minggu Terakhir</option>
+                        <option value="1_bulan">1 Bulan Terakhir</option>
+                        <option value="3_bulan">3 Bulan Terakhir</option>
+                        <option value="6_bulan">6 Bulan Terakhir</option>
+                        <option value="1_tahun">1 Tahun Terakhir</option>
+                        <option value="custom">Custom (Pilih Tanggal)</option>
+                    </select>
+                </div>
+
+                {{-- Custom Date Range --}}
+                <div x-show="showCustom" x-cloak class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+                        <input type="date"
+                               name="tanggal_mulai"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
+                        <input type="date"
+                               name="tanggal_selesai"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+                </div>
+
+                {{-- Info --}}
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-sm text-blue-700">
+                        <span class="font-medium">Info:</span> Data yang diekspor hanya surat jalan dari gudang Anda.
+                    </p>
+                </div>
+
+                {{-- Action Buttons --}}
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button"
+                            @click="$dispatch('close-modal', 'export-excel')"
+                            class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Download Excel
                     </button>
                 </div>
             </form>

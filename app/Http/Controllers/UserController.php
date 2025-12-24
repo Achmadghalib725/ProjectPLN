@@ -15,12 +15,12 @@ class UserController extends Controller
         // Mulai query user dan load relasi gudang
         $query = User::with('gudang');
 
-        // 1. Logika Search (Cari berdasarkan Nama atau Username)
+        // 1. Logika Search (Cari berdasarkan Nama atau Username) - Case Insensitive
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                ->orWhere('username', 'like', "%{$search}%");
+            $searchLower = strtolower($request->search);
+            $query->where(function($q) use ($searchLower) {
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$searchLower}%"])
+                  ->orWhereRaw('LOWER(username) LIKE ?', ["%{$searchLower}%"]);
             });
         }
 
