@@ -6,12 +6,12 @@
                 $adminNeedsGudang = $isAdmin && !Auth::user()->gudang_id;
                 $hasGudangContext = !$adminNeedsGudang || !empty($activeGudangId);
                 $headerNotices = [];
-                if ($isAdmin) {
+                <!-- if ($isAdmin) {
                     $headerNotices[] = 'Mode admin: surat jalan dapat langsung dibuat dan diselesaikan.';
                 }
                 if ($adminNeedsGudang && !$hasGudangContext) {
                     $headerNotices[] = 'Pilih gudang terlebih dulu untuk membuat surat jalan.';
-                }
+                } -->
             @endphp
             {{-- Flash Messages --}}
             @if(session('success'))
@@ -1009,7 +1009,7 @@
                 {{-- Lampiran Gambar --}}
                 <div class="border rounded-lg p-4 bg-gray-50">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, maks 3 gambar, maks 10MB/gambar)</span>
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
                     </label>
                     <input type="file"
                            name="attachments[]"
@@ -1294,7 +1294,7 @@
                 {{-- Lampiran Gambar --}}
                 <div class="border rounded-lg p-4 bg-gray-50">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, maks 3 gambar, maks 10MB/gambar)</span>
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
                     </label>
                     <input type="file"
                            name="attachments[]"
