@@ -60,6 +60,7 @@
                         ['label' => 'Kelola Barang', 'route' => 'admin.items.index', 'icon' => 'boxes'],
                         ['label' => 'Kelola PIC', 'route' => 'admin.pics.index', 'icon' => 'id'],
                         ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
+                        ['label' => 'Rekap Surat Jalan', 'route' => 'admin.rekap.index', 'icon' => 'download'],
                     ],
                     'operator_gudang' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],

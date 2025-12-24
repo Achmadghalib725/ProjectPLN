@@ -1,77 +1,93 @@
 @use('Illuminate\Support\Facades\Storage')
 <x-app-layout>
-    <div class="py-12">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-4 sm:py-8 lg:py-12">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             {{-- Flash Messages --}}
             @if(session('success'))
                 <div x-data="{ show: true }"
                      x-show="show"
                      x-init="setTimeout(() => show = false, 3000)"
-                     class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                     class="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto bg-green-500 text-white px-4 sm:px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2 text-sm sm:text-base">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
-                    {{ session('success') }}
+                    <span class="font-medium">{{ session('success') }}</span>
                 </div>
             @endif
 
             @if(session('error'))
-                <div class="mb-6 bg-red-50 border border-red-200 text-red-900 px-4 py-3 rounded-lg">
+                <div class="mb-4 sm:mb-6 bg-red-50 border border-red-200 text-red-900 px-4 py-3 rounded-xl text-sm sm:text-base">
                     {{ session('error') }}
                 </div>
             @endif
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                <div class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">Detail Surat Jalan</h2>
+            {{-- Header Card --}}
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
+                <div class="p-4 sm:p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                        <div class="text-center sm:text-left">
+                            <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Detail Surat Jalan</h2>
                             <p class="text-sm text-gray-500 mt-1">{{ $suratJalan->nomor }}</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            {{-- PDF Buttons --}}
-                            <a href="{{ route('gudang.surat-jalan.preview', $suratJalan->id) }}"
-                               target="_blank"
-                               class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-1.5 px-3 rounded-md transition duration-150 flex items-center gap-2 text-sm">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                Preview PDF
-                            </a>
-                            <a href="{{ route('gudang.surat-jalan.pdf', $suratJalan->id) }}"
-                               class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-1.5 px-3 rounded-md transition duration-150 flex items-center gap-2 text-sm">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                                </svg>
-                                Download PDF
-                            </a>
-                            @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
-                                <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}"
-                                   class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-1.5 px-3 rounded-md transition duration-150 text-sm">
-                                    Edit Draft
+                        {{-- Buttons: Mobile (full width grid) / Desktop (inline flex) --}}
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            {{-- PDF Buttons Row --}}
+                            <div class="flex gap-2">
+                                <a href="{{ route('gudang.surat-jalan.preview', $suratJalan->id) }}"
+                                   target="_blank"
+                                   class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 flex items-center justify-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    <span class="hidden sm:inline">Preview PDF</span>
+                                    <span class="sm:hidden">Preview</span>
                                 </a>
-                                <form method="POST" action="{{ route('gudang.surat-jalan.approve', $suratJalan->id) }}">
-                                    @csrf
-                                    <button type="submit"
-                                            class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-1.5 px-3 rounded-md transition duration-150 text-sm">
-                                        Approve & Kirim
-                                    </button>
-                                </form>
-                                <form method="POST" action="{{ route('gudang.surat-jalan.destroy', $suratJalan->id) }}"
-                                      onsubmit="return confirm('Hapus draft surat jalan ini?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                            class="bg-red-500 hover:bg-red-600 text-white font-semibold py-1.5 px-3 rounded-md transition duration-150 text-sm">
-                                        Hapus Draft
-                                    </button>
-                                </form>
+                                <a href="{{ route('gudang.surat-jalan.pdf', $suratJalan->id) }}"
+                                   class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 flex items-center justify-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    </svg>
+                                    <span>Download</span>
+                                </a>
+                            </div>
+                            @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
+                                {{-- Draft Actions Row --}}
+                                <div class="flex gap-2">
+                                    <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}"
+                                       class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
+                                        Edit Draft
+                                    </a>
+                                    <form method="POST" action="{{ route('gudang.surat-jalan.approve', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                        @csrf
+                                        <button type="submit"
+                                                class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                            Approve & Kirim
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="flex gap-2">
+                                    <form method="POST" action="{{ route('gudang.surat-jalan.destroy', $suratJalan->id) }}"
+                                          onsubmit="return confirm('Hapus draft surat jalan ini?');"
+                                          class="flex-1 sm:flex-none">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                class="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                            Hapus Draft
+                                        </button>
+                                    </form>
+                                    <a href="{{ route('gudang.surat-jalan.index') }}"
+                                       class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
+                                        Kembali
+                                    </a>
+                                </div>
+                            @else
+                                <a href="{{ route('gudang.surat-jalan.index') }}"
+                                   class="bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
+                                    Kembali
+                                </a>
                             @endif
-                            <a href="{{ route('gudang.surat-jalan.index') }}"
-                               class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-1.5 px-3 rounded-md transition duration-150 text-sm">
-                                Kembali
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -337,13 +353,13 @@
 
             {{-- Riwayat Status - Only show if not DRAFT --}}
             @if($suratStatus !== 'DRAFT' || ($isPeminjaman && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6" x-data="{ showDetail: false }">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-bold text-gray-900">Riwayat Status</h3>
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
+                <div class="p-4 sm:p-6">
+                    <div class="flex items-center justify-between mb-4 sm:mb-6">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">Riwayat Status</h3>
                         <button @click="showDetail = !showDetail"
-                                class="text-sm text-pln-primary hover:text-pln-primary/80 font-medium flex items-center gap-1 transition">
-                            <span x-text="showDetail ? 'Sembunyikan Detail' : 'Lihat Detail'"></span>
+                                class="text-xs sm:text-sm text-pln-primary hover:text-pln-primary/80 font-medium flex items-center gap-1 transition active:scale-95">
+                            <span x-text="showDetail ? 'Sembunyikan' : 'Lihat Detail'"></span>
                             <svg class="w-4 h-4 transition-transform" :class="showDetail ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
@@ -351,9 +367,9 @@
                     </div>
 
                     @if($isRejected)
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                            <div class="flex items-center gap-2 text-red-700">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+                            <div class="flex items-center gap-2 text-red-700 text-sm sm:text-base">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                 </svg>
                                 <span class="font-semibold">Surat Jalan Ditolak oleh Security</span>
@@ -361,105 +377,109 @@
                         </div>
                     @endif
 
-                    {{-- Horizontal Progress Bar --}}
-                    <div class="relative">
-                        <div class="absolute top-5 left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
-                        <div class="absolute top-5 left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
-                             style="width: {{ $currentStep > 0 ? min((($currentStep - 1) / $maxStep) * 100, 100) : 0 }}%"></div>
+                    {{-- Horizontal Progress Bar - Scrollable on Mobile --}}
+                    <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <div class="relative min-w-[500px] sm:min-w-0">
+                            <div class="absolute top-[22px] sm:top-[26px] left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
+                            <div class="absolute top-[22px] sm:top-[26px] left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
+                                 style="width: {{ $currentStep > 0 ? min((($currentStep - 1) / $maxStep) * 100, 100) : 0 }}%"></div>
 
-                        <div class="relative flex justify-between">
-                            @foreach($steps as $index => $step)
-                                @php
-                                    $isCompleted = $currentStep > $index;
-                                    $isActive = $currentStep === $index;
-                                    $isPending = $currentStep < $index;
+                            <div class="relative flex justify-between pt-[6px]">
+                                @foreach($steps as $index => $step)
+                                    @php
+                                        $isCompleted = $currentStep > $index;
+                                        $isActive = $currentStep === $index;
+                                        $isPending = $currentStep < $index;
 
-                                    if ($isCompleted) {
-                                        $circleClass = 'bg-green-500 text-white border-green-500';
-                                        $labelClass = 'text-green-700 font-semibold';
-                                    } elseif ($isActive) {
-                                        $circleClass = 'bg-pln-primary text-white border-pln-primary ring-4 ring-pln-primary/20';
-                                        $labelClass = 'text-pln-primary font-bold';
-                                    } else {
-                                        $circleClass = 'bg-white text-gray-400 border-gray-300';
-                                        $labelClass = 'text-gray-400';
-                                    }
+                                        if ($isCompleted) {
+                                            $circleClass = 'bg-green-500 text-white border-green-500';
+                                            $labelClass = 'text-green-700 font-semibold';
+                                        } elseif ($isActive) {
+                                            $circleClass = 'bg-pln-primary text-white border-pln-primary ring-4 ring-pln-primary/20';
+                                            $labelClass = 'text-pln-primary font-bold';
+                                        } else {
+                                            $circleClass = 'bg-white text-gray-400 border-gray-300';
+                                            $labelClass = 'text-gray-400';
+                                        }
 
-                                    if ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) {
-                                        $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
-                                        $labelClass = 'text-red-700 font-bold';
-                                    }
-                                @endphp
-                                <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
-                                    <div class="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold {{ $circleClass }} z-10">
-                                        @if($isCompleted)
-                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                            </svg>
-                                        @else
-                                            {{ $index + 1 }}
-                                        @endif
+                                        if ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) {
+                                            $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
+                                            $labelClass = 'text-red-700 font-bold';
+                                        }
+                                    @endphp
+                                    <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
+                                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold {{ $circleClass }} z-10">
+                                            @if($isCompleted)
+                                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                </svg>
+                                            @else
+                                                {{ $index + 1 }}
+                                            @endif
+                                        </div>
+                                        <span class="mt-2 text-[10px] sm:text-xs text-center {{ $labelClass }} leading-tight">
+                                            {{ ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) ? 'Ditolak' : $step['label'] }}
+                                        </span>
                                     </div>
-                                    <span class="mt-2 text-xs text-center {{ $labelClass }}">
-                                        {{ ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) ? 'Diperiksa: Ditolak' : $step['label'] }}
-                                    </span>
-                                </div>
-                            @endforeach
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
+                    {{-- Scroll Hint for Mobile --}}
+                    <p class="text-[10px] text-gray-400 text-center mt-2 sm:hidden">Geser untuk melihat semua status</p>
 
                     {{-- Timeline Detail (Collapsible) --}}
                     <div x-show="showDetail"
                          x-collapse
                          x-cloak
-                         class="border-t mt-6 pt-6">
-                        <div class="space-y-4">
+                         class="border-t mt-4 sm:mt-6 pt-4 sm:pt-6">
+                        <div class="space-y-3 sm:space-y-4">
                             @foreach($steps as $index => $step)
                                 @php
                                     $isCompleted = $currentStep > $index;
                                     $isActive = $currentStep === $index;
                                     $hasDetail = !empty($step['detail']) || !empty($step['time']);
                                 @endphp
-                                <div class="flex gap-4 {{ !$isCompleted && !$isActive ? 'opacity-40' : '' }}">
+                                <div class="flex gap-3 sm:gap-4 {{ !$isCompleted && !$isActive ? 'opacity-40' : '' }}">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-3 h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-pln-primary ring-4 ring-pln-primary/20' : 'bg-gray-300') }}"></div>
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-pln-primary ring-4 ring-pln-primary/20' : 'bg-gray-300') }}"></div>
                                         @if($index < count($steps) - 1)
-                                            <div class="w-0.5 h-full min-h-[40px] {{ $isCompleted ? 'bg-green-500' : 'bg-gray-200' }}"></div>
+                                            <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $isCompleted ? 'bg-green-500' : 'bg-gray-200' }}"></div>
                                         @endif
                                     </div>
-                                    <div class="flex-1 pb-4">
-                                        <div class="flex items-center gap-2">
-                                            <span class="font-semibold {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-pln-primary' : 'text-gray-500') }}">
+                                    <div class="flex-1 pb-3 sm:pb-4">
+                                        <div class="flex flex-wrap items-center gap-1 sm:gap-2">
+                                            <span class="font-semibold text-sm sm:text-base {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-pln-primary' : 'text-gray-500') }}">
                                                 {{ $step['label'] }}
                                             </span>
                                             @if($isCompleted)
-                                                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Selesai</span>
+                                                <span class="text-[10px] sm:text-xs bg-green-100 text-green-700 px-1.5 sm:px-2 py-0.5 rounded-full">Selesai</span>
                                             @elseif($isActive)
-                                                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full animate-pulse">Proses Saat Ini</span>
+                                                <span class="text-[10px] sm:text-xs bg-blue-100 text-blue-700 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">Proses</span>
                                             @endif
                                         </div>
-                                        <p class="text-sm text-gray-500">{{ $step['desc'] }}</p>
+                                        <p class="text-xs sm:text-sm text-gray-500">{{ $step['desc'] }}</p>
                                         @if($hasDetail)
-                                            <div class="mt-2 text-sm bg-gray-50 rounded-lg p-3">
+                                            <div class="mt-2 text-xs sm:text-sm bg-gray-50 rounded-lg p-2 sm:p-3">
                                                 @if($step['detail'])
                                                     <p class="text-gray-700">{!! $step['detail'] !!}</p>
                                                 @endif
                                                 @if($step['time'])
-                                                    <p class="text-gray-500 mt-1">
-                                                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <p class="text-gray-500 mt-1 flex flex-wrap items-center gap-1">
+                                                        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                         </svg>
-                                                        {{ $step['time'] }}
+                                                        <span>{{ $step['time'] }}</span>
                                                         @if($step['by'])
-                                                            <span class="ml-2">oleh <strong>{{ $step['by'] }}</strong></span>
+                                                            <span>oleh <strong>{{ $step['by'] }}</strong></span>
                                                         @endif
                                                     </p>
                                                 @endif
                                             </div>
                                         @elseif($isActive)
-                                            <div class="mt-2 text-sm bg-blue-50 rounded-lg p-3 text-blue-700">
-                                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div class="mt-2 text-xs sm:text-sm bg-blue-50 rounded-lg p-2 sm:p-3 text-blue-700">
+                                                <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                 </svg>
                                                 Menunggu proses...
@@ -474,93 +494,123 @@
             </div>
             @else
             {{-- DRAFT Status Card --}}
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center mb-6">
-                <div class="inline-flex items-center px-6 py-3 bg-gray-100 text-gray-700 rounded-lg">
-                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6 text-center mb-4 sm:mb-6">
+                <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-gray-100 text-gray-700 rounded-xl">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    <span class="font-semibold">Status: DRAFT - Menunggu persetujuan untuk dikirim</span>
+                    <span class="font-semibold text-sm sm:text-base text-center">Status: DRAFT - Menunggu persetujuan untuk dikirim</span>
                 </div>
             </div>
             @endif
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {{-- Info Card --}}
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg">
+                <div class="p-4 sm:p-6">
+                    <div class="grid grid-cols-2 gap-4 sm:gap-6">
                         <div>
-                            <p class="text-sm text-gray-500">Gudang Asal</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->gudangAsal->nama ?? '-' }}</p>
+                            <p class="text-xs sm:text-sm text-gray-500">Gudang Asal</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->gudangAsal->nama ?? '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500">Gudang Tujuan</p>
-                            <p class="font-semibold text-gray-900">{{ $gudangTujuanNama }}</p>
+                            <p class="text-xs sm:text-sm text-gray-500">Gudang Tujuan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $gudangTujuanNama }}</p>
                             @if($suratJalan->gudang_tujuan_is_custom)
-                                <p class="text-sm text-gray-500 font-normal">{{ $gudangTujuanAlamat }}</p>
-                                <p class="text-sm text-gray-500 font-normal">{{ $gudangTujuanTelepon }}</p>
+                                <p class="text-xs sm:text-sm text-gray-500 font-normal">{{ $gudangTujuanAlamat }}</p>
+                                <p class="text-xs sm:text-sm text-gray-500 font-normal">{{ $gudangTujuanTelepon }}</p>
                             @endif
                         </div>
-                        <div>
-                            <p class="text-sm text-gray-500">PIC Tujuan</p>
-                            <p class="font-semibold text-gray-900">
+                        <div class="col-span-2 sm:col-span-1">
+                            <p class="text-xs sm:text-sm text-gray-500">PIC Tujuan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">
                                 {{ $suratJalan->picTujuan->nama ?? '-' }}
                                 @if(!empty($suratJalan->picTujuan?->no_hp))
-                                    <span class="text-sm text-gray-500 font-normal">({{ $suratJalan->picTujuan->no_hp }})</span>
+                                    <span class="text-xs sm:text-sm text-gray-500 font-normal">({{ $suratJalan->picTujuan->no_hp }})</span>
                                 @endif
                             </p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500">Tanggal</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->tanggal?->format('Y-m-d') ?? '-' }}</p>
+                            <p class="text-xs sm:text-sm text-gray-500">Tanggal</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->tanggal?->format('d M Y') ?? '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500">Nama Driver</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->nama_driver ?? '-' }}</p>
+                            <p class="text-xs sm:text-sm text-gray-500">Nama Driver</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->nama_driver ?? '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500">Jenis Kendaraan</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->jenis_kendaraan ?? '-' }}</p>
+                            <p class="text-xs sm:text-sm text-gray-500">Jenis Kendaraan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->jenis_kendaraan ?? '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500">Nomor Plat</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->nomor_plat ?? '-' }}</p>
+                            <p class="text-xs sm:text-sm text-gray-500">Nomor Plat</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->nomor_plat ?? '-' }}</p>
                         </div>
                         @if(($suratJalan->tipe ?? '') === 'PEMINJAMAN')
                             <div>
-                                <p class="text-sm text-gray-500">Rencana Pengembalian</p>
-                                <p class="font-semibold text-gray-900">
-                                    {{ $peminjaman?->batas_waktu_kembali?->format('Y-m-d') ?? '-' }}
+                                <p class="text-xs sm:text-sm text-gray-500">Rencana Pengembalian</p>
+                                <p class="font-semibold text-sm sm:text-base text-gray-900">
+                                    {{ $peminjaman?->batas_waktu_kembali?->format('d M Y') ?? '-' }}
                                 </p>
                             </div>
                             @if($peminjaman?->waktu_pengembalian)
                             <div>
-                                <p class="text-sm text-gray-500">Tanggal Dikembalikan</p>
-                                <p class="font-semibold text-gray-900">
-                                    {{ $peminjaman->waktu_pengembalian->format('Y-m-d') }}
+                                <p class="text-xs sm:text-sm text-gray-500">Tanggal Dikembalikan</p>
+                                <p class="font-semibold text-sm sm:text-base text-gray-900">
+                                    {{ $peminjaman->waktu_pengembalian->format('d M Y') }}
                                 </p>
                             </div>
                             @endif
                         @endif
                         <div>
-                            <p class="text-sm text-gray-500">Tipe</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->tipe ?? '-' }}</p>
+                            <p class="text-xs sm:text-sm text-gray-500">Tipe</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->tipe ?? '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-500">Status</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->status ?? '-' }}</p>
+                            <p class="text-xs sm:text-sm text-gray-500">Status</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->status ?? '-' }}</p>
                         </div>
-                        <div class="md:col-span-2">
-                            <p class="text-sm text-gray-500">Catatan</p>
-                            <p class="font-semibold text-gray-900">{{ $suratJalan->catatan ?? '-' }}</p>
+                        <div class="col-span-2">
+                            <p class="text-xs sm:text-sm text-gray-500">Catatan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->catatan ?? '-' }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
-                <div class="p-6 border-b border-gray-100">
-                    <h3 class="text-lg font-bold text-gray-900">Item Surat Jalan</h3>
+            {{-- Items Section --}}
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
+                <div class="p-4 sm:p-6 border-b border-gray-100">
+                    <h3 class="text-base sm:text-lg font-bold text-gray-900">Item Surat Jalan</h3>
                 </div>
-                <div class="overflow-x-auto">
+
+                {{-- Mobile Cards View --}}
+                <div class="sm:hidden divide-y divide-gray-100">
+                    @forelse($suratJalan->items as $item)
+                        <div class="p-4">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <p class="font-medium text-gray-900 text-sm">{{ $item->item->nama ?? 'Item' }}</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">{{ $item->item->kode ?? '-' }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-pln-primary/10 text-pln-primary">
+                                        {{ $item->jumlah }} unit
+                                    </span>
+                                </div>
+                            </div>
+                            @if($item->keterangan)
+                                <p class="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg p-2">{{ $item->keterangan }}</p>
+                            @endif
+                        </div>
+                    @empty
+                        <div class="p-8 text-center text-gray-500 text-sm">
+                            Belum ada item.
+                        </div>
+                    @endforelse
+                </div>
+
+                {{-- Desktop Table View --}}
+                <div class="hidden sm:block overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -592,29 +642,29 @@
 
             {{-- Lampiran Gambar --}}
             @if($suratJalan->attachments->count() > 0)
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
-                    <div class="p-6 border-b border-gray-100">
-                        <h3 class="text-lg font-bold text-gray-900">Lampiran Dokumentasi</h3>
-                        <p class="text-sm text-gray-500">{{ $suratJalan->attachments->count() }} gambar</p>
+                <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
+                    <div class="p-4 sm:p-6 border-b border-gray-100">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">Lampiran Dokumentasi</h3>
+                        <p class="text-xs sm:text-sm text-gray-500">{{ $suratJalan->attachments->count() }} gambar</p>
                     </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="p-4 sm:p-6">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                             @foreach($suratJalan->attachments as $attachment)
                                 <div class="relative group">
                                     <a href="{{ Storage::url($attachment->file_path) }}" target="_blank">
                                         <img src="{{ Storage::url($attachment->file_path) }}"
                                              alt="{{ $attachment->file_name }}"
-                                             class="w-full h-40 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition">
+                                             class="w-full h-28 sm:h-40 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition">
                                     </a>
-                                    <p class="text-xs text-gray-500 mt-2 truncate">{{ $attachment->file_name }}</p>
+                                    <p class="text-[10px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2 truncate">{{ $attachment->file_name }}</p>
                                     @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
                                         <form action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}"
                                               method="POST"
-                                              class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
+                                              class="absolute top-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit"
-                                                    class="bg-red-500 hover:bg-red-600 text-white p-1 rounded-md"
+                                                    class="bg-red-500 hover:bg-red-600 active:scale-95 text-white p-1.5 sm:p-1 rounded-lg sm:rounded-md"
                                                     onclick="return confirm('Hapus lampiran ini?')">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -628,8 +678,8 @@
                     </div>
                 </div>
             @elseif($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg mt-6 p-4">
-                    <p class="text-yellow-800 text-sm">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl mt-4 sm:mt-6 p-4">
+                    <p class="text-yellow-800 text-xs sm:text-sm">
                         <strong>Perhatian:</strong> Belum ada lampiran gambar. Upload minimal 1 gambar sebelum mengirim surat jalan.
                         <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}" class="underline font-semibold">Edit draft untuk upload gambar</a>.
                     </p>
@@ -645,10 +695,10 @@
 
             {{-- Tombol Terima Barang untuk Operator Gudang Tujuan (status DIPERIKSA) --}}
             @if($suratJalan->status === 'DIPERIKSA' && $isGudangTujuan)
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
-                    <div class="p-6">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">Konfirmasi Penerimaan</h3>
-                        <p class="text-sm text-gray-600 mb-4">
+                <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
+                    <div class="p-4 sm:p-6">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Penerimaan</h3>
+                        <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                             @if($suratJalan->tipe === 'PENGEMBALIAN')
                                 Barang pengembalian telah diperiksa oleh security. Klik tombol di bawah untuk menerima barang dan menyelesaikan proses peminjaman.
                             @else
@@ -661,7 +711,7 @@
                             @csrf
                             <button type="submit"
                                     :disabled="submitting"
-                                    class="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-bold rounded-lg shadow-sm transition duration-150 flex items-center justify-center gap-3">
+                                    class="w-full sm:w-auto px-4 sm:px-6 py-3 sm:py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 flex items-center justify-center gap-2 sm:gap-3">
                                 <svg x-show="!submitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
@@ -669,7 +719,7 @@
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <span x-text="submitting ? 'Memproses...' : '{{ $suratJalan->tipe === "PENGEMBALIAN" ? "Terima & Selesaikan Peminjaman" : "Terima Barang" }}'"></span>
+                                <span x-text="submitting ? 'Memproses...' : '{{ $suratJalan->tipe === "PENGEMBALIAN" ? "Terima & Selesaikan" : "Terima Barang" }}'"></span>
                             </button>
                         </form>
                     </div>
@@ -678,14 +728,14 @@
 
             {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam (status DITERIMA, tipe PEMINJAMAN) --}}
             @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && $isGudangTujuan)
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
-                    <div class="p-6">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">Pengembalian Barang</h3>
-                        <p class="text-sm text-gray-600 mb-4">
+                <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
+                    <div class="p-4 sm:p-6">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Barang</h3>
+                        <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                             Barang peminjaman sudah diterima. Jika sudah selesai digunakan, Anda dapat membuat surat jalan pengembalian.
                         </p>
                         <a href="{{ route('gudang.surat-jalan.index') }}?open_return=1&peminjaman_id={{ $peminjaman?->id }}"
-                           class="inline-flex items-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg shadow-sm transition duration-150 gap-2">
+                           class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                             </svg>
@@ -696,10 +746,10 @@
             @endif
 
             @if($suratJalan->status === 'DITOLAK' && $isGudangAsal)
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
-                    <div class="p-6">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">Penyelesaian Surat Ditolak</h3>
-                        <p class="text-sm text-gray-600 mb-4">
+                <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
+                    <div class="p-4 sm:p-6">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Penyelesaian Surat Ditolak</h3>
+                        <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                             Surat jalan ini ditolak oleh security. Klik tombol di bawah untuk menandai proses sebagai selesai.
                         </p>
                         <form method="POST" action="{{ route('gudang.surat-jalan.finalize-rejected', $suratJalan->id) }}"
@@ -708,7 +758,7 @@
                             @csrf
                             <button type="submit"
                                     :disabled="submitting"
-                                    class="inline-flex items-center px-6 py-3 bg-gray-700 hover:bg-gray-800 disabled:bg-gray-500 text-white font-bold rounded-lg shadow-sm transition duration-150 gap-2">
+                                    class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-gray-700 hover:bg-gray-800 disabled:bg-gray-500 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
                                 <svg x-show="!submitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
@@ -725,10 +775,10 @@
 
             {{-- Konfirmasi Pengembalian Manual untuk Gudang Eksternal --}}
             @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'MENUNGGU_DIKEMBALIKAN' && $isGudangAsal && $suratJalan->gudang_tujuan_is_custom)
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
-                    <div class="p-6">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">Konfirmasi Pengembalian</h3>
-                        <p class="text-sm text-gray-600 mb-4">
+                <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
+                    <div class="p-4 sm:p-6">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Pengembalian</h3>
+                        <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                             Surat jalan ini dikirim ke gudang eksternal. Klik tombol di bawah jika barang sudah dikembalikan.
                         </p>
                         <form method="POST" action="{{ route('gudang.surat-jalan.confirm-return', $suratJalan->id) }}"
@@ -737,7 +787,7 @@
                             @csrf
                             <button type="submit"
                                     :disabled="submitting"
-                                    class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-bold rounded-lg shadow-sm transition duration-150 gap-2">
+                                    class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
                                 <svg x-show="!submitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
@@ -754,51 +804,55 @@
 
             {{-- Status Info Cards --}}
             @if($suratJalan->status === 'DIKIRIM' || $suratJalan->status === 'DIKEMBALIKAN')
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center mt-6">
-                    <div class="inline-flex items-center px-6 py-3 bg-blue-100 text-blue-800 rounded-lg">
-                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
+                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-blue-100 text-blue-800 rounded-xl">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
-                        <span class="font-semibold">Menunggu pemeriksaan oleh Security</span>
+                        <span class="font-semibold text-sm sm:text-base text-center">Menunggu pemeriksaan oleh Security</span>
                     </div>
                 </div>
             @elseif($suratJalan->status === 'MENUNGGU_DIKEMBALIKAN')
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mt-6">
-                    <div class="inline-flex items-center px-6 py-3 bg-yellow-100 text-yellow-800 rounded-lg">
-                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
+                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-yellow-100 text-yellow-800 rounded-xl">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
-                        <span class="font-semibold">Menunggu konfirmasi pengembalian</span>
+                        <span class="font-semibold text-sm sm:text-base text-center">Menunggu konfirmasi pengembalian</span>
                     </div>
                 </div>
             @elseif($suratJalan->status === 'DITERIMA' && $suratJalan->tipe === 'PEMINJAMAN' && !$isGudangTujuan)
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mt-6">
-                    <div class="inline-flex items-center px-6 py-3 bg-yellow-100 text-yellow-800 rounded-lg">
-                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
+                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-yellow-100 text-yellow-800 rounded-xl">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
-                        <span class="font-semibold">Barang dipinjam - Menunggu pengembalian</span>
+                        <span class="font-semibold text-sm sm:text-base text-center">Barang dipinjam - Menunggu pengembalian</span>
                     </div>
                 </div>
             @elseif($suratJalan->status === 'SELESAI')
-                <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center mt-6">
-                    <div class="inline-flex items-center px-6 py-3 bg-green-100 text-green-800 rounded-lg">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <div class="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
+                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-green-100 text-green-800 rounded-xl">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                         </svg>
-                        <span class="font-semibold">Surat Jalan telah SELESAI</span>
+                        <span class="font-semibold text-sm sm:text-base">Surat Jalan telah SELESAI</span>
                     </div>
                 </div>
             @elseif($suratJalan->status === 'DITOLAK')
-                <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center mt-6">
-                    <div class="inline-flex items-center px-6 py-3 bg-red-100 text-red-800 rounded-lg">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
+                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-red-100 text-red-800 rounded-xl">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                         </svg>
-                        <span class="font-semibold">Surat Jalan telah DITOLAK</span>
+                        <span class="font-semibold text-sm sm:text-base">Surat Jalan telah DITOLAK</span>
                     </div>
                 </div>
             @endif
         </div>
     </div>
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </x-app-layout>
