@@ -1,32 +1,45 @@
 <x-app-layout>
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-4 sm:py-8 lg:py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            @php
+                $isAdmin = Auth::user()->role === 'admin';
+                $adminNeedsGudang = $isAdmin && !Auth::user()->gudang_id;
+                $hasGudangContext = !$adminNeedsGudang || !empty($activeGudangId);
+                $headerNotices = [];
+                <!-- if ($isAdmin) {
+                    $headerNotices[] = 'Mode admin: surat jalan dapat langsung dibuat dan diselesaikan.';
+                }
+                if ($adminNeedsGudang && !$hasGudangContext) {
+                    $headerNotices[] = 'Pilih gudang terlebih dulu untuk membuat surat jalan.';
+                } -->
+            @endphp
             {{-- Flash Messages --}}
             @if(session('success'))
                 <div x-data="{ show: true }"
                      x-show="show"
                      x-init="setTimeout(() => show = false, 3000)"
-                     class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                     class="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto bg-green-500 text-white px-4 sm:px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2 text-sm sm:text-base">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
-                    {{ session('success') }}
+                    <span class="font-medium">{{ session('success') }}</span>
                 </div>
             @endif
 
+            {{-- Error ditampilkan di dalam modal popup, auto-open modal saat ada error --}}
             @if($errors->any())
-                <div class="mb-6 bg-red-50 border border-red-200 text-red-900 px-4 py-3 rounded-lg">
-                    <p class="font-semibold">Periksa kembali input Anda:</p>
-                    <ul class="list-disc list-inside text-sm mt-1">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
+                <script>
+                    document.addEventListener('alpine:init', () => {
+                        // Dispatch after Alpine is ready
+                        setTimeout(() => {
+                            window.dispatchEvent(new CustomEvent('open-modal', { detail: 'create-surat-jalan' }));
+                        }, 100);
+                    });
+                </script>
             @endif
 
             @if(session('warning'))
-                <div class="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-900 px-4 py-3 rounded-lg">
+                <div class="mb-4 sm:mb-6 bg-yellow-50 border border-yellow-200 text-yellow-900 px-4 py-3 rounded-xl text-sm sm:text-base">
                     <p class="font-semibold">Peringatan stok:</p>
                     @if(is_array(session('warning')))
                         <ul class="list-disc list-inside text-sm mt-1">
@@ -41,33 +54,70 @@
             @endif
 
             {{-- Header --}}
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                <div class="p-6">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">Surat Jalan Barang</h2>
-                            <p class="text-sm text-gray-600 mt-1">
-                                {{ Auth::user()->gudang->nama ?? 'Gudang Saya' }}
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
+                <div class="p-4 sm:p-6">
+                    @if(count($headerNotices) > 0)
+                        <div class="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-lg text-xs sm:text-sm">
+                            <div class="flex flex-col gap-1">
+                                @foreach($headerNotices as $notice)
+                                    <span>{{ $notice }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                    <div class="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:justify-between sm:items-center">
+                        <div class="text-center sm:text-left">
+                            <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Surat Jalan Barang</h2>
+                            <p class="text-xs sm:text-sm text-gray-600 mt-1">
+                                {{ $adminNeedsGudang && $activeGudangName ? $activeGudangName : (Auth::user()->gudang?->nama ?? '') }}
                             </p>
                         </div>
+                        @if($adminNeedsGudang)
+                        <form method="GET" action="{{ route('gudang.surat-jalan.index') }}" class="flex items-center gap-2">
+                            <input type="hidden" name="tab" value="{{ $tab }}">
+                            <label class="text-xs font-semibold text-gray-500 uppercase">Akses Gudang</label>
+                            <select name="gudang_id"
+                                    onchange="this.form.submit()"
+                                    class="rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                <option value="">Pilih gudang...</option>
+                                @foreach($adminGudangs as $gudang)
+                                    <option value="{{ $gudang->id }}" {{ (string) $activeGudangId === (string) $gudang->id ? 'selected' : '' }}>
+                                        {{ $gudang->kode }} - {{ $gudang->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                        @endif
                         @if($tab === 'keluar')
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             <button type="button"
-                                    class="inline-flex items-center px-4 py-2 bg-pln-primary hover:bg-pln-light text-white font-semibold rounded-md transition duration-150"
+                                    class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 {{ $isAdmin ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-pln-primary hover:bg-pln-light' }} active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    @if(!$hasGudangContext) disabled @endif
                                     @click="$dispatch('open-modal', 'create-surat-jalan')">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                 </svg>
-                                Buat Surat Jalan
+                                <span>{{ $isAdmin ? 'Buat Surat Jalan (Admin)' : 'Buat Surat Jalan' }}</span>
                             </button>
+                            @if(!$isAdmin || $hasGudangContext)
+                                <button type="button"
+                                        class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-yellow-500 hover:bg-yellow-600 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        @if(!$hasGudangContext) disabled @endif
+                                        @click="$dispatch('open-modal', 'return-peminjaman')">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                    </svg>
+                                    <span class="sm:hidden">Pengembalian</span>
+                                    <span class="hidden sm:inline">{{ $isAdmin ? 'Pengembalian (Admin)' : 'Pengembalian Peminjaman' }}</span>
+                                </button>
+                            @endif
                             <button type="button"
-                                    class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md transition duration-150"
-                                    @click="$dispatch('open-modal', 'return-peminjaman')">
+                                    class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm"
+                                    @click="$dispatch('open-modal', 'export-excel')">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h13l4 4v6a2 2 0 01-2 2H6a2 2 0 01-2-2V7zm0 0V5a2 2 0 012-2h9"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l4-4m0 0l4 4m-4-4v6"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
-                                Pengembalian Peminjaman
+                                <span>Export Excel</span>
                             </button>
                         </div>
                         @endif
@@ -76,27 +126,25 @@
             </div>
 
             {{-- Tabs Navigation --}}
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex" aria-label="Tabs">
                         <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'keluar']) }}"
-                           class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm {{ $tab === 'keluar' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
-                            <div class="flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                            <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                                 </svg>
                                 <span>Surat Keluar</span>
-                
                             </div>
                         </a>
                         <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
-                           class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm {{ $tab === 'masuk' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
-                            <div class="flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                            <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
                                 </svg>
                                 <span>Surat Masuk</span>
-
                             </div>
                         </a>
                     </nav>
@@ -105,168 +153,154 @@
 
             {{-- Statistics --}}
             @if($tab === 'keluar')
-            {{-- Stats for Surat Keluar --}}
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-pln-primary rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Total</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-gray-500 rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Draft</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['draft'] ?? 0 }}</dd>
-                                </dl>
+            {{-- Stats for Surat Keluar - Horizontal scroll on mobile --}}
+            <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 mb-4 sm:mb-6">
+                <div class="flex sm:grid sm:grid-cols-5 gap-3 sm:gap-4 min-w-max sm:min-w-0">
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-pln-primary rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Total</p>
+                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Dikirim</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['dikirim'] ?? 0 }}</dd>
-                                </dl>
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-gray-500 rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Draft</p>
+                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['draft'] ?? 0 }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Diterima</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['diterima'] ?? 0 }}</dd>
-                                </dl>
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-blue-500 rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Dikirim</p>
+                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['dikirim'] ?? 0 }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-yellow-500 rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Diterima</p>
+                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['diterima'] ?? 0 }}</p>
+                                </div>
                             </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Selesai</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['selesai'] ?? 0 }}</dd>
-                                </dl>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-green-500 rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Selesai</p>
+                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['selesai'] ?? 0 }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             @else
-            {{-- Stats for Surat Masuk --}}
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-pln-primary rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Total</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Menunggu Konfirmasi</dt>
-                                    <dd class="text-lg font-bold text-yellow-600">{{ $stats['menunggu'] ?? 0 }}</dd>
-                                </dl>
+            {{-- Stats for Surat Masuk - Horizontal scroll on mobile --}}
+            <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 mb-4 sm:mb-6">
+                <div class="flex sm:grid sm:grid-cols-4 gap-3 sm:gap-4 min-w-max sm:min-w-0">
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-pln-primary rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Total</p>
+                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Diterima</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['diterima'] ?? 0 }}</dd>
-                                </dl>
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[160px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-yellow-500 rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Menunggu</p>
+                                    <p class="text-lg sm:text-xl font-bold text-yellow-600">{{ $stats['menunggu'] ?? 0 }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
-                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-blue-500 rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Diterima</p>
+                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['diterima'] ?? 0 }}</p>
+                                </div>
                             </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Selesai</dt>
-                                    <dd class="text-lg font-bold text-gray-900">{{ $stats['selesai'] ?? 0 }}</dd>
-                                </dl>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-green-500 rounded-lg p-2.5 sm:p-3">
+                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 sm:ml-5">
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Selesai</p>
+                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['selesai'] ?? 0 }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -275,86 +309,117 @@
             @endif
 
             {{-- Filters --}}
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                <div class="p-6">
-                    <form method="GET" action="{{ route('gudang.surat-jalan.index') }}" class="grid grid-cols-1 md:grid-cols-7 gap-4">
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showFilters: false }">
+                <div class="p-4 sm:p-6">
+                    {{-- Mobile Filter Toggle --}}
+                    <button type="button"
+                            @click="showFilters = !showFilters"
+                            class="sm:hidden w-full flex items-center justify-between text-gray-700 font-medium mb-3">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                            </svg>
+                            Filter & Pencarian
+                        </span>
+                        <svg class="w-5 h-5 transition-transform" :class="showFilters ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <form method="GET" action="{{ route('gudang.surat-jalan.index') }}"
+                          class="sm:grid sm:grid-cols-7 gap-3 sm:gap-4"
+                          :class="{ 'hidden sm:grid': !showFilters }">
                         <input type="hidden" name="tab" value="{{ $tab }}">
-                        <div class="md:col-span-2">
-                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari Nomor</label>
+
+                        {{-- Search --}}
+                        <div class="sm:col-span-2 mb-3 sm:mb-0">
+                            <label for="search" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Cari Nomor</label>
                             <input type="text"
                                    name="search"
                                    id="search"
                                    value="{{ $filters['search'] ?? '' }}"
-                                   placeholder="Contoh: SJ-2025..."
+                                   placeholder="Contoh: 705/SJ251223/2025"
                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                         </div>
-                        <div>
-                            <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                            <select name="status"
-                                    id="status"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                                <option value="">Semua</option>
-                                @if($tab === 'keluar')
-                                    @foreach(['DRAFT','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
-                                        <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                            {{ $statusOption }}
+
+                        {{-- Status & Tipe in same row on mobile --}}
+                        <div class="grid grid-cols-2 gap-3 sm:contents mb-3 sm:mb-0">
+                            <div>
+                                <label for="status" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select name="status"
+                                        id="status"
+                                        class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
+                                    <option value="">Semua</option>
+                                    @if($tab === 'keluar')
+                                        @foreach(['DRAFT','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
+                                            <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
+                                                {{ $statusOption }}
+                                            </option>
+                                        @endforeach
+                                    @else
+                                        @foreach(['DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
+                                            <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
+                                                {{ in_array($statusOption, ['DIKIRIM', 'DIKEMBALIKAN']) ? 'MENUNGGU' : $statusOption }}
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div>
+                                <label for="tipe" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Tipe</label>
+                                <select name="tipe"
+                                        id="tipe"
+                                        class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
+                                    <option value="">Semua</option>
+                                    @foreach(['TRANSFER','PEMINJAMAN','PENGEMBALIAN'] as $tipeOption)
+                                        <option value="{{ $tipeOption }}" {{ ($filters['tipe'] ?? '') === $tipeOption ? 'selected' : '' }}>
+                                            {{ $tipeOption }}
                                         </option>
                                     @endforeach
-                                @else
-                                    @foreach(['DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
-                                        <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                            {{ in_array($statusOption, ['DIKIRIM', 'DIKEMBALIKAN']) ? 'MENUNGGU PEMERIKSAAN' : $statusOption }}
-                                        </option>
-                                    @endforeach
-                                @endif
-                            </select>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label for="tipe" class="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
-                            <select name="tipe"
-                                    id="tipe"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                                <option value="">Semua</option>
-                                @foreach(['TRANSFER','PEMINJAMAN','PENGEMBALIAN'] as $tipeOption)
-                                    <option value="{{ $tipeOption }}" {{ ($filters['tipe'] ?? '') === $tipeOption ? 'selected' : '' }}>
-                                        {{ $tipeOption }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label for="order_by" class="block text-sm font-medium text-gray-700 mb-1">Urutkan</label>
+
+                        {{-- Order --}}
+                        <div class="hidden sm:block">
+                            <label for="order_by" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Urutkan</label>
                             <select name="order_by"
                                     id="order_by"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                    class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
                                 <option value="terbaru" {{ ($filters['order_by'] ?? 'terbaru') === 'terbaru' ? 'selected' : '' }}>Terbaru</option>
                                 <option value="terlama" {{ ($filters['order_by'] ?? '') === 'terlama' ? 'selected' : '' }}>Terlama</option>
                             </select>
                         </div>
-                        <div>
-                            <label for="tanggal_mulai" class="block text-sm font-medium text-gray-700 mb-1">Dari</label>
-                            <input type="date"
-                                   name="tanggal_mulai"
-                                   id="tanggal_mulai"
-                                   value="{{ $filters['tanggal_mulai'] ?? '' }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+
+                        {{-- Date Range --}}
+                        <div class="grid grid-cols-2 gap-3 sm:contents mb-3 sm:mb-0">
+                            <div>
+                                <label for="tanggal_mulai" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Dari</label>
+                                <input type="date"
+                                       name="tanggal_mulai"
+                                       id="tanggal_mulai"
+                                       value="{{ $filters['tanggal_mulai'] ?? '' }}"
+                                       class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
+                            </div>
+                            <div>
+                                <label for="tanggal_selesai" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Sampai</label>
+                                <input type="date"
+                                       name="tanggal_selesai"
+                                       id="tanggal_selesai"
+                                       value="{{ $filters['tanggal_selesai'] ?? '' }}"
+                                       class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
+                            </div>
                         </div>
-                        <div>
-                            <label for="tanggal_selesai" class="block text-sm font-medium text-gray-700 mb-1">Sampai</label>
-                            <input type="date"
-                                   name="tanggal_selesai"
-                                   id="tanggal_selesai"
-                                   value="{{ $filters['tanggal_selesai'] ?? '' }}"
-                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                        </div>
+
+                        {{-- Buttons --}}
                         <div class="flex items-end gap-2">
                             <button type="submit"
-                                    class="flex-1 bg-pln-primary hover:bg-pln-light text-white font-medium py-2 px-4 rounded-md transition duration-150">
+                                    class="flex-1 bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-2 px-4 rounded-lg sm:rounded-md transition duration-150 text-sm">
                                 Filter
                             </button>
                             @if(($filters['search'] ?? '') || ($filters['status'] ?? '') || ($filters['tipe'] ?? '') || ($filters['tanggal_mulai'] ?? '') || ($filters['tanggal_selesai'] ?? '') || ($filters['order_by'] ?? 'terbaru') !== 'terbaru')
                                 <a href="{{ route('gudang.surat-jalan.index', ['tab' => $tab]) }}"
-                                   class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150">
+                                   class="bg-gray-200 hover:bg-gray-300 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-2 px-4 rounded-lg sm:rounded-md transition duration-150 text-sm">
                                     Reset
                                 </a>
                             @endif
@@ -364,17 +429,88 @@
             </div>
 
             {{-- Table --}}
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 border-b border-gray-100">
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg">
+                <div class="p-4 sm:p-6 border-b border-gray-100">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-gray-900">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">
                             {{ $tab === 'keluar' ? 'Daftar Surat Keluar' : 'Daftar Surat Masuk' }}
                         </h3>
-                        <div class="text-sm text-gray-500">Terbaru (maks. 50)</div>
+                        <div class="text-xs sm:text-sm text-gray-500">Terbaru (maks. 50)</div>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
+                {{-- Mobile Card View --}}
+                <div class="sm:hidden divide-y divide-gray-100">
+                    @forelse($suratJalans as $sj)
+                        @php
+                            $status = $sj->status ?? 'DRAFT';
+                            $statusClass = match ($status) {
+                                'DRAFT' => 'bg-gray-100 text-gray-800',
+                                'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                                'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
+                                'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
+                                'DIPERIKSA' => 'bg-purple-100 text-purple-800',
+                                'DITERIMA' => 'bg-yellow-100 text-yellow-800',
+                                'DITOLAK' => 'bg-red-100 text-red-800',
+                                'SELESAI' => 'bg-green-100 text-green-800',
+                                default => 'bg-gray-100 text-gray-800',
+                            };
+                            $tipeLabel = $sj->tipe ?? '-';
+                            $tipeClass = match ($tipeLabel) {
+                                'PEMINJAMAN' => 'bg-blue-100 text-blue-800',
+                                'PENGEMBALIAN' => 'bg-green-100 text-green-800',
+                                'TRANSFER' => 'bg-purple-100 text-purple-800',
+                                default => 'bg-gray-100 text-gray-700',
+                            };
+                        @endphp
+                        <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}" class="block p-4 hover:bg-gray-50 active:bg-gray-100 transition">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-gray-900 text-sm truncate">{{ $sj->nomor ?? '-' }}</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">{{ $sj->tanggal?->format('d M Y') ?? '-' }}</p>
+                                </div>
+                                <div class="flex flex-col items-end gap-1">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $statusClass }}">
+                                        {{ $status }}
+                                    </span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium {{ $tipeClass }}">
+                                        {{ $tipeLabel }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <p class="text-gray-400">Dari</p>
+                                    <p class="text-gray-700 truncate">{{ $sj->gudangAsal->nama ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400">Ke</p>
+                                    <p class="text-gray-700 truncate">{{ $sj->gudang_tujuan_is_custom ? ($sj->gudang_tujuan_custom_nama ?? 'Gudang Lainnya') : ($sj->gudangTujuan->nama ?? '-') }}</p>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex items-center justify-between text-xs">
+                                <span class="text-gray-500">{{ $sj->items_count ?? 0 }} item / {{ $sj->items_sum_jumlah ?? 0 }} unit</span>
+                                <span class="text-pln-primary font-medium flex items-center gap-1">
+                                    Detail
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </span>
+                            </div>
+                        </a>
+                    @empty
+                        <div class="p-8 text-center text-gray-500">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                            </svg>
+                            <p class="mt-2 font-medium text-sm">Belum ada Surat Jalan</p>
+                            <p class="text-xs">Mulai dengan membuat Surat Jalan baru.</p>
+                        </div>
+                    @endforelse
+                </div>
+
+                {{-- Desktop Table View --}}
+                <div class="hidden sm:block overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -422,7 +558,7 @@
                                         {{ $sj->gudang_tujuan_is_custom ? ($sj->gudang_tujuan_custom_nama ?? 'Gudang Lainnya') : ($sj->gudangTujuan->nama ?? '-') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $sj->picTujuan->nama ?? '-' }}
+                                        {{ $sj->picTujuan->nama ?? $sj->pic_tujuan_custom_nama ?? '-' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         @php
@@ -503,7 +639,7 @@
             x-data="{
                 mode: @js(old('mode', 'transfer')),
                 items: @js(old('items', [['item_id' => '', 'jumlah' => 1, 'keterangan' => '']])),
-                
+
                 // State untuk Gudang Tujuan
                 gudangOpen: false,
                 gudangMode: @js(old('gudang_tujuan_mode', 'existing')),
@@ -516,7 +652,7 @@
                     alamat: @js(old('gudang_custom_alamat', '')),
                     telepon: @js(old('gudang_custom_telepon', '')),
                 },
-                
+
                 // State untuk PIC Tujuan
                 picOpen: false,
                 selectedPic: @js(old('pic_tujuan_id', '')),
@@ -529,20 +665,27 @@
                     no_hp: @js(old('pic_custom_no_hp', '')),
                 },
 
-                // Data Pendukung
-                itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
-                itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
+                  // Data Pendukung
+                  itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
+                  itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
+                  adminUsers: @js(($adminUsers ?? collect())->values()),
+                  asalGudangId: @js($activeGudangId),
+                  selectedPengirim: @js(old('ttd_pembuat_id', '')),
+
+                // Error handling
+                errors: @js($errors->toArray()),
+                submitting: false,
 
                 addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
-                
+
                 get filteredGudangs() {
-                    return this.allGudangs.filter(g => 
-                        g.nama.toLowerCase().includes(this.gudSearch?.toLowerCase() || '') || 
+                    return this.allGudangs.filter(g =>
+                        g.nama.toLowerCase().includes(this.gudSearch?.toLowerCase() || '') ||
                         g.kode.toLowerCase().includes(this.gudSearch?.toLowerCase() || '')
                     );
                 },
-                
+
                 get filteredPics() {
                     if (this.isCustomGudang || isNaN(this.selectedGudang) || this.selectedGudang === '') {
                         return [];
@@ -580,13 +723,40 @@
                     }
                 }
             }">
-            
+
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold text-gray-900">Buat Surat Jalan Baru</h3>
                 <button type="button" @click="$dispatch('close-modal', 'create-surat-jalan')" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
+
+            {{-- Error Alert inside Modal --}}
+            <template x-if="hasErrors">
+                <div class="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        <div>
+                            <p class="font-semibold">Periksa kembali input Anda:</p>
+                            <ul class="list-disc list-inside text-xs mt-1 space-y-0.5">
+                                <template x-for="(errorArr, field) in errors" :key="field">
+                                    <template x-for="error in (Array.isArray(errorArr) ? errorArr : [errorArr])" :key="error">
+                                        <li x-text="error"></li>
+                                    </template>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            @if($isAdmin)
+                <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    Mode admin: surat jalan akan langsung diselesaikan saat Anda memilih tombol admin.
+                </div>
+            @endif
 
             {{-- Mode Switcher --}}
             <div class="flex gap-3 mb-6">
@@ -600,9 +770,12 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
-                @csrf
-                <input type="hidden" name="mode" :value="mode">
+              <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
+                  @csrf
+                  @if($adminNeedsGudang)
+                      <input type="hidden" name="gudang_asal_id" value="{{ $activeGudangId }}">
+                  @endif
+                  <input type="hidden" name="mode" :value="mode">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     
@@ -697,11 +870,11 @@
                         </div>
                     </div>
 
-                    <div x-show="isCustomPic" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC</label>
+                  <div x-show="isCustomPic" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                              <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC</label>
                                 <input type="text" name="pic_custom_nama" x-model="customPic.nama"
                                        class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             </div>
@@ -714,9 +887,37 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">No HP</label>
                                 <input type="text" name="pic_custom_no_hp" x-model="customPic.no_hp"
                                        class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
-                            </div>
-                        </div>
-                    </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  @if($isAdmin)
+                  <div class="md:col-span-2 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                      <p class="text-sm font-semibold text-emerald-800 mb-3">Penandatangan (Admin)</p>
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                              <label class="block text-sm font-medium text-gray-700 mb-1">Pengirim</label>
+                              <select name="ttd_pembuat_id"
+                                      x-model="selectedPengirim"
+                                      required
+                                      class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                                  <option value="">Pilih pengirim...</option>
+                                  <template x-for="user in filteredPengirimUsers" :key="user.id">
+                                      <option :value="user.id" x-text="user.name + (user.jabatan ? ' - ' + user.jabatan : '')"></option>
+                                  </template>
+                              </select>
+                              <p class="text-xs text-gray-500 mt-1">Diambil dari pengguna gudang asal.</p>
+                          </div>
+                          <div>
+                              <label class="block text-sm font-medium text-gray-700 mb-1">Penerima</label>
+                              <div class="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                  Mengikuti PIC tujuan
+                              </div>
+                              <p class="text-xs text-gray-500 mt-1">Penerima selalu menggunakan PIC tujuan.</p>
+                          </div>
+                      </div>
+                  </div>
+                  @endif
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kirim</label>
                         <input type="date" name="tanggal_kirim" value="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
@@ -728,16 +929,36 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Driver & No. Plat</label>
-                        <div class="flex gap-2">
-                            <input type="text" name="nama_driver" placeholder="Driver" class="w-2/3 rounded-md border-gray-300">
-                            <input type="text" name="nomor_plat" placeholder="B 1234 XX" class="w-1/3 rounded-md border-gray-300">
-                        </div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver <span class="text-red-500">*</span></label>
+                        <input type="text" name="nama_driver" placeholder="Nama driver" required
+                               value="{{ old('nama_driver') }}"
+                               class="w-full rounded-md shadow-sm focus:ring-pln-primary focus:border-pln-primary"
+                               :class="getError('nama_driver') ? 'border-red-500' : 'border-gray-300'">
+                        <template x-if="getError('nama_driver')">
+                            <p class="text-xs text-red-500 mt-1" x-text="getError('nama_driver')"></p>
+                        </template>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
-                        <input type="text" name="jenis_kendaraan" placeholder="Contoh: Truk Box" class="w-full rounded-md border-gray-300">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat <span class="text-red-500">*</span></label>
+                        <input type="text" name="nomor_plat" placeholder="B 1234 XX" required
+                               value="{{ old('nomor_plat') }}"
+                               class="w-full rounded-md shadow-sm focus:ring-pln-primary focus:border-pln-primary"
+                               :class="getError('nomor_plat') ? 'border-red-500' : 'border-gray-300'">
+                        <template x-if="getError('nomor_plat')">
+                            <p class="text-xs text-red-500 mt-1" x-text="getError('nomor_plat')"></p>
+                        </template>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan <span class="text-red-500">*</span></label>
+                        <input type="text" name="jenis_kendaraan" placeholder="Contoh: Truk Box" required
+                               value="{{ old('jenis_kendaraan') }}"
+                               class="w-full rounded-md shadow-sm focus:ring-pln-primary focus:border-pln-primary"
+                               :class="getError('jenis_kendaraan') ? 'border-red-500' : 'border-gray-300'">
+                        <template x-if="getError('jenis_kendaraan')">
+                            <p class="text-xs text-red-500 mt-1" x-text="getError('jenis_kendaraan')"></p>
+                        </template>
                     </div>
 
                     <div class="md:col-span-2">
@@ -788,7 +1009,7 @@
                 {{-- Lampiran Gambar --}}
                 <div class="border rounded-lg p-4 bg-gray-50">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, maks 3 gambar, maks 10MB/gambar)</span>
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
                     </label>
                     <input type="file"
                            name="attachments[]"
@@ -798,8 +1019,16 @@
                     <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
                 </div>
 
-                <div class="flex justify-end gap-3 pt-4 border-t">
+                <div class="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-end">
                     <button type="button" @click="$dispatch('close-modal', 'create-surat-jalan')" class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md">Batal</button>
+                    @if(Auth::user()->role === 'admin')
+                        <button type="submit"
+                                name="admin_finish"
+                                value="1"
+                                class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 flex items-center gap-2">
+                            Simpan dan Selesaikan (Admin)
+                        </button>
+                    @endif
                     <button type="submit"
                             class="px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light flex items-center gap-2">
                         Simpan Draft
@@ -968,6 +1197,9 @@
                 <div>
                     <h3 class="text-lg font-bold text-gray-900">Pengembalian Peminjaman Barang</h3>
                     <p class="text-sm text-gray-500 mt-1">Pilih kode peminjaman, lalu sistem menyiapkan surat jalan pengembalian.</p>
+                    @if($isAdmin)
+                        <p class="text-xs text-emerald-700 mt-2">Mode admin: surat pengembalian akan langsung diselesaikan.</p>
+                    @endif
                 </div>
                 <button type="button" class="text-gray-400 hover:text-gray-600"
                         x-on:click="$dispatch('close-modal', 'return-peminjaman')">
@@ -977,8 +1209,11 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6">
-                @csrf
+                <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
+                    @csrf
+                    @if($isAdmin)
+                        <input type="hidden" name="admin_finish" value="1">
+                    @endif
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>
@@ -1056,6 +1291,19 @@
                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">{{ old('catatan') }}</textarea>
                 </div>
 
+                {{-- Lampiran Gambar --}}
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
+                    </label>
+                    <input type="file"
+                           name="attachments[]"
+                           multiple
+                           accept="image/jpeg,image/jpg,image/png"
+                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
+                </div>
+
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
                     <div class="p-4">
                         <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
@@ -1098,9 +1346,104 @@
                             x-on:click="$dispatch('close-modal', 'return-peminjaman')">
                         Batal
                     </button>
+                      <button type="submit"
+                              class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                          {{ $isAdmin ? 'Simpan dan Selesaikan (Admin)' : 'Simpan Draft Pengembalian' }}
+                      </button>
+                  </div>
+              </form>
+          </div>
+      </x-modal>
+
+    {{-- Export Excel Modal --}}
+    <x-modal name="export-excel" focusable maxWidth="md">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-900">Export Surat Jalan ke Excel</h3>
+                <button type="button"
+                        @click="$dispatch('close-modal', 'export-excel')"
+                        class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="GET"
+                  action="{{ route('gudang.surat-jalan.export-excel') }}"
+                  x-data="{
+                      periode: '1_bulan',
+                      showCustom: false,
+                      updatePeriode() {
+                          this.showCustom = this.periode === 'custom';
+                      }
+                  }"
+                  class="space-y-5">
+
+                {{-- Type Filter --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Surat Jalan</label>
+                    <select name="tipe"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                        <option value="ALL">Semua Tipe</option>
+                        <option value="TRANSFER">Transfer</option>
+                        <option value="PEMINJAMAN">Peminjaman</option>
+                        <option value="PENGEMBALIAN">Pengembalian</option>
+                    </select>
+                </div>
+
+                {{-- Period Filter --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Periode</label>
+                    <select name="periode"
+                            x-model="periode"
+                            @change="updatePeriode()"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                        <option value="1_minggu">1 Minggu Terakhir</option>
+                        <option value="1_bulan">1 Bulan Terakhir</option>
+                        <option value="3_bulan">3 Bulan Terakhir</option>
+                        <option value="6_bulan">6 Bulan Terakhir</option>
+                        <option value="1_tahun">1 Tahun Terakhir</option>
+                        <option value="custom">Custom (Pilih Tanggal)</option>
+                    </select>
+                </div>
+
+                {{-- Custom Date Range --}}
+                <div x-show="showCustom" x-cloak class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+                        <input type="date"
+                               name="tanggal_mulai"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
+                        <input type="date"
+                               name="tanggal_selesai"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+                </div>
+
+                {{-- Info --}}
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-sm text-blue-700">
+                        <span class="font-medium">Info:</span> Data yang diekspor hanya surat keluar.
+                    </p>
+                </div>
+
+                {{-- Action Buttons --}}
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button"
+                            @click="$dispatch('close-modal', 'export-excel')"
+                            class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">
+                        Batal
+                    </button>
                     <button type="submit"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
-                        Simpan Draft Pengembalian
+                            class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Download Excel
                     </button>
                 </div>
             </form>

@@ -26,9 +26,10 @@ class StokController extends Controller
         $stocks = ItemStock::with(['item', 'gudang'])
             ->where('gudang_id', $gudangId)
             ->when($search, function ($query, $search) {
-                $query->whereHas('item', function ($q) use ($search) {
-                    $q->where('nama', 'like', "%{$search}%")
-                        ->orWhere('kode', 'like', "%{$search}%");
+                $searchLower = strtolower($search);
+                $query->whereHas('item', function ($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                        ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
                 });
             })
             ->when($kategori, function ($query, $kategori) {
@@ -142,14 +143,15 @@ class StokController extends Controller
         $movements = StockMovement::with(['item', 'gudang', 'creator'])
             ->where('gudang_id', $gudangId)
             ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->whereHas('item', function ($itemQuery) use ($search) {
-                        $itemQuery->where('nama', 'like', "%{$search}%")
-                            ->orWhere('kode', 'like', "%{$search}%");
+                $searchLower = strtolower($search);
+                $query->where(function ($q) use ($searchLower) {
+                    $q->whereHas('item', function ($itemQuery) use ($searchLower) {
+                        $itemQuery->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                            ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
                     })
-                    ->orWhere('keterangan', 'like', "%{$search}%")
-                    ->orWhereHas('creator', function ($userQuery) use ($search) {
-                        $userQuery->where('name', 'like', "%{$search}%");
+                    ->orWhereRaw('LOWER(keterangan) LIKE ?', ["%{$searchLower}%"])
+                    ->orWhereHas('creator', function ($userQuery) use ($searchLower) {
+                        $userQuery->whereRaw('LOWER(name) LIKE ?', ["%{$searchLower}%"]);
                     });
                 });
             })
@@ -193,18 +195,19 @@ class StokController extends Controller
             ->where('gudang_pemilik_id', $gudangId)
             ->whereIn('status', $activeStatuses)
             ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('kode', 'like', "%{$search}%")
-                        ->orWhereHas('gudangPeminjam', function ($gq) use ($search) {
-                            $gq->where('nama', 'like', "%{$search}%");
+                $searchLower = strtolower($search);
+                $query->where(function ($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"])
+                        ->orWhereHas('gudangPeminjam', function ($gq) use ($searchLower) {
+                            $gq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
                         })
-                        ->orWhere(function ($gq) use ($search) {
+                        ->orWhere(function ($gq) use ($searchLower) {
                             $gq->where('gudang_peminjam_is_custom', true)
-                                ->where('gudang_peminjam_custom_nama', 'like', "%{$search}%");
+                                ->whereRaw('LOWER(gudang_peminjam_custom_nama) LIKE ?', ["%{$searchLower}%"]);
                         })
-                        ->orWhereHas('items.item', function ($iq) use ($search) {
-                            $iq->where('nama', 'like', "%{$search}%")
-                                ->orWhere('kode', 'like', "%{$search}%");
+                        ->orWhereHas('items.item', function ($iq) use ($searchLower) {
+                            $iq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                                ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
                         });
                 });
             })
@@ -255,14 +258,15 @@ class StokController extends Controller
             ->where('gudang_peminjam_id', $gudangId)
             ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN'])
             ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('kode', 'like', "%{$search}%")
-                        ->orWhereHas('gudangPemilik', function ($gq) use ($search) {
-                            $gq->where('nama', 'like', "%{$search}%");
+                $searchLower = strtolower($search);
+                $query->where(function ($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"])
+                        ->orWhereHas('gudangPemilik', function ($gq) use ($searchLower) {
+                            $gq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
                         })
-                        ->orWhereHas('items.item', function ($iq) use ($search) {
-                            $iq->where('nama', 'like', "%{$search}%")
-                                ->orWhere('kode', 'like', "%{$search}%");
+                        ->orWhereHas('items.item', function ($iq) use ($searchLower) {
+                            $iq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                                ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
                         });
                 });
             })

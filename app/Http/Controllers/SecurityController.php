@@ -23,8 +23,9 @@ class SecurityController extends Controller
 
         $nomor = $request->input('nomor');
 
+        $nomorLower = strtolower($nomor);
         $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item'])
-            ->where('nomor', 'like', '%' . $nomor . '%')
+            ->whereRaw('LOWER(nomor) LIKE ?', ['%' . $nomorLower . '%'])
             ->first();
 
         if (!$suratJalan) {

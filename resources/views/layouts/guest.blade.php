@@ -12,38 +12,10 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-gray-900 antialiased bg-gray-100">
-        {{-- Mobile Layout --}}
-        <div class="min-h-screen lg:hidden bg-[#f0f9ff]">
-            {{-- Mobile Header with Logo --}}
-            <div class="pt-8 pb-4 text-center">
-                <a href="/" class="inline-block">
-                    <img src="{{ asset('Logo_PLN_NusantaraPower.png') }}"
-                         alt="PLN Logo"
-                         class="h-20 mx-auto mb-3">
-                    <h1 class="text-xl font-extrabold text-[#00aff0] tracking-wide uppercase">E-Storage</h1>
-                </a>
-            </div>
-
-            {{-- Mobile Form --}}
-            <div class="px-4 py-4">
-                <div class="max-w-md mx-auto">
-                    {{ $slot }}
-                </div>
-            </div>
-
-            {{-- Mobile Footer --}}
-            <div class="text-center py-4 text-xs text-gray-400">
-                PLN Nusantara Power
-            </div>
-        </div>
-
-        {{-- Desktop Layout --}}
-        <div class="hidden lg:flex min-h-screen bg-gradient-to-br from-[#035b71] via-[#047d99] to-[#00aff0]">
-            <div class="w-full flex flex-col items-center justify-center p-12">
-                <div class="w-full max-w-md">
-                    {{ $slot }}
-                </div>
+    <body class="font-sans text-gray-900 antialiased">
+        <div class="min-h-screen flex flex-col items-center justify-center px-4 py-8 sm:p-12 bg-gradient-to-br from-[#035b71] via-[#047d99] to-[#00aff0]">
+            <div class="w-full max-w-md">
+                {{ $slot }}
             </div>
         </div>
     </body>

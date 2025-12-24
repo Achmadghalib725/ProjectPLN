@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="py-12 bg-gray-50/50 min-h-screen"
+    <div class="py-4 sm:py-8 lg:py-12"
          x-data="{
             showModal: {{ $errors->any() ? 'true' : 'false' }},
             isEdit: {{ old('_method') === 'PUT' ? 'true' : 'false' }},
@@ -25,23 +25,25 @@
             }
          }"
     >
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-            {{-- Header Section with Gradient --}}
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800 tracking-tight">
-                        Kelola PIC
-                    </h2>
-                    <p class="text-sm text-gray-500 mt-1">Daftar semua Person In Charge (PIC) untuk pengisian surat jalan.</p>
+            {{-- Header Section --}}
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg">
+                <div class="p-4 sm:p-6">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+                        <div class="text-center sm:text-left">
+                            <h2 class="text-xl sm:text-2xl font-bold text-[#035b71]">Kelola PIC</h2>
+                            <p class="text-xs sm:text-sm text-slate-500 mt-1">Daftar semua Person In Charge (PIC) untuk pengisian surat jalan.</p>
+                        </div>
+                        <button @click="openCreate()"
+                           class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-[#035b71] border border-transparent rounded-lg sm:rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-[#00aff0] active:scale-95 focus:outline-none transition ease-in-out duration-150">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Tambah PIC Baru
+                        </button>
+                    </div>
                 </div>
-                <button @click="openCreate()"
-                   class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-lg shadow-md hover:shadow-lg hover:from-blue-700 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transform hover:-translate-y-0.5">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    Tambah PIC Baru
-                </button>
             </div>
 
             {{-- Alerts --}}
@@ -60,27 +62,27 @@
             @endif
 
             {{-- Main Content Card --}}
-            <div class="bg-white border border-gray-100 rounded-2xl shadow-xl shadow-gray-200/50 overflow-hidden">
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-slate-200">
 
                 {{-- Toolbar (Filter & Search) --}}
-                <div class="p-6 border-b border-gray-100 bg-white">
+                <div class="p-4 sm:p-6 border-b border-slate-200">
                     <form method="GET" action="{{ route('admin.pics.index') }}" class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 
                         {{-- Search --}}
                         <div class="relative w-full md:w-96 group">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-5 h-5 text-gray-400 group-focus-within:text-cyan-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5 text-slate-400 group-focus-within:text-[#035b71] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                             </div>
                             <input type="text" name="search" value="{{ request('search') }}"
-                                class="block w-full p-2.5 pl-10 text-sm text-gray-900 border border-gray-200 rounded-lg bg-gray-50 focus:ring-cyan-500 focus:border-cyan-500 transition-all focus:bg-white"
+                                class="block w-full p-2.5 pl-10 text-sm text-gray-900 border border-slate-300 rounded-md focus:ring-[#035b71] focus:border-[#035b71] transition-all"
                                 placeholder="Cari nama, jabatan, atau no HP...">
                         </div>
 
                         {{-- Filters --}}
                         <div class="flex items-center space-x-3 w-full md:w-auto">
-                            <select name="gudang_id" onchange="this.form.submit()" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full md:w-48 p-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
+                            <select name="gudang_id" onchange="this.form.submit()" class="border border-slate-300 text-gray-900 text-sm rounded-md focus:ring-[#035b71] focus:border-[#035b71] block w-full md:w-48 p-2.5 cursor-pointer hover:bg-slate-50 transition-colors">
                                 <option value="">Semua Gudang</option>
                                 @foreach($gudangs as $gudang)
                                     <option value="{{ $gudang->id }}" {{ request('gudang_id') == $gudang->id ? 'selected' : '' }}>{{ $gudang->nama }}</option>
@@ -88,8 +90,8 @@
                             </select>
 
                             @if(request('search') || request('gudang_id'))
-                                <a href="{{ route('admin.pics.index') }}" class="text-sm text-red-500 hover:text-red-700 font-medium whitespace-nowrap px-3 py-2 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
-                                    Reset Filter
+                                <a href="{{ route('admin.pics.index') }}" class="text-sm text-red-500 hover:text-red-700 font-medium whitespace-nowrap px-3 py-2 bg-red-50 hover:bg-red-100 rounded-md transition-colors">
+                                    Reset
                                 </a>
                             @endif
                         </div>
@@ -98,17 +100,17 @@
 
                 {{-- Table --}}
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left text-gray-500">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50/80 border-b border-gray-100">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
                             <tr>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Nama PIC</th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Jabatan</th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">No HP</th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Lokasi Gudang</th>
-                                <th scope="col" class="px-6 py-4 text-center font-semibold tracking-wider">Aksi</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nama PIC</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Jabatan</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">No HP</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Lokasi Gudang</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="bg-white divide-y divide-slate-200">
                             @forelse($pics as $pic)
                             <tr class="bg-white hover:bg-cyan-50/30 transition-colors duration-200 group">
 
@@ -189,7 +191,7 @@
                 </div>
 
                 {{-- Pagination Footer --}}
-                <div class="bg-gray-50 px-6 py-4 border-t border-gray-100">
+                <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 sm:px-6">
                     {{ $pics->links() }}
                 </div>
             </div>
@@ -259,8 +261,8 @@
                             </div>
 
                             <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-                                <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-cyan-600 text-base font-medium text-white hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 sm:col-start-2 sm:text-sm">Simpan</button>
-                                <button type="button" @click="showModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 sm:mt-0 sm:col-start-1 sm:text-sm">Batal</button>
+                                <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#035b71] text-base font-medium text-white hover:bg-[#00aff0] transition sm:col-start-2 sm:text-sm">Simpan</button>
+                                <button type="button" @click="showModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 transition sm:mt-0 sm:col-start-1 sm:text-sm">Batal</button>
                             </div>
                         </form>
                     </div>

@@ -12,13 +12,13 @@ class PicController extends Controller
     {
         $query = Pic::with('gudang');
 
-        // Logika Search (Cari berdasarkan Nama, Jabatan, atau No HP)
+        // Logika Search (Cari berdasarkan Nama, Jabatan, atau No HP) - Case Insensitive
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('jabatan', 'like', "%{$search}%")
-                  ->orWhere('no_hp', 'like', "%{$search}%");
+            $searchLower = strtolower($request->search);
+            $query->where(function($q) use ($searchLower) {
+                $q->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                  ->orWhereRaw('LOWER(jabatan) LIKE ?', ["%{$searchLower}%"])
+                  ->orWhereRaw('LOWER(no_hp) LIKE ?', ["%{$searchLower}%"]);
             });
         }
 

@@ -152,7 +152,7 @@
                            name="nomor"
                            id="nomor"
                            x-model="nomor"
-                           placeholder="Contoh: SJ-20241219-001"
+                           placeholder="Contoh: 705/SJ251223/2025"
                            required
                            class="w-full px-4 py-3.5 text-base rounded-xl border-2 border-gray-200 focus:border-pln-primary focus:ring focus:ring-pln-primary/20 transition">
                 </div>
