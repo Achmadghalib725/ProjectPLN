@@ -106,7 +106,9 @@
                                 'detail' => $sjKirim->status !== 'DRAFT'
                                     ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => $sjKirim->status !== 'DRAFT' ? $formatWaktu($sjKirim->updated_at) : null,
+                                'time' => $sjKirim->status !== 'DRAFT'
+                                    ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
+                                    : null,
                                 'by' => $sjKirim->status !== 'DRAFT' ? $sjKirim->pembuat?->name : null,
                             ],
                             [
@@ -115,7 +117,9 @@
                                 'detail' => $sjKirim->status === 'SELESAI'
                                     ? "Dikirim ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => $sjKirim->status === 'SELESAI' ? $formatWaktu($sjKirim->updated_at) : null,
+                                'time' => $sjKirim->status === 'SELESAI'
+                                    ? $formatWaktu($sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
+                                    : null,
                                 'by' => null,
                             ],
                         ];
@@ -134,7 +138,9 @@
                                 'detail' => $sjKirim->status !== 'DRAFT'
                                     ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => $sjKirim->status !== 'DRAFT' ? $formatWaktu($sjKirim->updated_at) : null,
+                                'time' => $sjKirim->status !== 'DRAFT'
+                                    ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
+                                    : null,
                                 'by' => $sjKirim->status !== 'DRAFT' ? $sjKirim->pembuat?->name : null,
                             ],
                             [
@@ -143,7 +149,9 @@
                                 'detail' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI'])
                                     ? "Diperiksa oleh Security di <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI']) ? $formatWaktu($sjKirim->updated_at) : null,
+                                'time' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI'])
+                                    ? $formatWaktu($sjKirim->updated_at)
+                                    : null,
                                 'by' => null,
                             ],
                             [
@@ -152,7 +160,9 @@
                                 'detail' => $sjKirim->status === 'SELESAI'
                                     ? "Diterima di <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => $sjKirim->status === 'SELESAI' ? $formatWaktu($sjKirim->updated_at) : null,
+                                'time' => $sjKirim->status === 'SELESAI'
+                                    ? $formatWaktu($sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
+                                    : null,
                                 'by' => null,
                             ],
                         ];

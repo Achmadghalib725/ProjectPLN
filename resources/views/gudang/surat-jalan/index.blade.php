@@ -1,6 +1,11 @@
 <x-app-layout>
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @php
+                $isAdmin = Auth::user()->role === 'admin';
+                $adminNeedsGudang = $isAdmin && !Auth::user()->gudang_id;
+                $hasGudangContext = !$adminNeedsGudang || !empty($activeGudangId);
+            @endphp
             {{-- Flash Messages --}}
             @if(session('success'))
                 <div x-data="{ show: true }"
@@ -47,29 +52,57 @@
                         <div>
                             <h2 class="text-2xl font-bold text-gray-900">Surat Jalan Barang</h2>
                             <p class="text-sm text-gray-600 mt-1">
-                                {{ Auth::user()->gudang->nama ?? 'Gudang Saya' }}
+                                {{ $adminNeedsGudang && $activeGudangName ? $activeGudangName : (Auth::user()->gudang?->nama ?? '') }}
                             </p>
+                            @if($isAdmin)
+                                <p class="text-xs text-emerald-600 mt-2 font-semibold">
+                                    Mode admin: surat jalan dapat langsung dibuat dan diselesaikan.
+                                </p>
+                            @endif
                         </div>
+                        @if($adminNeedsGudang)
+                        <form method="GET" action="{{ route('gudang.surat-jalan.index') }}" class="flex items-center gap-2">
+                            <input type="hidden" name="tab" value="{{ $tab }}">
+                            <label class="text-xs font-semibold text-gray-500 uppercase">Akses Gudang</label>
+                            <select name="gudang_id"
+                                    onchange="this.form.submit()"
+                                    class="rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                <option value="">Pilih gudang...</option>
+                                @foreach($adminGudangs as $gudang)
+                                    <option value="{{ $gudang->id }}" {{ (string) $activeGudangId === (string) $gudang->id ? 'selected' : '' }}>
+                                        {{ $gudang->kode }} - {{ $gudang->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                        @endif
                         @if($tab === 'keluar')
                         <div class="flex items-center gap-2">
                             <button type="button"
-                                    class="inline-flex items-center px-4 py-2 bg-pln-primary hover:bg-pln-light text-white font-semibold rounded-md transition duration-150"
+                                    class="inline-flex items-center px-4 py-2 {{ $isAdmin ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-pln-primary hover:bg-pln-light' }} text-white font-semibold rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    @if(!$hasGudangContext) disabled @endif
                                     @click="$dispatch('open-modal', 'create-surat-jalan')">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                 </svg>
-                                Buat Surat Jalan
+                                {{ $isAdmin ? 'Buat Surat Jalan (Admin)' : 'Buat Surat Jalan' }}
                             </button>
-                            <button type="button"
-                                    class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md transition duration-150"
-                                    @click="$dispatch('open-modal', 'return-peminjaman')">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h13l4 4v6a2 2 0 01-2 2H6a2 2 0 01-2-2V7zm0 0V5a2 2 0 012-2h9"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l4-4m0 0l4 4m-4-4v6"/>
-                                </svg>
-                                Pengembalian Peminjaman
-                            </button>
+                            @if(!$isAdmin)
+                                <button type="button"
+                                        class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        @if(!$hasGudangContext) disabled @endif
+                                        @click="$dispatch('open-modal', 'return-peminjaman')">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h13l4 4v6a2 2 0 01-2 2H6a2 2 0 01-2-2V7zm0 0V5a2 2 0 012-2h9"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l4-4m0 0l4 4m-4-4v6"/>
+                                    </svg>
+                                    Pengembalian Peminjaman
+                                </button>
+                            @endif
                         </div>
+                        @if($adminNeedsGudang && !$hasGudangContext)
+                            <p class="text-xs text-gray-500 mt-2 sm:mt-0">Pilih gudang terlebih dulu untuk membuat surat jalan.</p>
+                        @endif
                         @endif
                     </div>
                 </div>
@@ -587,6 +620,11 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
+            @if($isAdmin)
+                <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    Mode admin: surat jalan akan langsung diselesaikan saat Anda memilih tombol admin.
+                </div>
+            @endif
 
             {{-- Mode Switcher --}}
             <div class="flex gap-3 mb-6">
@@ -600,9 +638,12 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
-                @csrf
-                <input type="hidden" name="mode" :value="mode">
+              <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
+                  @csrf
+                  @if($adminNeedsGudang)
+                      <input type="hidden" name="gudang_asal_id" value="{{ $activeGudangId }}">
+                  @endif
+                  <input type="hidden" name="mode" :value="mode">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     
@@ -798,8 +839,16 @@
                     <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
                 </div>
 
-                <div class="flex justify-end gap-3 pt-4 border-t">
+                <div class="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-end">
                     <button type="button" @click="$dispatch('close-modal', 'create-surat-jalan')" class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md">Batal</button>
+                    @if(Auth::user()->role === 'admin')
+                        <button type="submit"
+                                name="admin_finish"
+                                value="1"
+                                class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 flex items-center gap-2">
+                            Simpan dan Selesaikan (Admin)
+                        </button>
+                    @endif
                     <button type="submit"
                             class="px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light flex items-center gap-2">
                         Simpan Draft
