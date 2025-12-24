@@ -523,9 +523,12 @@
                         <div class="col-span-2 sm:col-span-1">
                             <p class="text-xs sm:text-sm text-gray-500">PIC Tujuan</p>
                             <p class="font-semibold text-sm sm:text-base text-gray-900">
-                                {{ $suratJalan->picTujuan->nama ?? '-' }}
-                                @if(!empty($suratJalan->picTujuan?->no_hp))
-                                    <span class="text-xs sm:text-sm text-gray-500 font-normal">({{ $suratJalan->picTujuan->no_hp }})</span>
+                                {{ $suratJalan->picTujuan->nama ?? $suratJalan->pic_tujuan_custom_nama ?? '-' }}
+                                @php
+                                    $picNoHp = $suratJalan->picTujuan?->no_hp ?? $suratJalan->pic_tujuan_custom_no_hp;
+                                @endphp
+                                @if(!empty($picNoHp))
+                                    <span class="text-xs sm:text-sm text-gray-500 font-normal">({{ $picNoHp }})</span>
                                 @endif
                             </p>
                         </div>

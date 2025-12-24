@@ -482,15 +482,20 @@
                 <div class="info-title">Penerima (PIC)</div>
                 <div class="info-row">
                     <div class="info-label">Nama</div>
-                    <div class="info-value">: {{ $suratJalan->picTujuan->nama ?? '-' }}</div>
+                    @php
+                        $picNama = $suratJalan->picTujuan->nama ?? $suratJalan->pic_tujuan_custom_nama ?? '-';
+                        $picJabatan = $suratJalan->picTujuan->jabatan ?? $suratJalan->pic_tujuan_custom_jabatan ?? '-';
+                        $picNoHp = $suratJalan->picTujuan->no_hp ?? $suratJalan->pic_tujuan_custom_no_hp ?? '-';
+                    @endphp
+                    <div class="info-value">: {{ $picNama }}</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Jabatan</div>
-                    <div class="info-value">: {{ $suratJalan->picTujuan->jabatan ?? '-' }}</div>
+                    <div class="info-value">: {{ $picJabatan }}</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">No. HP</div>
-                    <div class="info-value">: {{ $suratJalan->picTujuan->no_hp ?? '-' }}</div>
+                    <div class="info-value">: {{ $picNoHp }}</div>
                 </div>
             </div>
         </div>
@@ -613,6 +618,7 @@
 
                     $penerimaJabatan = $suratJalan->ttdPenerima?->jabatan
                         ?? $suratJalan->picTujuan?->jabatan
+                        ?? $suratJalan->pic_tujuan_custom_jabatan
                         ?? '';
                     $penerimaJabatanLines = $penerimaJabatan
                         ? preg_split("/\r\n|\r|\n/", $penerimaJabatan)
@@ -633,8 +639,8 @@
                             <img src="{{ $penerimaQr }}" alt="QR TTD Penerima" style="width: 80px; height: 80px;">
                         @endif
                     </div>
-                    <div class="signature-name">{{ $suratJalan->ttdPenerima->name ?? $suratJalan->picTujuan->nama ?? '________________' }}</div>
-                    <div class="signature-position">{{ $suratJalan->picTujuan->jabatan ?? '' }}</div>
+                    <div class="signature-name">{{ $suratJalan->ttdPenerima->name ?? $suratJalan->picTujuan->nama ?? $suratJalan->pic_tujuan_custom_nama ?? '________________' }}</div>
+                    <div class="signature-position">{{ $suratJalan->picTujuan->jabatan ?? $suratJalan->pic_tujuan_custom_jabatan ?? '' }}</div>
                 </div>
             </div>
         </div>

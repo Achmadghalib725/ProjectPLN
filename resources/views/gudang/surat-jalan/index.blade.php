@@ -5,6 +5,13 @@
                 $isAdmin = Auth::user()->role === 'admin';
                 $adminNeedsGudang = $isAdmin && !Auth::user()->gudang_id;
                 $hasGudangContext = !$adminNeedsGudang || !empty($activeGudangId);
+                $headerNotices = [];
+                if ($isAdmin) {
+                    $headerNotices[] = 'Mode admin: surat jalan dapat langsung dibuat dan diselesaikan.';
+                }
+                if ($adminNeedsGudang && !$hasGudangContext) {
+                    $headerNotices[] = 'Pilih gudang terlebih dulu untuk membuat surat jalan.';
+                }
             @endphp
             {{-- Flash Messages --}}
             @if(session('success'))
@@ -48,17 +55,21 @@
             {{-- Header --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="p-4 sm:p-6">
+                    @if(count($headerNotices) > 0)
+                        <div class="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-lg text-xs sm:text-sm">
+                            <div class="flex flex-col gap-1">
+                                @foreach($headerNotices as $notice)
+                                    <span>{{ $notice }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     <div class="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:justify-between sm:items-center">
                         <div class="text-center sm:text-left">
                             <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Surat Jalan Barang</h2>
                             <p class="text-xs sm:text-sm text-gray-600 mt-1">
-                                {{ $adminNeedsGudang && $activeGudangName ? $activeGudangName : (Auth::user()->gudang?->nama ?? 'Gudang Saya') }}
+                                {{ $adminNeedsGudang && $activeGudangName ? $activeGudangName : (Auth::user()->gudang?->nama ?? '') }}
                             </p>
-                            @if($isAdmin)
-                                <p class="text-xs text-emerald-600 mt-2 font-semibold">
-                                    Mode admin: surat jalan dapat langsung dibuat dan diselesaikan.
-                                </p>
-                            @endif
                         </div>
                         @if($adminNeedsGudang)
                         <form method="GET" action="{{ route('gudang.surat-jalan.index') }}" class="flex items-center gap-2">
@@ -87,7 +98,7 @@
                                 </svg>
                                 <span>{{ $isAdmin ? 'Buat Surat Jalan (Admin)' : 'Buat Surat Jalan' }}</span>
                             </button>
-                            @if(!$isAdmin)
+                            @if(!$isAdmin || $hasGudangContext)
                                 <button type="button"
                                         class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-yellow-500 hover:bg-yellow-600 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         @if(!$hasGudangContext) disabled @endif
@@ -96,7 +107,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                                     </svg>
                                     <span class="sm:hidden">Pengembalian</span>
-                                    <span class="hidden sm:inline">Pengembalian Peminjaman</span>
+                                    <span class="hidden sm:inline">{{ $isAdmin ? 'Pengembalian (Admin)' : 'Pengembalian Peminjaman' }}</span>
                                 </button>
                             @endif
                             <button type="button"
@@ -108,9 +119,6 @@
                                 <span>Export Excel</span>
                             </button>
                         </div>
-                        @if($adminNeedsGudang && !$hasGudangContext)
-                            <p class="text-xs text-gray-500 mt-2 sm:mt-0">Pilih gudang terlebih dulu untuk membuat surat jalan.</p>
-                        @endif
                         @endif
                     </div>
                 </div>
@@ -549,7 +557,7 @@
                                         {{ $sj->gudang_tujuan_is_custom ? ($sj->gudang_tujuan_custom_nama ?? 'Gudang Lainnya') : ($sj->gudangTujuan->nama ?? '-') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $sj->picTujuan->nama ?? '-' }}
+                                        {{ $sj->picTujuan->nama ?? $sj->pic_tujuan_custom_nama ?? '-' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         @php
@@ -656,9 +664,12 @@
                     no_hp: @js(old('pic_custom_no_hp', '')),
                 },
 
-                // Data Pendukung
-                itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
-                itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
+                  // Data Pendukung
+                  itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
+                  itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
+                  adminUsers: @js(($adminUsers ?? collect())->values()),
+                  asalGudangId: @js($activeGudangId),
+                  selectedPengirim: @js(old('ttd_pembuat_id', '')),
 
                 addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
@@ -681,9 +692,13 @@
                 get isCustomGudang() {
                     return this.gudangMode === 'custom';
                 },
-                get isCustomPic() {
-                    return this.selectedPic === 'lainnya';
-                },
+                  get isCustomPic() {
+                      return this.selectedPic === 'lainnya';
+                  },
+                  get filteredPengirimUsers() {
+                      if (!this.asalGudangId) return [];
+                      return this.adminUsers.filter(u => String(u.gudang_id) === String(this.asalGudangId));
+                  },
 
                 unitFor(id) { return this.itemUnits[id] ?? ''; },
                 stockFor(id) { return this.itemStocks[id] ?? 0; },
@@ -716,7 +731,7 @@
             </div>
             @if($isAdmin)
                 <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    Mode admin: surat jalan akan langsung diselesaikan saat Anda memilih tombol admin.
+                    Mode admin: surat jalan akan langsung diselesaikan saat Anda membuat dengan user admin.
                 </div>
             @endif
 
@@ -832,11 +847,11 @@
                         </div>
                     </div>
 
-                    <div x-show="isCustomPic" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC</label>
+                  <div x-show="isCustomPic" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                              <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC</label>
                                 <input type="text" name="pic_custom_nama" x-model="customPic.nama"
                                        class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
                             </div>
@@ -849,9 +864,37 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">No HP</label>
                                 <input type="text" name="pic_custom_no_hp" x-model="customPic.no_hp"
                                        class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
-                            </div>
-                        </div>
-                    </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  @if($isAdmin)
+                  <div class="md:col-span-2 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                      <p class="text-sm font-semibold text-emerald-800 mb-3">Penandatangan (Admin)</p>
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                              <label class="block text-sm font-medium text-gray-700 mb-1">Pengirim</label>
+                              <select name="ttd_pembuat_id"
+                                      x-model="selectedPengirim"
+                                      required
+                                      class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                                  <option value="">Pilih pengirim...</option>
+                                  <template x-for="user in filteredPengirimUsers" :key="user.id">
+                                      <option :value="user.id" x-text="user.name + (user.jabatan ? ' - ' + user.jabatan : '')"></option>
+                                  </template>
+                              </select>
+                              <p class="text-xs text-gray-500 mt-1">Diambil dari pengguna gudang asal.</p>
+                          </div>
+                          <div>
+                              <label class="block text-sm font-medium text-gray-700 mb-1">Penerima</label>
+                              <div class="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                  Mengikuti PIC tujuan
+                              </div>
+                              <p class="text-xs text-gray-500 mt-1">Penerima selalu menggunakan PIC tujuan.</p>
+                          </div>
+                      </div>
+                  </div>
+                  @endif
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kirim</label>
                         <input type="date" name="tanggal_kirim" value="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
@@ -1111,6 +1154,9 @@
                 <div>
                     <h3 class="text-lg font-bold text-gray-900">Pengembalian Peminjaman Barang</h3>
                     <p class="text-sm text-gray-500 mt-1">Pilih kode peminjaman, lalu sistem menyiapkan surat jalan pengembalian.</p>
+                    @if($isAdmin)
+                        <p class="text-xs text-emerald-700 mt-2">Mode admin: surat pengembalian akan langsung diselesaikan.</p>
+                    @endif
                 </div>
                 <button type="button" class="text-gray-400 hover:text-gray-600"
                         x-on:click="$dispatch('close-modal', 'return-peminjaman')">
@@ -1120,8 +1166,11 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
-                @csrf
+                <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
+                    @csrf
+                    @if($isAdmin)
+                        <input type="hidden" name="admin_finish" value="1">
+                    @endif
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>
@@ -1254,14 +1303,14 @@
                             x-on:click="$dispatch('close-modal', 'return-peminjaman')">
                         Batal
                     </button>
-                    <button type="submit"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
-                        Simpan Draft Pengembalian
-                    </button>
-                </div>
-            </form>
-        </div>
-    </x-modal>
+                      <button type="submit"
+                              class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                          {{ $isAdmin ? 'Simpan dan Selesaikan (Admin)' : 'Simpan Draft Pengembalian' }}
+                      </button>
+                  </div>
+              </form>
+          </div>
+      </x-modal>
 
     {{-- Export Excel Modal --}}
     <x-modal name="export-excel" focusable maxWidth="md">
