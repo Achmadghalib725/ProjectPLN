@@ -69,4 +69,9 @@ class SuratJalan extends Model
     {
         return $this->hasMany(SuratJalanAttachment::class);
     }
+
+    public function peminjaman()
+    {
+        return $this->hasOne(Peminjaman::class, 'surat_jalan_kirim_id');
+    }
 }

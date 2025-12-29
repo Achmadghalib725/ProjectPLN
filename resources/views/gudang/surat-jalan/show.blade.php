@@ -730,20 +730,21 @@
             @endif
 
             {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam (status DITERIMA, tipe PEMINJAMAN) --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && $isGudangTujuan)
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && $isGudangTujuan && $peminjaman && !$peminjaman->surat_jalan_kembali_id)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Barang</h3>
                         <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                             Barang peminjaman sudah diterima. Jika sudah selesai digunakan, Anda dapat membuat surat jalan pengembalian.
                         </p>
-                        <a href="{{ route('gudang.surat-jalan.index') }}?open_return=1&peminjaman_id={{ $peminjaman?->id }}"
-                           class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
+                        <button type="button"
+                                @click="$dispatch('open-modal', 'return-peminjaman-modal')"
+                                class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                             </svg>
-                            Pengembalian Pinjaman
-                        </a>
+                            Buat Surat Pengembalian
+                        </button>
                     </div>
                 </div>
             @endif
@@ -858,4 +859,169 @@
     <style>
         [x-cloak] { display: none !important; }
     </style>
+
+    {{-- Modal Pengembalian Peminjaman --}}
+    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && !$peminjaman->surat_jalan_kembali_id)
+    <x-modal name="return-peminjaman-modal" focusable>
+        <div class="p-6"
+             x-data="{
+                selectedPic: '',
+                pics: @js($pics->map(fn($pic) => [
+                    'id' => $pic->id,
+                    'nama' => $pic->nama,
+                    'jabatan' => $pic->jabatan,
+                ])->values()),
+             }">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Pengembalian Barang Peminjaman</h3>
+                    <p class="text-sm text-gray-500 mt-1">Buat surat jalan pengembalian untuk peminjaman ini.</p>
+                    @if($isAdmin ?? false)
+                        <p class="text-xs text-emerald-700 mt-2">Mode admin: surat pengembalian akan langsung diselesaikan.</p>
+                    @endif
+                </div>
+                <button type="button" class="text-gray-400 hover:text-gray-600"
+                        @click="$dispatch('close-modal', 'return-peminjaman-modal')">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
+                @csrf
+                @if($isAdmin ?? false)
+                    <input type="hidden" name="admin_finish" value="1">
+                @endif
+                <input type="hidden" name="peminjaman_id" value="{{ $peminjaman->id }}">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>
+                        <input type="text"
+                               class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
+                               value="{{ $peminjaman->kode }}"
+                               readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Pemilik (Tujuan)</label>
+                        <input type="text"
+                               class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
+                               value="{{ $peminjaman->gudangPemilik->nama ?? '-' }}"
+                               readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
+                        <select name="pic_tujuan_id"
+                                x-model="selectedPic"
+                                required
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                            <option value="">Pilih PIC...</option>
+                            <template x-for="pic in pics" :key="pic.id">
+                                <option :value="pic.id" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
+                        <input type="date"
+                               name="tanggal_kirim"
+                               value="{{ now()->toDateString() }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver</label>
+                        <input type="text"
+                               name="nama_driver"
+                               placeholder="Contoh: Budi Santoso"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
+                        <input type="text"
+                               name="jenis_kendaraan"
+                               placeholder="Contoh: Truk Box"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat</label>
+                        <input type="text"
+                               name="nomor_plat"
+                               placeholder="Contoh: B 1234 CD"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                    <textarea name="catatan"
+                              rows="3"
+                              placeholder="Contoh: Pengembalian barang sesuai peminjaman..."
+                              class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50"></textarea>
+                </div>
+
+                {{-- Lampiran Gambar --}}
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
+                    </label>
+                    <input type="file"
+                           name="attachments[]"
+                           multiple
+                           accept="image/jpeg,image/jpg,image/png"
+                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG.</p>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="p-4">
+                        <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
+                        <p class="text-xs text-gray-500">Jumlah otomatis penuh sesuai peminjaman.</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @forelse($peminjaman->items as $item)
+                                    <tr>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan ?? '-' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $item->jumlah_dipinjam }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">
+                                            Tidak ada data item.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button"
+                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+                            @click="$dispatch('close-modal', 'return-peminjaman-modal')">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                        {{ ($isAdmin ?? false) ? 'Simpan dan Selesaikan (Admin)' : 'Simpan Draft Pengembalian' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+    @endif
 </x-app-layout>
