@@ -335,7 +335,11 @@ class SuratJalanController extends Controller
             $picTujuanId = null;
         }
 
-        $warningItems = $this->buildStockWarnings($gudangId, $validated['items']);
+        $warningItems = $this->buildStockWarnings(
+            $gudangId,
+            $validated['items'],
+            ($validated['mode'] ?? null) === 'peminjaman'
+        );
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
         $tanggalKembali = !empty($validated['tanggal_kembali']) ? Carbon::parse($validated['tanggal_kembali'])->startOfDay() : null;
         $adminFinish = Auth::user()?->role === 'admin' && $request->boolean('admin_finish');
@@ -822,7 +826,11 @@ class SuratJalanController extends Controller
             'attachments.max' => 'Maksimal 3 lampiran gambar per surat jalan.',
         ]);
 
-        $warningItems = $this->buildStockWarnings($gudangId, $validated['items']);
+        $warningItems = $this->buildStockWarnings(
+            $gudangId,
+            $validated['items'],
+            ($validated['tipe'] ?? null) === 'PEMINJAMAN'
+        );
 
         $isCustomGudang = $validated['gudang_tujuan_mode'] === 'custom';
         $customGudangData = [
@@ -940,6 +948,10 @@ class SuratJalanController extends Controller
 
                 // Untuk PENGEMBALIAN, tidak perlu validasi stok (barang dikembalikan)
                 if ($suratJalan->tipe !== 'PENGEMBALIAN') {
+                    $borrowedTotals = $suratJalan->tipe === 'PEMINJAMAN'
+                        ? $this->getBorrowedItemTotals($gudangId, $itemTotals->keys())
+                        : collect();
+
                     // Validasi stok terlebih dahulu (per item total)
                     foreach ($itemTotals as $itemId => $qty) {
                         $stock = ItemStock::where('gudang_id', $gudangId)
@@ -948,9 +960,16 @@ class SuratJalanController extends Controller
                             ->first();
 
                         $available = $stock?->jumlah ?? 0;
+                        if ($suratJalan->tipe === 'PEMINJAMAN') {
+                            $available -= (int) ($borrowedTotals[$itemId] ?? 0);
+                            $available = max(0, $available);
+                        }
                         if ($available < $qty) {
                             $itemName = $suratJalan->items->firstWhere('item_id', $itemId)?->item->nama ?? "Item ID {$itemId}";
-                            throw new \RuntimeException("Stok tidak cukup untuk {$itemName}.");
+                            $detail = $suratJalan->tipe === 'PEMINJAMAN'
+                                ? "Stok sendiri tidak cukup untuk {$itemName} (dibutuhkan {$qty}, tersedia {$available}). Barang pinjaman dari gudang lain tidak dapat dipinjamkan."
+                                : "Stok tidak cukup untuk {$itemName}.";
+                            throw new \RuntimeException($detail);
                         }
                     }
 
@@ -1455,7 +1474,7 @@ class SuratJalanController extends Controller
         PeminjamanItem::insert($rows);
     }
 
-    private function buildStockWarnings(int $gudangId, array $items): array
+    private function buildStockWarnings(int $gudangId, array $items, bool $excludeBorrowed = false): array
     {
         $requested = collect($items)
             ->filter(fn ($row) => !empty($row['item_id']) && !empty($row['jumlah']))
@@ -1471,13 +1490,21 @@ class SuratJalanController extends Controller
             ->pluck('jumlah', 'item_id');
 
         $itemNames = Item::whereIn('id', $requested->keys())->pluck('nama', 'id');
+        $borrowedTotals = $excludeBorrowed
+            ? $this->getBorrowedItemTotals($gudangId, $requested->keys())
+            : collect();
 
         $warnings = [];
         foreach ($requested as $itemId => $qty) {
             $available = (int) ($stocks[$itemId] ?? 0);
+            if ($excludeBorrowed) {
+                $available -= (int) ($borrowedTotals[$itemId] ?? 0);
+                $available = max(0, $available);
+            }
             if ($qty > $available) {
                 $name = $itemNames[$itemId] ?? 'Item';
-                $warnings[] = "{$name} (diminta {$qty}, stok {$available})";
+                $label = $excludeBorrowed ? 'stok sendiri' : 'stok';
+                $warnings[] = "{$name} (diminta {$qty}, {$label} {$available})";
             }
         }
 
@@ -1492,10 +1519,13 @@ class SuratJalanController extends Controller
             ->map(fn ($rows) => $rows->sum(fn ($row) => (int) $row['jumlah']));
     }
 
-    private function assertStockAvailable(int $gudangId, $itemTotals): void
+    private function assertStockAvailable(int $gudangId, $itemTotals, bool $excludeBorrowed = false): void
     {
         $itemNames = Item::whereIn('id', $itemTotals->keys())
             ->pluck('nama', 'id');
+        $borrowedTotals = $excludeBorrowed
+            ? $this->getBorrowedItemTotals($gudangId, $itemTotals->keys())
+            : collect();
 
         foreach ($itemTotals as $itemId => $qty) {
             $stock = ItemStock::where('gudang_id', $gudangId)
@@ -1504,11 +1534,39 @@ class SuratJalanController extends Controller
                 ->first();
 
             $available = $stock?->jumlah ?? 0;
+            if ($excludeBorrowed) {
+                $available -= (int) ($borrowedTotals[$itemId] ?? 0);
+                $available = max(0, $available);
+            }
             if ($available < $qty) {
                 $name = $itemNames[$itemId] ?? 'Item';
-                throw new \RuntimeException("Stok tidak cukup untuk {$name} (dibutuhkan {$qty}, tersedia {$available}).");
+                $detail = $excludeBorrowed
+                    ? "Stok sendiri tidak cukup untuk {$name} (dibutuhkan {$qty}, tersedia {$available}). Barang pinjaman dari gudang lain tidak dapat dipinjamkan."
+                    : "Stok tidak cukup untuk {$name} (dibutuhkan {$qty}, tersedia {$available}).";
+                throw new \RuntimeException($detail);
             }
         }
+    }
+
+    private function getBorrowedItemTotals(int $gudangId, $itemIds = null)
+    {
+        $query = PeminjamanItem::query()
+            ->select('peminjaman_items.item_id', DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total'))
+            ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
+            ->where('peminjamans.gudang_peminjam_id', $gudangId)
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
+            ->where(function ($query) {
+                $query->whereNotNull('peminjamans.waktu_diterima')
+                    ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
+            });
+
+        if ($itemIds !== null) {
+            $query->whereIn('peminjaman_items.item_id', collect($itemIds)->all());
+        }
+
+        return $query
+            ->groupBy('peminjaman_items.item_id')
+            ->pluck('total', 'peminjaman_items.item_id');
     }
 
     private function applyStockOut(int $gudangId, $itemTotals, SuratJalan $suratJalan, Carbon $eventTime, string $keterangan): void
@@ -1601,7 +1659,11 @@ class SuratJalanController extends Controller
         $gudangAsalNama = Gudang::find($gudangId)?->nama ?? 'Gudang Asal';
 
         return DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $tanggalKembali, $picTujuanId, $gudangTujuanId, $isCustomGudang, $customGudangData, $picCustomData, $itemTotals, $kirimAt, $diterimaAt, $kembaliAt, $selesaiAt, $gudangTujuanNama, $gudangAsalNama, $ttdPembuatId, $ttdPenerimaId) {
-            $this->assertStockAvailable($gudangId, $itemTotals);
+            $this->assertStockAvailable(
+                $gudangId,
+                $itemTotals,
+                ($validated['mode'] ?? null) === 'peminjaman'
+            );
 
             if ($validated['mode'] === 'transfer') {
                 $suratJalan = SuratJalan::create([

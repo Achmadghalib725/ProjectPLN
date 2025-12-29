@@ -7,6 +7,7 @@ use App\Http\Requests\StokUpdateRequest;
 use App\Models\Item;
 use App\Models\ItemStock;
 use App\Models\Peminjaman;
+use App\Models\PeminjamanItem;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +40,30 @@ class StokController extends Controller
             })
             ->paginate(15)
             ->withQueryString();
+
+        $borrowedTotals = collect();
+        if ($stocks->count() > 0) {
+            $itemIds = $stocks->pluck('item_id')->unique()->values();
+            $borrowedTotals = PeminjamanItem::query()
+                ->select('peminjaman_items.item_id', DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total'))
+                ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
+                ->where('peminjamans.gudang_peminjam_id', $gudangId)
+                ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
+                ->where(function ($query) {
+                    $query->whereNotNull('peminjamans.waktu_diterima')
+                        ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
+                })
+                ->whereIn('peminjaman_items.item_id', $itemIds)
+                ->groupBy('peminjaman_items.item_id')
+                ->pluck('total', 'peminjaman_items.item_id');
+        }
+
+        $stocks->getCollection()->transform(function ($stock) use ($borrowedTotals) {
+            $borrowed = (int) ($borrowedTotals[$stock->item_id] ?? 0);
+            $stock->borrowed_qty = $borrowed;
+            $stock->own_qty = max(0, (int) $stock->jumlah - $borrowed);
+            return $stock;
+        });
 
         $lowStockCount = ItemStock::where('gudang_id', $gudangId)
             ->whereColumn('jumlah', '<', 'stok_minimum')
@@ -119,6 +144,20 @@ class StokController extends Controller
 
         // Security check
         $this->verifyStockOwnership($stock);
+
+        $borrowedQty = PeminjamanItem::query()
+            ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
+            ->where('peminjamans.gudang_peminjam_id', $stock->gudang_id)
+            ->where('peminjaman_items.item_id', $stock->item_id)
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
+            ->where(function ($query) {
+                $query->whereNotNull('peminjamans.waktu_diterima')
+                    ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
+            })
+            ->sum('peminjaman_items.jumlah_dipinjam');
+
+        $stock->borrowed_qty = (int) $borrowedQty;
+        $stock->own_qty = max(0, (int) $stock->jumlah - $stock->borrowed_qty);
 
         // Get movement history
         $movements = StockMovement::with('creator')
