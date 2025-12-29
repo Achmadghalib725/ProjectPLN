@@ -6,12 +6,12 @@
                 $adminNeedsGudang = $isAdmin && !Auth::user()->gudang_id;
                 $hasGudangContext = !$adminNeedsGudang || !empty($activeGudangId);
                 $headerNotices = [];
-                <!-- if ($isAdmin) {
+                if ($isAdmin) {
                     $headerNotices[] = 'Mode admin: surat jalan dapat langsung dibuat dan diselesaikan.';
                 }
                 if ($adminNeedsGudang && !$hasGudangContext) {
                     $headerNotices[] = 'Pilih gudang terlebih dulu untuk membuat surat jalan.';
-                } -->
+                }
             @endphp
             {{-- Flash Messages --}}
             @if(session('success'))
