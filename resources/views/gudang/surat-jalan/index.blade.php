@@ -6,12 +6,14 @@
                 $adminNeedsGudang = $isAdmin && !Auth::user()->gudang_id;
                 $hasGudangContext = !$adminNeedsGudang || !empty($activeGudangId);
                 $headerNotices = [];
+                /*
                 if ($isAdmin) {
                     $headerNotices[] = 'Mode admin: surat jalan dapat langsung dibuat dan diselesaikan.';
                 }
                 if ($adminNeedsGudang && !$hasGudangContext) {
                     $headerNotices[] = 'Pilih gudang terlebih dulu untuk membuat surat jalan.';
                 }
+                */
             @endphp
             {{-- Flash Messages --}}
             @if(session('success'))
@@ -99,6 +101,18 @@
                                 </svg>
                                 <span>{{ $isAdmin ? 'Buat Surat Jalan (Admin)' : 'Buat Surat Jalan' }}</span>
                             </button>
+                            @if(!$isAdmin || $hasGudangContext)
+                                <button type="button"
+                                        class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-yellow-500 hover:bg-yellow-600 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        @if(!$hasGudangContext) disabled @endif
+                                        @click="$dispatch('open-modal', 'return-peminjaman')">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                    </svg>
+                                    <span class="sm:hidden">Pengembalian</span>
+                                    <span class="hidden sm:inline">{{ $isAdmin ? 'Pengembalian (Admin)' : 'Pengembalian Peminjaman' }}</span>
+                                </button>
+                            @endif
                             <button type="button"
                                     class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm"
                                     @click="$dispatch('open-modal', 'export-excel')">
@@ -1025,6 +1039,323 @@
             </form>
         </div>
     </x-modal>
+
+    {{-- Preview PDF Modal --}}
+    <div x-data="{
+            showPreview: false,
+            previewUrl: '',
+            formDataObj: {},
+            submitting: false,
+            submitDraft() {
+                if (Object.keys(this.formDataObj).length === 0) {
+                    alert('Data form tidak ditemukan. Silakan tutup preview dan coba lagi.');
+                    return;
+                }
+
+                this.submitting = true;
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ route('gudang.surat-jalan.store') }}';
+
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = '_token';
+                csrf.value = '{{ csrf_token() }}';
+                form.appendChild(csrf);
+
+                Object.entries(this.formDataObj).forEach(([key, value]) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value !== null && value !== undefined ? value : '';
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+         }"
+         @open-preview.window="
+            previewUrl = $event.detail.url;
+            formDataObj = $event.detail.formData;
+            showPreview = true;
+         "
+         @close-preview.window="
+            showPreview = false;
+            submitting = false;
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = '';
+            }
+         ">
+        <div x-show="showPreview"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                {{-- Backdrop --}}
+                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 z-0"
+                     @click="$dispatch('close-preview')"></div>
+
+                {{-- Modal Content --}}
+                <div class="relative z-20 w-full max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden"
+                     x-transition:enter="ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-b">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Preview Surat Jalan</h3>
+                            <p class="text-sm text-gray-500">Periksa kembali data sebelum menyimpan draft</p>
+                        </div>
+                        <button type="button"
+                                class="text-gray-400 hover:text-gray-600"
+                                @click="$dispatch('close-preview')">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- PDF Preview --}}
+                    <div class="p-4 bg-gray-100" style="height: 70vh;">
+                        <iframe :src="previewUrl"
+                                class="w-full h-full rounded border border-gray-300 bg-white"
+                                style="min-height: 500px;"></iframe>
+                    </div>
+
+                    {{-- Footer Actions --}}
+                    <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t">
+                        <button type="button"
+                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+                                @click="$dispatch('close-preview')">
+                            Kembali & Edit
+                        </button>
+                        <button type="button"
+                                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                :disabled="submitting"
+                                @click="submitDraft()">
+                            <svg x-show="submitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="submitting ? 'Menyimpan...' : 'Konfirmasi & Simpan Draft'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <x-modal name="return-peminjaman" focusable>
+        <div class="p-6"
+             x-data="{
+                selectedPeminjamanId: @js(old('peminjaman_id', '')),
+                selectedPic: @js(old('pic_tujuan_id', '')),
+                peminjamans: @js(($activePeminjamans ?? collect())->map(fn($p) => [
+                    'id' => $p->id,
+                    'kode' => $p->kode,
+                    'gudang_pemilik_id' => $p->gudang_pemilik_id,
+                    'gudang_pemilik_nama' => $p->gudangPemilik->nama ?? '-',
+                    'items' => $p->items->map(fn($item) => [
+                        'kode' => $item->item->kode ?? '-',
+                        'nama' => $item->item->nama ?? 'Item',
+                        'satuan' => $item->item->satuan ?? '-',
+                        'jumlah' => $item->jumlah_dipinjam,
+                    ]),
+                ])->values()),
+                pics: @js(($pics ?? collect())->map(fn($pic) => [
+                    'id' => $pic->id,
+                    'nama' => $pic->nama,
+                    'jabatan' => $pic->jabatan,
+                    'gudang_id' => $pic->gudang_id,
+                ])->values()),
+                selectedPeminjaman() {
+                    return this.peminjamans.find(p => String(p.id) === String(this.selectedPeminjamanId));
+                },
+                filteredPics() {
+                    const peminjaman = this.selectedPeminjaman();
+                    if (!peminjaman) return [];
+                    return this.pics.filter(pic => String(pic.gudang_id) === String(peminjaman.gudang_pemilik_id));
+                },
+                handlePeminjamanChange() {
+                    const match = this.filteredPics().some(pic => String(pic.id) === String(this.selectedPic));
+                    if (!match) {
+                        this.selectedPic = '';
+                    }
+                }
+             }">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Pengembalian Peminjaman Barang</h3>
+                    <p class="text-sm text-gray-500 mt-1">Pilih kode peminjaman, lalu sistem menyiapkan surat jalan pengembalian.</p>
+                    @if($isAdmin)
+                        <p class="text-xs text-emerald-700 mt-2">Mode admin: surat pengembalian akan langsung diselesaikan.</p>
+                    @endif
+                </div>
+                <button type="button" class="text-gray-400 hover:text-gray-600"
+                        x-on:click="$dispatch('close-modal', 'return-peminjaman')">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+                <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
+                    @csrf
+                    @if($isAdmin)
+                        <input type="hidden" name="admin_finish" value="1">
+                    @endif
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>
+                        <select name="peminjaman_id"
+                                x-model="selectedPeminjamanId"
+                                @change="handlePeminjamanChange()"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                            <option value="">Pilih kode peminjaman...</option>
+                            <template x-for="p in peminjamans" :key="p.id">
+                                <option :value="p.id" x-text="p.kode"></option>
+                            </template>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Hanya peminjaman dengan status Diterima yang bisa dikembalikan.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Pemilik</label>
+                        <input type="text"
+                               class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
+                               :value="selectedPeminjaman() ? selectedPeminjaman().gudang_pemilik_nama : '-'"
+                               readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
+                        <select name="pic_tujuan_id"
+                                x-model="selectedPic"
+                                required
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                            <option value="">Pilih PIC...</option>
+                            <template x-for="pic in filteredPics()" :key="pic.id">
+                                <option :value="pic.id" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
+                        <input type="date"
+                               name="tanggal_kirim"
+                               value="{{ old('tanggal_kirim', now()->toDateString()) }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver</label>
+                        <input type="text"
+                               name="nama_driver"
+                               value="{{ old('nama_driver') }}"
+                               placeholder="Contoh: Budi Santoso"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
+                        <input type="text"
+                               name="jenis_kendaraan"
+                               value="{{ old('jenis_kendaraan') }}"
+                               placeholder="Contoh: Truk Box"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat</label>
+                        <input type="text"
+                               name="nomor_plat"
+                               value="{{ old('nomor_plat') }}"
+                               placeholder="Contoh: B 1234 CD"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                    <textarea name="catatan"
+                              rows="3"
+                              placeholder="Contoh: Pengembalian barang sesuai peminjaman..."
+                              class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">{{ old('catatan') }}</textarea>
+                </div>
+
+                {{-- Lampiran Gambar --}}
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
+                    </label>
+                    <input type="file"
+                           name="attachments[]"
+                           multiple
+                           accept="image/jpeg,image/jpg,image/png"
+                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="p-4">
+                        <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
+                        <p class="text-xs text-gray-500">Jumlah otomatis penuh sesuai peminjaman.</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-white">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <template x-if="!selectedPeminjaman()">
+                                    <tr>
+                                        <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">
+                                            Pilih kode peminjaman untuk melihat item.
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-if="selectedPeminjaman()">
+                                    <template x-for="(item, idx) in selectedPeminjaman().items" :key="idx">
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm text-gray-900" x-text="item.kode + ' - ' + item.nama"></td>
+                                            <td class="px-4 py-3 text-sm text-gray-500" x-text="item.satuan"></td>
+                                            <td class="px-4 py-3 text-sm text-gray-900" x-text="item.jumlah"></td>
+                                        </tr>
+                                    </template>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button"
+                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+                            x-on:click="$dispatch('close-modal', 'return-peminjaman')">
+                        Batal
+                    </button>
+                      <button type="submit"
+                              class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                          {{ $isAdmin ? 'Simpan dan Selesaikan (Admin)' : 'Simpan Draft Pengembalian' }}
+                      </button>
+                  </div>
+              </form>
+          </div>
+      </x-modal>
 
     {{-- Export Excel Modal --}}
     <x-modal name="export-excel" focusable maxWidth="md">
