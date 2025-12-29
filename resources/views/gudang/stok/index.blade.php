@@ -25,6 +25,17 @@
                 </div>
             @endif
 
+            @if($errors->any())
+                <div class="mb-4 sm:mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl text-sm">
+                    <p class="font-semibold">Periksa input:</p>
+                    <ul class="list-disc list-inside mt-1 space-y-1">
+                        @foreach($errors->all() as $message)
+                            <li>{{ $message }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             {{-- Header Section --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="p-4 sm:p-6">
@@ -204,13 +215,17 @@
                                 @endif
                             </div>
 
-                            <div class="grid grid-cols-3 gap-2 mb-3 text-sm">
+                            <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
                                 <div class="bg-gray-50 rounded p-2 text-center">
-                                    <p class="text-xs text-gray-500">Stok</p>
-                                    <p class="font-bold {{ $stock->jumlah < $stock->stok_minimum ? 'text-red-600' : 'text-gray-900' }}">{{ number_format($stock->jumlah) }}</p>
+                                    <p class="text-xs text-gray-500">Stok Sendiri</p>
+                                    <p class="font-bold {{ $stock->jumlah < $stock->stok_minimum ? 'text-red-600' : 'text-gray-900' }}">{{ number_format($stock->own_qty ?? $stock->jumlah) }}</p>
                                 </div>
                                 <div class="bg-gray-50 rounded p-2 text-center">
-                                    <p class="text-xs text-gray-500">Minimum</p>
+                                    <p class="text-xs text-gray-500">Stok Pinjaman</p>
+                                    <p class="font-medium text-gray-700">{{ number_format($stock->borrowed_qty ?? 0) }}</p>
+                                </div>
+                                <div class="bg-gray-50 rounded p-2 text-center">
+                                    <p class="text-xs text-gray-500">Stok Minimum</p>
                                     <p class="font-medium text-gray-700">{{ number_format($stock->stok_minimum) }}</p>
                                 </div>
                                 <div class="bg-gray-50 rounded p-2 text-center">
@@ -285,7 +300,8 @@
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Item</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Item</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Saat Ini</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Sendiri</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Pinjaman</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Minimum</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -307,7 +323,10 @@
                                         {{ $stock->item->satuan }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold {{ $stock->jumlah < $stock->stok_minimum ? 'text-red-600' : 'text-gray-900' }}">
-                                        {{ number_format($stock->jumlah) }}
+                                        {{ number_format($stock->own_qty ?? $stock->jumlah) }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ number_format($stock->borrowed_qty ?? 0) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ number_format($stock->stok_minimum) }}
@@ -379,7 +398,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                                    <td colspan="9" class="px-6 py-10 text-center text-gray-500">
                                         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                                         </svg>
@@ -516,8 +535,10 @@
     <x-modal name="edit-stock" focusable>
         <div class="p-6" x-data="{
             adjustmentType: 'add',
+            adjustmentQuantity: null,
+            reason: '',
             stock: { kode: '', nama: '', satuan: '', kategori: '-', jumlah: 0, stok_minimum: 0, url: '' }
-        }" @set-edit-stock.window="stock = $event.detail; adjustmentType = 'add'; $dispatch('open-modal', 'edit-stock')">
+        }" @set-edit-stock.window="stock = $event.detail; adjustmentType = 'add'; adjustmentQuantity = null; reason = ''; $dispatch('open-modal', 'edit-stock')">
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Sesuaikan Stok</h2>
@@ -610,6 +631,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Jumlah Penyesuaian</label>
                     <input type="number" name="adjustment_quantity" min="1"
+                           x-model.number="adjustmentQuantity"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50"
                            placeholder="Kosongkan jika tidak mengubah jumlah stok">
                     <p class="mt-1 text-xs text-gray-500">
@@ -622,9 +644,14 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Alasan Penyesuaian</label>
                     <textarea name="keterangan" rows="2"
+                              x-model="reason"
+                              x-bind:required="adjustmentQuantity && adjustmentQuantity > 0"
                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50"
                               placeholder="Wajib diisi jika mengubah jumlah stok..."></textarea>
                     <p class="mt-1 text-xs text-gray-500">Diperlukan untuk audit jika ada perubahan jumlah</p>
+                    <p class="mt-2 text-xs text-red-600" x-show="adjustmentQuantity && adjustmentQuantity > 0 && !reason">
+                        Alasan wajib diisi jika mengubah jumlah stok.
+                    </p>
                 </div>
 
                 {{-- Action Buttons --}}

@@ -70,9 +70,17 @@
 
                             {{-- Current Stock --}}
                             <div class="mb-6">
-                                <p class="text-sm text-gray-600 mb-2">Stok Saat Ini</p>
+                                <p class="text-sm text-gray-600 mb-2">Stok Sendiri</p>
                                 <p class="text-4xl font-bold text-[#035b71]">
-                                    {{ number_format($stock->jumlah) }}
+                                    {{ number_format($stock->own_qty ?? $stock->jumlah) }}
+                                </p>
+                                <p class="text-sm text-gray-500 mt-1">{{ $stock->item->satuan }}</p>
+                            </div>
+
+                            <div class="mb-6">
+                                <p class="text-sm text-gray-600 mb-2">Stok Pinjaman</p>
+                                <p class="text-2xl font-bold text-gray-700">
+                                    {{ number_format($stock->borrowed_qty ?? 0) }}
                                 </p>
                                 <p class="text-sm text-gray-500 mt-1">{{ $stock->item->satuan }}</p>
                             </div>
@@ -208,7 +216,7 @@
 
     {{-- Edit Stock Modal --}}
     <x-modal name="edit-stock" focusable>
-        <div class="p-6" x-data="{ adjustmentType: 'add' }">
+        <div class="p-6" x-data="{ adjustmentType: 'add', adjustmentQuantity: null, reason: '' }">
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Sesuaikan Stok</h2>
@@ -300,6 +308,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Jumlah Penyesuaian</label>
                     <input type="number" name="adjustment_quantity" min="1"
+                           x-model.number="adjustmentQuantity"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50"
                            placeholder="Kosongkan jika tidak mengubah jumlah stok">
                     <p class="mt-1 text-xs text-gray-500">
@@ -312,9 +321,14 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Alasan Penyesuaian</label>
                     <textarea name="keterangan" rows="2"
+                              x-model="reason"
+                              x-bind:required="adjustmentQuantity && adjustmentQuantity > 0"
                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50"
                               placeholder="Wajib diisi jika mengubah jumlah stok..."></textarea>
                     <p class="mt-1 text-xs text-gray-500">Diperlukan untuk audit jika ada perubahan jumlah</p>
+                    <p class="mt-2 text-xs text-red-600" x-show="adjustmentQuantity && adjustmentQuantity > 0 && !reason">
+                        Alasan wajib diisi jika mengubah jumlah stok.
+                    </p>
                 </div>
 
                 {{-- Action Buttons --}}
