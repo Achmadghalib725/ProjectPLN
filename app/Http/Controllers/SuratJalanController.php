@@ -631,6 +631,7 @@ class SuratJalanController extends Controller
                     'suratJalanKembali.pembuat',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items.item',
                 ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::with([
@@ -642,6 +643,7 @@ class SuratJalanController extends Controller
                     'suratJalanKembali.pembuat',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items.item',
                 ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
             }
 
@@ -653,7 +655,16 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak mengakses surat jalan gudang lain.');
         }
 
-        return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman'));
+        $pics = collect();
+        if ($peminjaman && $peminjaman->status === 'DITERIMA' && !$peminjaman->surat_jalan_kembali_id) {
+            $pics = Schema::hasTable('pics')
+                ? Pic::query()->where('gudang_id', $peminjaman->gudang_pemilik_id)->orderBy('nama')->get()
+                : collect();
+        }
+
+        $isAdmin = Auth::user()?->role === 'admin';
+
+        return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin'));
     }
 
     public function edit($id)
