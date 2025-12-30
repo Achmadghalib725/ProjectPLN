@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\SuratJalanExport;
@@ -371,6 +372,9 @@ class SuratJalanController extends Controller
                 $this->storeAttachments($suratJalanId, $request->file('attachments'));
             }
 
+            $this->bumpSuratJalanCacheVersion([$gudangId, $gudangTujuanId]);
+            $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
+
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalanId)
                 ->with('success', 'Surat Jalan berhasil dibuat dan langsung diselesaikan.');
@@ -460,6 +464,9 @@ class SuratJalanController extends Controller
         if ($request->hasFile('attachments')) {
             $this->storeAttachments($suratJalanId, $request->file('attachments'));
         }
+
+        $this->bumpSuratJalanCacheVersion([$gudangId, $gudangTujuanId]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
 
         $redirect = redirect()
             ->route('gudang.surat-jalan.index')
@@ -598,6 +605,9 @@ class SuratJalanController extends Controller
             $this->storeAttachments($suratJalanId, $request->file('attachments'));
         }
 
+        $this->bumpSuratJalanCacheVersion([$gudangId, $peminjaman->gudang_pemilik_id]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
+
         return redirect()
             ->route('gudang.surat-jalan.index')
             ->with('success', $adminFinish ? 'Surat pengembalian berhasil dibuat dan langsung diselesaikan.' : 'Draft pengembalian peminjaman berhasil dibuat.');
@@ -605,37 +615,42 @@ class SuratJalanController extends Controller
 
     public function show($id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'])
-            ->findOrFail($id);
+        $cacheKey = $this->buildSuratJalanDetailCacheKey((int) $id);
+        [$suratJalan, $peminjaman] = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($id) {
+            $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'])
+                ->findOrFail($id);
+
+            $peminjaman = null;
+            if ($suratJalan->tipe === 'PEMINJAMAN') {
+                $peminjaman = Peminjaman::with([
+                    'suratJalanKirim.gudangAsal',
+                    'suratJalanKirim.gudangTujuan',
+                    'suratJalanKirim.pembuat',
+                    'suratJalanKembali.gudangAsal',
+                    'suratJalanKembali.gudangTujuan',
+                    'suratJalanKembali.pembuat',
+                    'gudangPeminjam',
+                    'gudangPemilik',
+                ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+            } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::with([
+                    'suratJalanKirim.gudangAsal',
+                    'suratJalanKirim.gudangTujuan',
+                    'suratJalanKirim.pembuat',
+                    'suratJalanKembali.gudangAsal',
+                    'suratJalanKembali.gudangTujuan',
+                    'suratJalanKembali.pembuat',
+                    'gudangPeminjam',
+                    'gudangPemilik',
+                ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            }
+
+            return [$suratJalan, $peminjaman];
+        });
 
         $gudangId = Auth::user()?->gudang_id;
         if ($gudangId && $suratJalan->gudang_asal_id !== $gudangId && $suratJalan->gudang_tujuan_id !== $gudangId) {
             abort(403, 'Anda tidak berhak mengakses surat jalan gudang lain.');
-        }
-
-        $peminjaman = null;
-        if ($suratJalan->tipe === 'PEMINJAMAN') {
-            $peminjaman = Peminjaman::with([
-                'suratJalanKirim.gudangAsal',
-                'suratJalanKirim.gudangTujuan',
-                'suratJalanKirim.pembuat',
-                'suratJalanKembali.gudangAsal',
-                'suratJalanKembali.gudangTujuan',
-                'suratJalanKembali.pembuat',
-                'gudangPeminjam',
-                'gudangPemilik',
-            ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
-        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-            $peminjaman = Peminjaman::with([
-                'suratJalanKirim.gudangAsal',
-                'suratJalanKirim.gudangTujuan',
-                'suratJalanKirim.pembuat',
-                'suratJalanKembali.gudangAsal',
-                'suratJalanKembali.gudangTujuan',
-                'suratJalanKembali.pembuat',
-                'gudangPeminjam',
-                'gudangPemilik',
-            ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
         }
 
         return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman'));
@@ -688,6 +703,7 @@ class SuratJalanController extends Controller
     public function update(Request $request, $id)
     {
         $suratJalan = SuratJalan::with('items')->findOrFail($id);
+        $oldTujuanId = $suratJalan->gudang_tujuan_id;
 
         $gudangId = Auth::user()?->gudang_id;
         if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
@@ -717,17 +733,20 @@ class SuratJalanController extends Controller
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
             ]);
 
-              $suratJalan->update([
-                  'pic_tujuan_id' => $validated['pic_tujuan_id'],
-                  'pic_tujuan_custom_nama' => null,
-                  'pic_tujuan_custom_jabatan' => null,
-                  'pic_tujuan_custom_no_hp' => null,
-                  'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
-                  'catatan' => $validated['catatan'] ?? null,
-                  'nama_driver' => $validated['nama_driver'] ?? null,
-                  'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
+            $suratJalan->update([
+                'pic_tujuan_id' => $validated['pic_tujuan_id'],
+                'pic_tujuan_custom_nama' => null,
+                'pic_tujuan_custom_jabatan' => null,
+                'pic_tujuan_custom_no_hp' => null,
+                'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
+                'catatan' => $validated['catatan'] ?? null,
+                'nama_driver' => $validated['nama_driver'] ?? null,
+                'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
                 'nomor_plat' => $validated['nomor_plat'] ?? null,
             ]);
+
+            $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $oldTujuanId, $suratJalan->gudang_tujuan_id]);
+            $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
@@ -902,6 +921,9 @@ class SuratJalanController extends Controller
             $this->storeAttachments($suratJalan->id, $request->file('attachments'));
         }
 
+        $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $oldTujuanId, $suratJalan->gudang_tujuan_id]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
         $redirect = redirect()
             ->route('gudang.surat-jalan.show', $suratJalan->id)
             ->with('success', 'Draft surat jalan berhasil diperbarui.');
@@ -1055,6 +1077,9 @@ class SuratJalanController extends Controller
                     ? 'Surat Jalan disetujui. Menunggu konfirmasi pengembalian.'
                     : 'Surat Jalan disetujui dan stok berhasil dikurangi.');
 
+            $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+            $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
                 ->with('success', $message);
@@ -1192,6 +1217,9 @@ class SuratJalanController extends Controller
                 ? 'Barang pengembalian berhasil diterima. Peminjaman selesai.'
                 : 'Barang berhasil diterima dan stok telah ditambahkan.';
 
+            $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+            $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
                 ->with('success', $message);
@@ -1270,6 +1298,9 @@ class SuratJalanController extends Controller
                 }
             });
 
+            $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+            $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
                 ->with('success', 'Pengembalian barang telah dikonfirmasi.');
@@ -1316,6 +1347,9 @@ class SuratJalanController extends Controller
             }
         });
 
+        $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
         return redirect()
             ->route('gudang.surat-jalan.show', $suratJalan->id)
             ->with('success', 'Surat Jalan yang ditolak telah diselesaikan.');
@@ -1358,6 +1392,9 @@ class SuratJalanController extends Controller
             $suratJalan->delete();
         });
 
+        $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
         return redirect()
             ->route('gudang.surat-jalan.index')
             ->with('success', 'Draft Surat Jalan berhasil dihapus.');
@@ -1374,65 +1411,141 @@ class SuratJalanController extends Controller
         $orderBy = $filters['order_by'] ?? 'terbaru';
         $direction = $orderBy === 'terlama' ? 'asc' : 'desc';
 
-        $query = SuratJalan::query()
-            ->with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan'])
-            ->withCount('items')
-            ->withSum('items', 'jumlah')
-            ->orderBy('tanggal', $direction)
-            ->orderBy('id', $direction)
-            ->limit(50);
+        $buildQuery = function () use ($gudangId, $tab, $direction, $filters) {
+            $query = SuratJalan::query()
+                ->with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan'])
+                ->withCount('items')
+                ->withSum('items', 'jumlah')
+                ->orderBy('tanggal', $direction)
+                ->orderBy('id', $direction)
+                ->limit(50);
 
-        if ($gudangId) {
-            if ($tab === 'keluar') {
-                // Surat Keluar: Semua surat yang dibuat oleh gudang saya (gudang_asal_id = gudangId)
-                $query->where('gudang_asal_id', $gudangId);
-            } else {
-                // Surat Masuk: Semua surat yang ditujukan ke gudang saya, tapi bukan DRAFT
-                $query->where('gudang_tujuan_id', $gudangId)
-                      ->where('status', '!=', 'DRAFT');
+            if ($gudangId) {
+                if ($tab === 'keluar') {
+                    // Surat Keluar: Semua surat yang dibuat oleh gudang saya (gudang_asal_id = gudangId)
+                    $query->where('gudang_asal_id', $gudangId);
+                } else {
+                    // Surat Masuk: Semua surat yang ditujukan ke gudang saya, tapi bukan DRAFT
+                    $query->where('gudang_tujuan_id', $gudangId)
+                        ->where('status', '!=', 'DRAFT');
+                }
             }
+
+            if (!empty($filters['search'])) {
+                $searchLower = strtolower($filters['search']);
+                $query->whereRaw('LOWER(nomor) LIKE ?', ['%' . $searchLower . '%']);
+            }
+
+            if (!empty($filters['tipe'])) {
+                $query->where('tipe', $filters['tipe']);
+            }
+
+            if (!empty($filters['status'])) {
+                $query->where('status', $filters['status']);
+            }
+
+            if (!empty($filters['tanggal_mulai'])) {
+                $query->whereDate('tanggal', '>=', $filters['tanggal_mulai']);
+            }
+
+            if (!empty($filters['tanggal_selesai'])) {
+                $query->whereDate('tanggal', '<=', $filters['tanggal_selesai']);
+            }
+
+            return $query;
+        };
+
+        if (!$gudangId) {
+            return $buildQuery()->get();
         }
 
-        if (!empty($filters['search'])) {
-            $searchLower = strtolower($filters['search']);
-            $query->whereRaw('LOWER(nomor) LIKE ?', ['%' . $searchLower . '%']);
-        }
+        $cacheFilters = [
+            'tab' => $tab,
+            'order_by' => $orderBy,
+            'search' => $filters['search'] ?? null,
+            'tipe' => $filters['tipe'] ?? null,
+            'status' => $filters['status'] ?? null,
+            'tanggal_mulai' => $filters['tanggal_mulai'] ?? null,
+            'tanggal_selesai' => $filters['tanggal_selesai'] ?? null,
+        ];
+        ksort($cacheFilters);
+        $cacheKey = $this->buildSuratJalanCacheKey('list', $gudangId, $cacheFilters);
 
-        if (!empty($filters['tipe'])) {
-            $query->where('tipe', $filters['tipe']);
-        }
-
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-
-        if (!empty($filters['tanggal_mulai'])) {
-            $query->whereDate('tanggal', '>=', $filters['tanggal_mulai']);
-        }
-
-        if (!empty($filters['tanggal_selesai'])) {
-            $query->whereDate('tanggal', '<=', $filters['tanggal_selesai']);
-        }
-
-        return $query->get();
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($buildQuery) {
+            return $buildQuery()->get();
+        });
     }
 
     private function countSuratKeluar(int $gudangId): array
     {
-        $query = SuratJalan::where('gudang_asal_id', $gudangId);
-        return [
-            'total' => (clone $query)->count(),
-            'draft' => (clone $query)->where('status', 'DRAFT')->count(),
-        ];
+        $cacheKey = $this->buildSuratJalanCacheKey('count_keluar', $gudangId, []);
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($gudangId) {
+            $query = SuratJalan::where('gudang_asal_id', $gudangId);
+            return [
+                'total' => (clone $query)->count(),
+                'draft' => (clone $query)->where('status', 'DRAFT')->count(),
+            ];
+        });
     }
 
     private function countSuratMasuk(int $gudangId): array
     {
-        $query = SuratJalan::where('gudang_tujuan_id', $gudangId)->where('status', '!=', 'DRAFT');
-        return [
-            'total' => (clone $query)->count(),
-            'menunggu' => (clone $query)->where('status', 'DIKIRIM')->count(),
-        ];
+        $cacheKey = $this->buildSuratJalanCacheKey('count_masuk', $gudangId, []);
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($gudangId) {
+            $query = SuratJalan::where('gudang_tujuan_id', $gudangId)->where('status', '!=', 'DRAFT');
+            return [
+                'total' => (clone $query)->count(),
+                'menunggu' => (clone $query)->where('status', 'DIKIRIM')->count(),
+            ];
+        });
+    }
+
+    private function buildSuratJalanCacheKey(string $type, int $gudangId, array $filters): string
+    {
+        $version = Cache::get($this->getSuratJalanCacheVersionKey($gudangId), 1);
+        $hash = $filters ? md5(json_encode($filters)) : 'all';
+        return "surat_jalan.{$type}.{$gudangId}.v{$version}.{$hash}";
+    }
+
+    private function bumpSuratJalanCacheVersion(array $gudangIds): void
+    {
+        $uniqueIds = collect($gudangIds)
+            ->filter(fn ($id) => !empty($id))
+            ->unique()
+            ->values();
+
+        foreach ($uniqueIds as $gudangId) {
+            $key = $this->getSuratJalanCacheVersionKey((int) $gudangId);
+            $updated = Cache::increment($key);
+            if ($updated === false) {
+                Cache::forever($key, 2);
+            }
+        }
+    }
+
+    private function getSuratJalanCacheVersionKey(int $gudangId): string
+    {
+        return "surat_jalan.version.{$gudangId}";
+    }
+
+    private function buildSuratJalanDetailCacheKey(int $suratJalanId): string
+    {
+        $version = Cache::get($this->getSuratJalanDetailVersionKey($suratJalanId), 1);
+        return "surat_jalan.detail.{$suratJalanId}.v{$version}";
+    }
+
+    private function bumpSuratJalanDetailCacheVersion(int $suratJalanId): void
+    {
+        $key = $this->getSuratJalanDetailVersionKey($suratJalanId);
+        $updated = Cache::increment($key);
+        if ($updated === false) {
+            Cache::forever($key, 2);
+        }
+    }
+
+    private function getSuratJalanDetailVersionKey(int $suratJalanId): string
+    {
+        return "surat_jalan.detail.version.{$suratJalanId}";
     }
 
     private function createSuratJalanItems(int $suratJalanId, array $items): void
@@ -1861,7 +1974,14 @@ class SuratJalanController extends Controller
         $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments'])
             ->findOrFail($id);
 
-        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
+        $peminjaman = null;
+        if ($suratJalan->tipe === 'PEMINJAMAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+        }
+
+        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan', 'peminjaman'));
         $pdf->setPaper('A4', 'portrait');
 
         $safeNomor = str_replace(['/', '\\'], '-', $suratJalan->nomor);
@@ -1876,7 +1996,14 @@ class SuratJalanController extends Controller
         $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments'])
             ->findOrFail($id);
 
-        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
+        $peminjaman = null;
+        if ($suratJalan->tipe === 'PEMINJAMAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+        }
+
+        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan', 'peminjaman'));
         $pdf->setPaper('A4', 'portrait');
 
         $safeNomor = str_replace(['/', '\\'], '-', $suratJalan->nomor);
@@ -2004,6 +2131,8 @@ class SuratJalanController extends Controller
         }
 
         $attachment->delete();
+
+        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
         return redirect()->back()->with('success', 'Lampiran berhasil dihapus.');
     }

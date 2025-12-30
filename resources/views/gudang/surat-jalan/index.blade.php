@@ -696,6 +696,12 @@
                         .filter(p => String(p.gudang_id) === String(this.selectedGudang))
                         .filter(p => p.nama.toLowerCase().includes(this.picSearch?.toLowerCase() || ''));
                 },
+                get filteredPengirimUsers() {
+                    if (!this.asalGudangId) {
+                        return [];
+                    }
+                    return this.adminUsers.filter(user => String(user.gudang_id) === String(this.asalGudangId));
+                },
                 get isCustomGudang() {
                     return this.gudangMode === 'custom';
                 },
@@ -895,7 +901,7 @@
 
                   @if($isAdmin)
                   <div class="md:col-span-2 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                      <p class="text-sm font-semibold text-emerald-800 mb-3">Penandatangan (Admin)</p>
+                      <p class="text-sm font-semibold text-emerald-800 mb-3">Penandatangan</p>
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                               <label class="block text-sm font-medium text-gray-700 mb-1">Pengirim</label>
