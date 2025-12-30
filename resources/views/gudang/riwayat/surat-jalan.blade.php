@@ -372,11 +372,4 @@
             {{ $suratJalans->links() }}
         </div>
     @endif
-
-    {{-- Info Footer --}}
-    @if(isset($suratJalans) && $suratJalans->total() > 0)
-        <div class="px-4 sm:px-6 pb-4 text-sm text-gray-600">
-            Menampilkan {{ $suratJalans->firstItem() ?? 0 }} - {{ $suratJalans->lastItem() ?? 0 }} dari {{ $suratJalans->total() }} surat jalan selesai
-        </div>
-    @endif
 </div>

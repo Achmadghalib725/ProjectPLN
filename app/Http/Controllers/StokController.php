@@ -38,7 +38,7 @@ class StokController extends Controller
                     $q->where('kategori', $kategori);
                 });
             })
-            ->paginate(15)
+            ->paginate(15)->onEachSide(1)
             ->withQueryString();
 
         $borrowedTotals = collect();
@@ -501,7 +501,7 @@ class StokController extends Controller
                 }
             })
             ->orderByDesc('waktu_kirim')
-            ->paginate(15)
+            ->paginate(15)->onEachSide(1)
             ->withQueryString();
 
         // Statistics
@@ -560,7 +560,7 @@ class StokController extends Controller
                 }
             })
             ->orderByDesc('waktu_kirim')
-            ->paginate(15)
+            ->paginate(15)->onEachSide(1)
             ->withQueryString();
 
         // Statistics

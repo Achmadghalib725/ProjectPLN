@@ -1474,7 +1474,7 @@ class SuratJalanController extends Controller
         }
 
         if ($paginate) {
-            return $query->paginate(15)->withQueryString();
+            return $query->paginate(15)->onEachSide(1)->withQueryString();
         }
 
         return $query->limit(50)->get();

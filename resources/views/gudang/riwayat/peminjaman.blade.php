@@ -525,11 +525,4 @@
             {{ $peminjamans->links() }}
         </div>
     @endif
-
-    {{-- Info Footer --}}
-    @if(isset($peminjamans) && $peminjamans->total() > 0)
-        <div class="px-4 sm:px-6 pb-4 text-sm text-gray-600">
-            Menampilkan {{ $peminjamans->firstItem() ?? 0 }} - {{ $peminjamans->lastItem() ?? 0 }} dari {{ $peminjamans->total() }} peminjaman
-        </div>
-    @endif
 </div>
