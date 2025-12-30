@@ -21,6 +21,16 @@
                 </div>
             @endif
 
+            @php
+                $isAdminView = $isAdmin ?? (Auth::user()?->role === 'admin');
+                $isManagerView = $isManager ?? (Auth::user()?->role === 'manager');
+                $accessibleGudangIds = $accessibleGudangIds ?? (Auth::user()?->gudang_id ? [Auth::user()->gudang_id] : []);
+                $isGudangAsalView = !empty($accessibleGudangIds) && in_array($suratJalan->gudang_asal_id, $accessibleGudangIds, true);
+                $isGudangTujuanView = !empty($accessibleGudangIds) && in_array($suratJalan->gudang_tujuan_id, $accessibleGudangIds, true);
+                $canEditDraft = !$isManagerView && $isGudangAsalView;
+                $canApproveManager = $isAdminView || ($isManagerView && $isGudangAsalView);
+            @endphp
+
             {{-- Header Card --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="p-4 sm:p-6">
@@ -51,18 +61,18 @@
                                     <span>Download</span>
                                 </a>
                             </div>
-                            @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
+                            @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $canEditDraft)
                                 {{-- Draft Actions Row --}}
                                 <div class="flex gap-2">
                                     <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}"
                                        class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                         Edit Draft
                                     </a>
-                                    <form method="POST" action="{{ route('gudang.surat-jalan.approve', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                    <form method="POST" action="{{ route('gudang.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
                                         @csrf
                                         <button type="submit"
                                                 class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                            Approve & Kirim
+                                            {{ $suratJalan->status === 'DITOLAK_PERSETUJUAN' ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
                                         </button>
                                     </form>
                                 </div>
@@ -82,6 +92,28 @@
                                         Kembali
                                     </a>
                                 </div>
+                            @elseif($suratJalan->status === 'MENUNGGU_PERSETUJUAN' && $canApproveManager)
+                                {{-- Approval Actions Row --}}
+                                <div class="flex gap-2">
+                                    <form method="POST" action="{{ route('gudang.surat-jalan.approve', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                        @csrf
+                                        <button type="submit"
+                                                class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                            Approve & Kirim
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('gudang.surat-jalan.reject-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none" onsubmit="return confirm('Tolak persetujuan surat jalan ini?');">
+                                        @csrf
+                                        <button type="submit"
+                                                class="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                            Tolak Persetujuan
+                                        </button>
+                                    </form>
+                                </div>
+                                <a href="{{ route('gudang.surat-jalan.index') }}"
+                                   class="bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
+                                    Kembali
+                                </a>
                             @else
                                 <a href="{{ route('gudang.surat-jalan.index') }}"
                                    class="bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
@@ -119,13 +151,15 @@
                             [
                                 'label' => 'Dikirim',
                                 'desc' => 'Barang dikirim',
-                                'detail' => $sjKirim->status !== 'DRAFT'
+                                'detail' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => $sjKirim->status !== 'DRAFT'
+                                'time' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
                                     : null,
-                                'by' => $sjKirim->status !== 'DRAFT' ? $sjKirim->pembuat?->name : null,
+                                'by' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
+                                    ? $sjKirim->pembuat?->name
+                                    : null,
                             ],
                             [
                                 'label' => 'Selesai',
@@ -141,6 +175,8 @@
                         ];
                         $statusIndexMap = [
                             'DRAFT' => -1,
+                            'MENUNGGU_PERSETUJUAN' => -1,
+                            'DITOLAK_PERSETUJUAN' => -1,
                             'DIKIRIM' => 0,
                             'SELESAI' => 1,
                             'DITOLAK' => -2,
@@ -151,13 +187,15 @@
                             [
                                 'label' => 'Dikirim',
                                 'desc' => 'Barang dikirim',
-                                'detail' => $sjKirim->status !== 'DRAFT'
+                                'detail' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => $sjKirim->status !== 'DRAFT'
+                                'time' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
                                     : null,
-                                'by' => $sjKirim->status !== 'DRAFT' ? $sjKirim->pembuat?->name : null,
+                                'by' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
+                                    ? $sjKirim->pembuat?->name
+                                    : null,
                             ],
                             [
                                 'label' => 'Diperiksa',
@@ -184,6 +222,8 @@
                         ];
                         $statusIndexMap = [
                             'DRAFT' => -1,
+                            'MENUNGGU_PERSETUJUAN' => -1,
+                            'DITOLAK_PERSETUJUAN' => -1,
                             'DIKIRIM' => 0,
                             'DIPERIKSA' => 1,
                             'DITERIMA' => 2,
@@ -212,7 +252,7 @@
                             [
                                 'label' => 'Dikirim',
                                 'desc' => 'Barang dikirim ke peminjam',
-                                'detail' => $sjKirim && $sjKirim->status !== 'DRAFT'
+                                'detail' => $sjKirim && !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? "Dikirim dari <strong>{$gudangPemilikNama}</strong> ke <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
                                 'time' => $peminjaman?->waktu_kirim ? $formatWaktu($peminjaman->waktu_kirim) : null,
@@ -242,7 +282,7 @@
                             $currentStep = 3;
                         } elseif ($suratStatus === 'MENUNGGU_DIKEMBALIKAN') {
                             $currentStep = 1;
-                        } elseif ($sjKirimStatus !== 'DRAFT') {
+                        } elseif (!in_array($sjKirimStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)) {
                             $currentStep = 0;
                         } else {
                             $currentStep = 0;
@@ -252,7 +292,7 @@
                             [
                                 'label' => 'Dikirim',
                                 'desc' => 'Barang dikirim ke peminjam',
-                                'detail' => $sjKirim && $sjKirim->status !== 'DRAFT'
+                                'detail' => $sjKirim && !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? "Dikirim dari <strong>{$gudangPemilikNama}</strong> ke <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
                                 'time' => $peminjaman?->waktu_kirim ? $formatWaktu($peminjaman->waktu_kirim) : null,
@@ -352,7 +392,7 @@
             @endphp
 
             {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if($suratStatus !== 'DRAFT' || ($isPeminjaman && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
+            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($isPeminjaman && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -495,11 +535,18 @@
             @else
             {{-- DRAFT Status Card --}}
             <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6 text-center mb-4 sm:mb-6">
+                @php
+                    $draftMessage = match ($suratStatus) {
+                        'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                        'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                        default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
+                    };
+                @endphp
                 <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-gray-100 text-gray-700 rounded-xl">
                     <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    <span class="font-semibold text-sm sm:text-base text-center">Status: DRAFT - Menunggu persetujuan untuk dikirim</span>
+                    <span class="font-semibold text-sm sm:text-base text-center">{{ $draftMessage }}</span>
                 </div>
             </div>
             @endif
@@ -660,7 +707,7 @@
                                              class="w-full h-28 sm:h-40 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition">
                                     </a>
                                     <p class="text-[10px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2 truncate">{{ $attachment->file_name }}</p>
-                                    @if($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
+                                    @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $isGudangAsalView)
                                         <form action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}"
                                               method="POST"
                                               class="absolute top-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition">
@@ -680,10 +727,10 @@
                         </div>
                     </div>
                 </div>
-            @elseif($suratJalan->status === 'DRAFT' && Auth::user()?->gudang_id === $suratJalan->gudang_asal_id)
+            @elseif(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $isGudangAsalView)
                 <div class="bg-yellow-50 border border-yellow-200 rounded-xl mt-4 sm:mt-6 p-4">
                     <p class="text-yellow-800 text-xs sm:text-sm">
-                        <strong>Perhatian:</strong> Belum ada lampiran gambar. Upload minimal 1 gambar sebelum mengirim surat jalan.
+                        <strong>Perhatian:</strong> Belum ada lampiran gambar. Upload minimal 1 gambar sebelum meminta persetujuan.
                         <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}" class="underline font-semibold">Edit draft untuk upload gambar</a>.
                     </p>
                 </div>
@@ -691,13 +738,12 @@
 
             {{-- Action Buttons for Operator --}}
             @php
-                $userGudangId = Auth::user()?->gudang_id;
-                $isGudangTujuan = $userGudangId === $suratJalan->gudang_tujuan_id;
-                $isGudangAsal = $userGudangId === $suratJalan->gudang_asal_id;
+                $isGudangTujuan = $isGudangTujuanView;
+                $isGudangAsal = $isGudangAsalView;
             @endphp
 
             {{-- Tombol Terima Barang untuk Operator Gudang Tujuan (status DIPERIKSA) --}}
-            @if($suratJalan->status === 'DIPERIKSA' && $isGudangTujuan)
+            @if($suratJalan->status === 'DIPERIKSA' && $isGudangTujuan && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Penerimaan</h3>
@@ -730,7 +776,7 @@
             @endif
 
             {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam (status DITERIMA, tipe PEMINJAMAN) --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && $isGudangTujuan && $peminjaman && !$peminjaman->surat_jalan_kembali_id)
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && $isGudangTujuan && $peminjaman && !$peminjaman->surat_jalan_kembali_id && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Barang</h3>
@@ -749,7 +795,7 @@
                 </div>
             @endif
 
-            @if($suratJalan->status === 'DITOLAK' && $isGudangAsal)
+            @if($suratJalan->status === 'DITOLAK' && $isGudangAsal && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Penyelesaian Surat Ditolak</h3>
@@ -778,7 +824,7 @@
             @endif
 
             {{-- Konfirmasi Pengembalian Manual untuk Gudang Eksternal --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'MENUNGGU_DIKEMBALIKAN' && $isGudangAsal && $suratJalan->gudang_tujuan_is_custom)
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'MENUNGGU_DIKEMBALIKAN' && $isGudangAsal && $suratJalan->gudang_tujuan_is_custom && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Pengembalian</h3>
@@ -825,7 +871,7 @@
                         <span class="font-semibold text-sm sm:text-base text-center">Menunggu konfirmasi pengembalian</span>
                     </div>
                 </div>
-            @elseif($suratJalan->status === 'DITERIMA' && $suratJalan->tipe === 'PEMINJAMAN' && !$isGudangTujuan)
+            @elseif($suratJalan->status === 'DITERIMA' && $suratJalan->tipe === 'PEMINJAMAN' && !$isGudangTujuan && !$isManagerView)
                 <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
                     <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-yellow-100 text-yellow-800 rounded-xl">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

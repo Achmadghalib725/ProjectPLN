@@ -31,11 +31,29 @@ class SuratJalanController extends Controller
     {
         $user = Auth::user();
         $isAdmin = $user?->role === 'admin';
+        $isManager = $user?->role === 'manager';
         $gudangId = $user?->gudang_id;
         $activeGudangId = $gudangId;
+        $managedGudangIds = $isManager
+            ? $user->managedGudangs()->pluck('gudangs.id')->all()
+            : [];
 
         if ($isAdmin && !$gudangId) {
             $activeGudangId = $request->input('gudang_id') ? (int) $request->input('gudang_id') : null;
+        }
+
+        if ($isManager) {
+            if (empty($managedGudangIds)) {
+                abort(403, 'Manager belum memiliki gudang yang ditugaskan');
+            }
+
+            $requestedGudangId = $request->input('gudang_id');
+            $requestedGudangId = $requestedGudangId ? (int) $requestedGudangId : null;
+            if ($requestedGudangId && in_array($requestedGudangId, $managedGudangIds, true)) {
+                $activeGudangId = $requestedGudangId;
+            } else {
+                $activeGudangId = $managedGudangIds[0] ?? null;
+            }
         }
 
         if (!$activeGudangId && !$isAdmin) {
@@ -52,7 +70,7 @@ class SuratJalanController extends Controller
         if ($tab === 'keluar') {
             $stats = [
                 'total' => $suratJalans->count(),
-                'draft' => $suratJalans->where('status', 'DRAFT')->count(),
+                'draft' => $suratJalans->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN'])->count(),
                 'dikirim' => $suratJalans->whereIn('status', ['DIKIRIM', 'MENUNGGU_DIKEMBALIKAN'])->count(),
                 'diterima' => $suratJalans->where('status', 'DITERIMA')->count(),
                 'selesai' => $suratJalans->where('status', 'SELESAI')->count(),
@@ -86,9 +104,13 @@ class SuratJalanController extends Controller
 
         $adminUsers = Schema::hasTable('users')
             ? User::query()
-                ->whereNotNull('gudang_id')
+                ->where(function ($query) {
+                    $query->whereNotNull('gudang_id')
+                        ->orWhere('role', 'manager');
+                })
+                ->with('managedGudangs:id')
                 ->orderBy('name')
-                ->get(['id', 'name', 'gudang_id', 'jabatan'])
+                ->get(['id', 'name', 'gudang_id', 'jabatan', 'role'])
             : collect();
 
         $availableStocks = Schema::hasTable('item_stocks') && $activeGudangId
@@ -110,9 +132,18 @@ class SuratJalanController extends Controller
                 ->get()
             : collect();
 
-        $adminGudangs = $isAdmin && Schema::hasTable('gudangs')
-            ? Gudang::query()->where('kode', '!=', 'GDG-EXT')->orderBy('nama')->get()
-            : collect();
+        $selectionGudangs = collect();
+        if (Schema::hasTable('gudangs')) {
+            if ($isAdmin && !$gudangId) {
+                $selectionGudangs = Gudang::query()->where('kode', '!=', 'GDG-EXT')->orderBy('nama')->get();
+            } elseif ($isManager) {
+                $selectionGudangs = Gudang::query()
+                    ->where('kode', '!=', 'GDG-EXT')
+                    ->whereIn('id', $managedGudangIds)
+                    ->orderBy('nama')
+                    ->get();
+            }
+        }
         $activeGudangName = $activeGudangId ? (Gudang::find($activeGudangId)?->nama ?? null) : null;
 
         return view('gudang.surat-jalan.index', compact(
@@ -127,7 +158,7 @@ class SuratJalanController extends Controller
             'tab',
             'countKeluar',
             'countMasuk',
-            'adminGudangs',
+            'selectionGudangs',
             'activeGudangId',
             'activeGudangName'
         ));
@@ -142,6 +173,9 @@ class SuratJalanController extends Controller
     {
         $user = Auth::user();
         $isAdmin = $user?->role === 'admin';
+        if ($user?->role === 'manager') {
+            abort(403, 'Manager tidak dapat membuat surat jalan.');
+        }
         $gudangId = $user?->gudang_id;
         $selectedGudangId = $gudangId ?: ($isAdmin ? (int) $request->input('gudang_asal_id') : null);
 
@@ -483,6 +517,9 @@ class SuratJalanController extends Controller
     {
         $user = Auth::user();
         $isAdmin = $user?->role === 'admin';
+        if ($user?->role === 'manager') {
+            abort(403, 'Manager tidak dapat membuat surat jalan.');
+        }
         $gudangId = $user?->gudang_id;
 
         if (!$gudangId && !$isAdmin) {
@@ -650,8 +687,15 @@ class SuratJalanController extends Controller
             return [$suratJalan, $peminjaman];
         });
 
-        $gudangId = Auth::user()?->gudang_id;
-        if ($gudangId && $suratJalan->gudang_asal_id !== $gudangId && $suratJalan->gudang_tujuan_id !== $gudangId) {
+        $user = Auth::user();
+        $accessibleGudangIds = $this->resolveAccessibleGudangIds($user);
+        if ($user?->role === 'manager' && empty($accessibleGudangIds)) {
+            abort(403, 'Manager belum memiliki gudang yang ditugaskan');
+        }
+        if (!empty($accessibleGudangIds)
+            && !in_array($suratJalan->gudang_asal_id, $accessibleGudangIds, true)
+            && !in_array($suratJalan->gudang_tujuan_id, $accessibleGudangIds, true)
+        ) {
             abort(403, 'Anda tidak berhak mengakses surat jalan gudang lain.');
         }
 
@@ -662,9 +706,10 @@ class SuratJalanController extends Controller
                 : collect();
         }
 
-        $isAdmin = Auth::user()?->role === 'admin';
+        $isAdmin = $user?->role === 'admin';
+        $isManager = $user?->role === 'manager';
 
-        return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin'));
+        return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin', 'isManager', 'accessibleGudangIds'));
     }
 
     public function edit($id)
@@ -677,10 +722,11 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak mengedit surat jalan gudang lain.');
         }
 
-        if ($suratJalan->status !== 'DRAFT') {
+        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
+        if (!in_array($suratJalan->status, $editableStatuses, true)) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Hanya surat jalan Draft yang bisa diedit.');
+                ->with('error', 'Hanya surat jalan Draft atau Ditolak Persetujuan yang bisa diedit.');
         }
 
         $gudangs = Schema::hasTable('gudangs')
@@ -721,10 +767,11 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak mengedit surat jalan gudang lain.');
         }
 
-        if ($suratJalan->status !== 'DRAFT') {
+        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
+        if (!in_array($suratJalan->status, $editableStatuses, true)) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Hanya surat jalan Draft yang bisa diedit.');
+                ->with('error', 'Hanya surat jalan Draft atau Ditolak Persetujuan yang bisa diedit.');
         }
 
         if ($suratJalan->tipe === 'PENGEMBALIAN') {
@@ -946,30 +993,117 @@ class SuratJalanController extends Controller
         return $redirect;
     }
 
-    public function approve($id)
+    public function requestApproval($id)
     {
-        $suratJalan = SuratJalan::with('items.item')->findOrFail($id);
+        $suratJalan = SuratJalan::with('attachments')->findOrFail($id);
+        $user = Auth::user();
+        $isAdmin = $user?->role === 'admin';
 
-        $gudangId = Auth::user()?->gudang_id;
-        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
-            abort(403, 'Anda tidak berhak menyetujui surat jalan gudang lain.');
+        if ($user?->role === 'manager') {
+            abort(403, 'Manager tidak dapat meminta persetujuan.');
         }
 
-        if ($suratJalan->status !== 'DRAFT') {
+        $gudangId = $user?->gudang_id;
+        if (!$isAdmin && (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId)) {
+            abort(403, 'Anda tidak berhak meminta persetujuan surat jalan gudang lain.');
+        }
+
+        if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true)) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Surat Jalan ini sudah diproses.');
+                ->with('error', 'Surat Jalan ini tidak dapat diajukan untuk persetujuan.');
         }
 
-        // Validasi attachment wajib minimal 1
         if ($suratJalan->attachments()->count() === 0) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum mengirim surat jalan.');
+                ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
+        }
+
+        $suratJalan->update([
+            'status' => 'MENUNGGU_PERSETUJUAN',
+        ]);
+
+        $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
+        return redirect()
+            ->route('gudang.surat-jalan.show', $suratJalan->id)
+            ->with('success', 'Surat Jalan berhasil diajukan untuk persetujuan.');
+    }
+
+    public function rejectApproval($id)
+    {
+        $suratJalan = SuratJalan::findOrFail($id);
+        $user = Auth::user();
+        $isAdmin = $user?->role === 'admin';
+        $isManager = $user?->role === 'manager';
+        $redirectRoute = $isManager ? 'manager.surat-jalan.show' : 'gudang.surat-jalan.show';
+
+        if (!$isAdmin && !$isManager) {
+            abort(403, 'Anda tidak berhak menolak persetujuan.');
+        }
+
+        $accessibleGudangIds = $this->resolveAccessibleGudangIds($user);
+        if ($isManager && empty($accessibleGudangIds)) {
+            abort(403, 'Manager belum memiliki gudang yang ditugaskan');
+        }
+        if ($isManager && !in_array($suratJalan->gudang_asal_id, $accessibleGudangIds, true)) {
+            abort(403, 'Anda tidak berhak menolak surat jalan gudang lain.');
+        }
+
+        if ($suratJalan->status !== 'MENUNGGU_PERSETUJUAN') {
+            return redirect()
+                ->route($redirectRoute, $suratJalan->id)
+                ->with('error', 'Surat Jalan ini tidak dalam status menunggu persetujuan.');
+        }
+
+        $suratJalan->update([
+            'status' => 'DITOLAK_PERSETUJUAN',
+        ]);
+
+        $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
+        return redirect()
+            ->route($redirectRoute, $suratJalan->id)
+            ->with('success', 'Persetujuan surat jalan ditolak. Silakan perbaiki dan ajukan ulang.');
+    }
+
+    public function approve($id)
+    {
+        $suratJalan = SuratJalan::with('items.item')->findOrFail($id);
+        $user = Auth::user();
+        $isAdmin = $user?->role === 'admin';
+        $isManager = $user?->role === 'manager';
+        $redirectRoute = $isManager ? 'manager.surat-jalan.show' : 'gudang.surat-jalan.show';
+
+        if (!$isAdmin && !$isManager) {
+            abort(403, 'Anda tidak berhak menyetujui surat jalan.');
+        }
+
+        $accessibleGudangIds = $this->resolveAccessibleGudangIds($user);
+        if ($isManager && empty($accessibleGudangIds)) {
+            abort(403, 'Manager belum memiliki gudang yang ditugaskan');
+        }
+        if ($isManager && !in_array($suratJalan->gudang_asal_id, $accessibleGudangIds, true)) {
+            abort(403, 'Anda tidak berhak menyetujui surat jalan gudang lain.');
+        }
+
+        if ($suratJalan->status !== 'MENUNGGU_PERSETUJUAN') {
+            return redirect()
+                ->route($redirectRoute, $suratJalan->id)
+                ->with('error', 'Surat Jalan ini tidak dalam status menunggu persetujuan.');
+        }
+
+        if ($suratJalan->attachments()->count() === 0) {
+            return redirect()
+                ->route($redirectRoute, $suratJalan->id)
+                ->with('error', 'Lampiran wajib ada sebelum menyetujui surat jalan.');
         }
 
         try {
-            DB::transaction(function () use ($suratJalan, $gudangId) {
+            DB::transaction(function () use ($suratJalan, $user) {
                 $isCustomGudang = (bool) $suratJalan->gudang_tujuan_is_custom;
                 $gudangTujuanNama = $suratJalan->gudang_tujuan_is_custom
                     ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
@@ -981,6 +1115,7 @@ class SuratJalanController extends Controller
 
                 // Untuk PENGEMBALIAN, tidak perlu validasi stok (barang dikembalikan)
                 if ($suratJalan->tipe !== 'PENGEMBALIAN') {
+                    $gudangId = $suratJalan->gudang_asal_id;
                     $borrowedTotals = $suratJalan->tipe === 'PEMINJAMAN'
                         ? $this->getBorrowedItemTotals($gudangId, $itemTotals->keys())
                         : collect();
@@ -1034,7 +1169,7 @@ class SuratJalanController extends Controller
                     if ($suratJalan->tipe === 'PEMINJAMAN' && $isCustomGudang) {
                         $suratJalan->update([
                             'status' => 'MENUNGGU_DIKEMBALIKAN',
-                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
+                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $user->id,
                             'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                         ]);
 
@@ -1048,7 +1183,7 @@ class SuratJalanController extends Controller
                     } else {
                         $suratJalan->update([
                             'status' => $isCustomGudang && $suratJalan->tipe === 'TRANSFER' ? 'SELESAI' : 'DIKIRIM',
-                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
+                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $user->id,
                             'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                         ]);
 
@@ -1067,7 +1202,7 @@ class SuratJalanController extends Controller
                     // PENGEMBALIAN: Update status to DIKEMBALIKAN
                     $suratJalan->update([
                         'status' => 'DIKEMBALIKAN',
-                        'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? Auth::id(),
+                        'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $user->id,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                     ]);
 
@@ -1092,11 +1227,11 @@ class SuratJalanController extends Controller
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route($redirectRoute, $suratJalan->id)
                 ->with('success', $message);
         } catch (\RuntimeException $e) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route($redirectRoute, $suratJalan->id)
                 ->with('error', $e->getMessage());
         }
     }
@@ -1375,10 +1510,11 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak menghapus surat jalan gudang lain.');
         }
 
-        if ($suratJalan->status !== 'DRAFT') {
+        $deletableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
+        if (!in_array($suratJalan->status, $deletableStatuses, true)) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Hanya surat jalan dengan status Draft yang bisa dihapus.');
+                ->with('error', 'Hanya surat jalan dengan status Draft atau Ditolak Persetujuan yang bisa dihapus.');
         }
 
         DB::transaction(function () use ($suratJalan) {
@@ -1438,7 +1574,7 @@ class SuratJalanController extends Controller
                 } else {
                     // Surat Masuk: Semua surat yang ditujukan ke gudang saya, tapi bukan DRAFT
                     $query->where('gudang_tujuan_id', $gudangId)
-                        ->where('status', '!=', 'DRAFT');
+                        ->whereNotIn('status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
                 }
             }
 
@@ -1494,7 +1630,7 @@ class SuratJalanController extends Controller
             $query = SuratJalan::where('gudang_asal_id', $gudangId);
             return [
                 'total' => (clone $query)->count(),
-                'draft' => (clone $query)->where('status', 'DRAFT')->count(),
+                'draft' => (clone $query)->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN'])->count(),
             ];
         });
     }
@@ -1503,12 +1639,30 @@ class SuratJalanController extends Controller
     {
         $cacheKey = $this->buildSuratJalanCacheKey('count_masuk', $gudangId, []);
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($gudangId) {
-            $query = SuratJalan::where('gudang_tujuan_id', $gudangId)->where('status', '!=', 'DRAFT');
+            $query = SuratJalan::where('gudang_tujuan_id', $gudangId)
+                ->whereNotIn('status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
             return [
                 'total' => (clone $query)->count(),
                 'menunggu' => (clone $query)->where('status', 'DIKIRIM')->count(),
             ];
         });
+    }
+
+    private function resolveAccessibleGudangIds(?User $user): array
+    {
+        if (!$user) {
+            return [];
+        }
+
+        if ($user->role === 'admin') {
+            return [];
+        }
+
+        if ($user->role === 'manager') {
+            return $user->managedGudangs()->pluck('gudangs.id')->all();
+        }
+
+        return $user->gudang_id ? [$user->gudang_id] : [];
     }
 
     private function buildSuratJalanCacheKey(string $type, int $gudangId, array $filters): string
@@ -2132,8 +2286,9 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak menghapus lampiran ini.');
         }
 
-        if ($suratJalan->status !== 'DRAFT') {
-            return redirect()->back()->with('error', 'Lampiran hanya bisa dihapus saat status Draft.');
+        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
+        if (!in_array($suratJalan->status, $editableStatuses, true)) {
+            return redirect()->back()->with('error', 'Lampiran hanya bisa dihapus saat status Draft atau Ditolak Persetujuan.');
         }
 
         // Delete file from storage

@@ -3,14 +3,16 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             @php
                 $isAdmin = Auth::user()->role === 'admin';
-                $adminNeedsGudang = $isAdmin && !Auth::user()->gudang_id;
-                $hasGudangContext = !$adminNeedsGudang || !empty($activeGudangId);
+                $isManager = Auth::user()->role === 'manager';
+                $needsGudangSelection = ($selectionGudangs ?? collect())->count() > 0;
+                $hasGudangContext = !$needsGudangSelection || !empty($activeGudangId);
+                $displayGudangName = $activeGudangName ?? (Auth::user()->gudang?->nama ?? '');
                 $headerNotices = [];
                 /*
                 if ($isAdmin) {
                     $headerNotices[] = 'Mode admin: surat jalan dapat langsung dibuat dan diselesaikan.';
                 }
-                if ($adminNeedsGudang && !$hasGudangContext) {
+                if ($needsGudangSelection && !$hasGudangContext) {
                     $headerNotices[] = 'Pilih gudang terlebih dulu untuk membuat surat jalan.';
                 }
                 */
@@ -71,10 +73,10 @@
                         <div class="text-center sm:text-left">
                             <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Surat Jalan Barang</h2>
                             <p class="text-xs sm:text-sm text-gray-600 mt-1">
-                                {{ $adminNeedsGudang && $activeGudangName ? $activeGudangName : (Auth::user()->gudang?->nama ?? '') }}
+                                {{ $displayGudangName }}
                             </p>
                         </div>
-                        @if($adminNeedsGudang)
+                        @if($needsGudangSelection)
                         <form method="GET" action="{{ route('gudang.surat-jalan.index') }}" class="flex items-center gap-2">
                             <input type="hidden" name="tab" value="{{ $tab }}">
                             <label class="text-xs font-semibold text-gray-500 uppercase">Akses Gudang</label>
@@ -82,7 +84,7 @@
                                     onchange="this.form.submit()"
                                     class="rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 <option value="">Pilih gudang...</option>
-                                @foreach($adminGudangs as $gudang)
+                                @foreach($selectionGudangs as $gudang)
                                     <option value="{{ $gudang->id }}" {{ (string) $activeGudangId === (string) $gudang->id ? 'selected' : '' }}>
                                         {{ $gudang->kode }} - {{ $gudang->nama }}
                                     </option>
@@ -92,6 +94,7 @@
                         @endif
                         @if($tab === 'keluar')
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            @if(!$isManager)
                             <button type="button"
                                     class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 {{ $isAdmin ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-pln-primary hover:bg-pln-light' }} active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                     @if(!$hasGudangContext) disabled @endif
@@ -112,6 +115,7 @@
                                     <span class="sm:hidden">Pengembalian</span>
                                     <span class="hidden sm:inline">{{ $isAdmin ? 'Pengembalian (Admin)' : 'Pengembalian Peminjaman' }}</span>
                                 </button>
+                            @endif
                             @endif
                             <button type="button"
                                     class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm"
@@ -353,7 +357,7 @@
                                         class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
                                     <option value="">Semua</option>
                                     @if($tab === 'keluar')
-                                        @foreach(['DRAFT','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
+                                        @foreach(['DRAFT','MENUNGGU_PERSETUJUAN','DITOLAK_PERSETUJUAN','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                             <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
                                                 {{ $statusOption }}
                                             </option>
@@ -448,6 +452,8 @@
                             $status = $sj->status ?? 'DRAFT';
                             $statusClass = match ($status) {
                                 'DRAFT' => 'bg-gray-100 text-gray-800',
+                                'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
+                                'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
                                 'DIKIRIM' => 'bg-blue-100 text-blue-800',
                                 'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
                                 'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
@@ -535,6 +541,8 @@
                                     $status = $sj->status ?? 'DRAFT';
                                     $statusClass = match ($status) {
                                         'DRAFT' => 'bg-gray-100 text-gray-800',
+                                        'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
+                                        'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
                                         'DIKIRIM' => 'bg-blue-100 text-blue-800',
                                         'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
                                         'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
@@ -700,7 +708,15 @@
                     if (!this.asalGudangId) {
                         return [];
                     }
-                    return this.adminUsers.filter(user => String(user.gudang_id) === String(this.asalGudangId));
+                    return this.adminUsers.filter(user => {
+                        if (String(user.gudang_id) === String(this.asalGudangId)) {
+                            return true;
+                        }
+                        if (Array.isArray(user.managed_gudangs)) {
+                            return user.managed_gudangs.some(gudang => String(gudang.id) === String(this.asalGudangId));
+                        }
+                        return false;
+                    });
                 },
                 get isCustomGudang() {
                     return this.gudangMode === 'custom';
@@ -780,7 +796,7 @@
 
               <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
                   @csrf
-                  @if($adminNeedsGudang)
+                  @if($isAdmin && $needsGudangSelection)
                       <input type="hidden" name="gudang_asal_id" value="{{ $activeGudangId }}">
                   @endif
                   <input type="hidden" name="mode" :value="mode">
