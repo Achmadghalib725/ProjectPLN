@@ -153,11 +153,11 @@
                 </div>
             </div>
 
-            {{-- Statistics --}}
+            {{-- Statistics (SELESAI removed - now in Riwayat page) --}}
             @if($tab === 'keluar')
             {{-- Stats for Surat Keluar - Horizontal scroll on mobile --}}
             <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 mb-4 sm:mb-6">
-                <div class="flex sm:grid sm:grid-cols-5 gap-3 sm:gap-4 min-w-max sm:min-w-0">
+                <div class="flex sm:grid sm:grid-cols-4 gap-3 sm:gap-4 min-w-max sm:min-w-0">
                     <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
                         <div class="p-4 sm:p-6">
                             <div class="flex items-center">
@@ -167,7 +167,7 @@
                                     </svg>
                                 </div>
                                 <div class="ml-3 sm:ml-5">
-                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Total</p>
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Total Aktif</p>
                                     <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</p>
                                 </div>
                             </div>
@@ -221,28 +221,12 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
-                        <div class="p-4 sm:p-6">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 bg-green-500 rounded-lg p-2.5 sm:p-3">
-                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-3 sm:ml-5">
-                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Selesai</p>
-                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['selesai'] ?? 0 }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
             @else
             {{-- Stats for Surat Masuk - Horizontal scroll on mobile --}}
             <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 mb-4 sm:mb-6">
-                <div class="flex sm:grid sm:grid-cols-4 gap-3 sm:gap-4 min-w-max sm:min-w-0">
+                <div class="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-4 min-w-max sm:min-w-0">
                     <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
                         <div class="p-4 sm:p-6">
                             <div class="flex items-center">
@@ -252,7 +236,7 @@
                                     </svg>
                                 </div>
                                 <div class="ml-3 sm:ml-5">
-                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Total</p>
+                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Total Aktif</p>
                                     <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['total'] ?? 0 }}</p>
                                 </div>
                             </div>
@@ -290,143 +274,152 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg min-w-[140px] sm:min-w-0">
-                        <div class="p-4 sm:p-6">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 bg-green-500 rounded-lg p-2.5 sm:p-3">
-                                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-3 sm:ml-5">
-                                    <p class="text-xs sm:text-sm font-medium text-gray-500">Selesai</p>
-                                    <p class="text-lg sm:text-xl font-bold text-gray-900">{{ $stats['selesai'] ?? 0 }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
             @endif
 
-            {{-- Filters --}}
-            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showFilters: false }">
-                <div class="p-4 sm:p-6">
-                    {{-- Mobile Filter Toggle --}}
-                    <button type="button"
-                            @click="showFilters = !showFilters"
-                            class="sm:hidden w-full flex items-center justify-between text-gray-700 font-medium mb-3">
-                        <span class="flex items-center gap-2">
+            {{-- Filter & Sort Section --}}
+            @php
+                $activeFilters = collect(['search', 'status', 'tipe', 'tanggal_mulai', 'tanggal_selesai'])->filter(fn($f) => !empty($filters[$f] ?? null))->count();
+                $currentSort = $filters['order_by'] ?? 'terbaru';
+            @endphp
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl mb-4 sm:mb-6" x-data="{ showFilter: false }">
+                {{-- Filter Toggle Button + Quick Sort --}}
+                <div class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <button @click="showFilter = !showFilter"
+                                type="button"
+                                class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition font-medium text-sm">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                             </svg>
-                            Filter & Pencarian
-                        </span>
-                        <svg class="w-5 h-5 transition-transform" :class="showFilters ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-
-                    <form method="GET" action="{{ route('gudang.surat-jalan.index') }}"
-                          class="sm:grid sm:grid-cols-7 gap-3 sm:gap-4"
-                          :class="{ 'hidden sm:grid': !showFilters }">
-                        <input type="hidden" name="tab" value="{{ $tab }}">
-
-                        {{-- Search --}}
-                        <div class="sm:col-span-2 mb-3 sm:mb-0">
-                            <label for="search" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Cari Nomor</label>
-                            <input type="text"
-                                   name="search"
-                                   id="search"
-                                   value="{{ $filters['search'] ?? '' }}"
-                                   placeholder="Contoh: 705/SJ251223/2025"
-                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                        </div>
-
-                        {{-- Status & Tipe in same row on mobile --}}
-                        <div class="grid grid-cols-2 gap-3 sm:contents mb-3 sm:mb-0">
-                            <div>
-                                <label for="status" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Status</label>
-                                <select name="status"
-                                        id="status"
-                                        class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
-                                    <option value="">Semua</option>
-                                    @if($tab === 'keluar')
-                                        @foreach(['DRAFT','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
-                                            <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                                {{ $statusOption }}
-                                            </option>
-                                        @endforeach
-                                    @else
-                                        @foreach(['DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
-                                            <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                                {{ in_array($statusOption, ['DIKIRIM', 'DIKEMBALIKAN']) ? 'MENUNGGU' : $statusOption }}
-                                            </option>
-                                        @endforeach
-                                    @endif
-                                </select>
-                            </div>
-                            <div>
-                                <label for="tipe" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Tipe</label>
-                                <select name="tipe"
-                                        id="tipe"
-                                        class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
-                                    <option value="">Semua</option>
-                                    @foreach(['TRANSFER','PEMINJAMAN','PENGEMBALIAN'] as $tipeOption)
-                                        <option value="{{ $tipeOption }}" {{ ($filters['tipe'] ?? '') === $tipeOption ? 'selected' : '' }}>
-                                            {{ $tipeOption }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-
-                        {{-- Order --}}
-                        <div class="hidden sm:block">
-                            <label for="order_by" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Urutkan</label>
-                            <select name="order_by"
-                                    id="order_by"
-                                    class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
-                                <option value="terbaru" {{ ($filters['order_by'] ?? 'terbaru') === 'terbaru' ? 'selected' : '' }}>Terbaru</option>
-                                <option value="terlama" {{ ($filters['order_by'] ?? '') === 'terlama' ? 'selected' : '' }}>Terlama</option>
-                            </select>
-                        </div>
-
-                        {{-- Date Range --}}
-                        <div class="grid grid-cols-2 gap-3 sm:contents mb-3 sm:mb-0">
-                            <div>
-                                <label for="tanggal_mulai" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Dari</label>
-                                <input type="date"
-                                       name="tanggal_mulai"
-                                       id="tanggal_mulai"
-                                       value="{{ $filters['tanggal_mulai'] ?? '' }}"
-                                       class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
-                            </div>
-                            <div>
-                                <label for="tanggal_selesai" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Sampai</label>
-                                <input type="date"
-                                       name="tanggal_selesai"
-                                       id="tanggal_selesai"
-                                       value="{{ $filters['tanggal_selesai'] ?? '' }}"
-                                       class="w-full rounded-lg sm:rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50 text-sm">
-                            </div>
-                        </div>
-
-                        {{-- Buttons --}}
-                        <div class="flex items-end gap-2">
-                            <button type="submit"
-                                    class="flex-1 bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-2 px-4 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                Filter
-                            </button>
-                            @if(($filters['search'] ?? '') || ($filters['status'] ?? '') || ($filters['tipe'] ?? '') || ($filters['tanggal_mulai'] ?? '') || ($filters['tanggal_selesai'] ?? '') || ($filters['order_by'] ?? 'terbaru') !== 'terbaru')
-                                <a href="{{ route('gudang.surat-jalan.index', ['tab' => $tab]) }}"
-                                   class="bg-gray-200 hover:bg-gray-300 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-2 px-4 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                    Reset
-                                </a>
+                            <span>Filter & Urutkan</span>
+                            @if($activeFilters > 0)
+                                <span class="bg-[#035b71] text-white text-xs px-2 py-0.5 rounded-full">{{ $activeFilters }}</span>
                             @endif
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="showFilter ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        @if($activeFilters > 0)
+                            <a href="{{ route('gudang.surat-jalan.index', ['tab' => $tab]) }}"
+                               class="text-sm text-gray-500 hover:text-red-600 transition flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Hapus Filter
+                            </a>
+                        @endif
+                    </div>
+
+                    {{-- Quick Sort Toggle --}}
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-500">Urutkan:</span>
+                        <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
+                            <a href="{{ route('gudang.surat-jalan.index', array_merge(request()->query(), ['tab' => $tab, 'order_by' => 'terbaru'])) }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ $currentSort === 'terbaru' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                                Terbaru
+                            </a>
+                            <a href="{{ route('gudang.surat-jalan.index', array_merge(request()->query(), ['tab' => $tab, 'order_by' => 'terlama'])) }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ $currentSort === 'terlama' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                                Terlama
+                            </a>
                         </div>
-                    </form>
+                    </div>
+                </div>
+
+                {{-- Expandable Filter Panel --}}
+                <div x-show="showFilter" x-collapse x-cloak>
+                    <div class="px-4 pb-4 border-t border-gray-100 pt-4">
+                        <form method="GET" action="{{ route('gudang.surat-jalan.index') }}">
+                            <input type="hidden" name="tab" value="{{ $tab }}">
+                            <input type="hidden" name="order_by" value="{{ $currentSort }}">
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {{-- Search Input --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Cari Nomor Surat</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                            </svg>
+                                        </div>
+                                        <input type="text"
+                                               name="search"
+                                               value="{{ $filters['search'] ?? '' }}"
+                                               class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
+                                               placeholder="Contoh: 705/SJ251223/2025">
+                                    </div>
+                                </div>
+
+                                {{-- Status Filter --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Status</label>
+                                    <select name="status"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                        <option value="">Semua Status</option>
+                                        @if($tab === 'keluar')
+                                            @foreach(['DRAFT','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK'] as $statusOption)
+                                                <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
+                                                    {{ $statusOption }}
+                                                </option>
+                                            @endforeach
+                                        @else
+                                            @foreach(['DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK'] as $statusOption)
+                                                <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
+                                                    {{ in_array($statusOption, ['DIKIRIM', 'DIKEMBALIKAN']) ? 'MENUNGGU' : $statusOption }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </div>
+
+                                {{-- Tipe Filter --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Tipe Surat Jalan</label>
+                                    <select name="tipe"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                        <option value="">Semua Tipe</option>
+                                        @foreach(['TRANSFER','PEMINJAMAN','PENGEMBALIAN'] as $tipeOption)
+                                            <option value="{{ $tipeOption }}" {{ ($filters['tipe'] ?? '') === $tipeOption ? 'selected' : '' }}>
+                                                {{ $tipeOption }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                {{-- Date Range --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Tanggal Mulai</label>
+                                    <input type="date"
+                                           name="tanggal_mulai"
+                                           value="{{ $filters['tanggal_mulai'] ?? '' }}"
+                                           class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Tanggal Selesai</label>
+                                    <input type="date"
+                                           name="tanggal_selesai"
+                                           value="{{ $filters['tanggal_selesai'] ?? '' }}"
+                                           class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                </div>
+                            </div>
+
+                            {{-- Apply Button --}}
+                            <div class="mt-4 flex justify-end">
+                                <button type="submit"
+                                        class="inline-flex items-center gap-2 px-5 py-2 bg-[#035b71] hover:bg-[#024a5c] text-white text-sm font-medium rounded-lg transition shadow-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Terapkan Filter
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -437,7 +430,7 @@
                         <h3 class="text-base sm:text-lg font-bold text-gray-900">
                             {{ $tab === 'keluar' ? 'Daftar Surat Keluar' : 'Daftar Surat Masuk' }}
                         </h3>
-                        <div class="text-xs sm:text-sm text-gray-500">Terbaru (maks. 50)</div>
+                        <div class="text-xs sm:text-sm text-gray-500">{{ $suratJalans->total() }} surat jalan</div>
                     </div>
                 </div>
 
@@ -546,7 +539,7 @@
                                     };
                                 @endphp
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $suratJalans->firstItem() + $index }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                         {{ $sj->nomor ?? '-' }}
                                     </td>
@@ -630,9 +623,16 @@
                         </tbody>
                     </table>
                 </div>
+
+                {{-- Pagination --}}
+                @if($suratJalans->hasPages())
+                    <div class="px-4 sm:px-6 py-4 border-t border-gray-200">
+                        {{ $suratJalans->links() }}
+                    </div>
+                @endif
             </div>
 
-            
+
         </div>
     </div>
 

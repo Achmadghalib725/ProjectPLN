@@ -246,46 +246,66 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900">{{ $peminjaman->gudangPemilik->nama ?? '-' }}</div>
                                     </td>
-                                    <td class="px-6 py-4">
+                                    <td class="px-6 py-4 whitespace-nowrap">
                                         @php
                                             $itemCount = $peminjaman->items->count();
                                             $totalQty = $peminjaman->items->sum(fn($i) => $i->jumlah_dipinjam ?? $i->jumlah);
                                         @endphp
-                                        <div x-data="{ showItems: false }" @click.away="showItems = false" class="relative">
-                                            <button @click="showItems = !showItems"
+                                        <div x-data="{
+                                                showItems: false,
+                                                position: { top: 0, left: 0 },
+                                                openAbove: false,
+                                                updatePosition() {
+                                                    const rect = this.$refs.trigger.getBoundingClientRect();
+                                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                                    this.openAbove = spaceBelow < 200;
+                                                    if (this.openAbove) {
+                                                        this.position = { top: rect.top - 4, left: rect.left };
+                                                    } else {
+                                                        this.position = { top: rect.bottom + 4, left: rect.left };
+                                                    }
+                                                }
+                                             }"
+                                             x-init="$watch('showItems', value => { if (value) updatePosition(); })"
+                                             @click.away="showItems = false">
+                                            <button x-ref="trigger"
+                                                    @click="showItems = !showItems"
                                                     type="button"
-                                                    class="inline-flex items-center gap-2 text-sm text-pln-primary hover:text-pln-primary/80 font-medium bg-pln-primary/5 px-3 py-1.5 rounded-lg transition">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    class="inline-flex items-center gap-2 text-sm text-pln-primary hover:text-pln-primary/80 font-medium bg-pln-primary/5 px-3 py-1.5 rounded-lg transition whitespace-nowrap">
+                                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                                 </svg>
                                                 <span>{{ $itemCount }} item ({{ $totalQty }} unit)</span>
-                                                <svg class="w-4 h-4 transition-transform" :class="showItems ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg class="w-4 h-4 shrink-0 transition-transform" :class="showItems ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                                 </svg>
                                             </button>
-                                            <div x-show="showItems"
-                                                 x-transition:enter="transition ease-out duration-100"
-                                                 x-transition:enter-start="opacity-0 scale-95"
-                                                 x-transition:enter-end="opacity-100 scale-100"
-                                                 x-transition:leave="transition ease-in duration-75"
-                                                 x-transition:leave-start="opacity-100 scale-100"
-                                                 x-transition:leave-end="opacity-0 scale-95"
-                                                 class="absolute left-0 mt-2 z-50 w-72 bg-white rounded-lg shadow-2xl border border-gray-200">
-                                                <div class="bg-gray-50 px-3 py-2 border-b border-gray-200 rounded-t-lg">
-                                                    <span class="text-xs font-semibold text-gray-500 uppercase">Daftar Item ({{ $itemCount }})</span>
-                                                </div>
-                                                <div class="p-2 space-y-1 {{ $itemCount > 3 ? 'max-h-36 overflow-y-auto' : '' }}">
-                                                    @foreach($peminjaman->items as $item)
-                                                        <div class="text-sm text-gray-900 flex justify-between items-center p-2 hover:bg-gray-50 rounded">
-                                                            <div class="flex-1 min-w-0 mr-2">
-                                                                <span class="font-medium">{{ $item->item->kode ?? '-' }}</span>
-                                                                <span class="text-gray-500 block text-xs truncate">{{ $item->item->nama ?? '-' }}</span>
+                                            <template x-teleport="body">
+                                                <div x-show="showItems"
+                                                     x-transition:enter="transition ease-out duration-100"
+                                                     x-transition:enter-start="opacity-0 scale-95"
+                                                     x-transition:enter-end="opacity-100 scale-100"
+                                                     x-transition:leave="transition ease-in duration-75"
+                                                     x-transition:leave-start="opacity-100 scale-100"
+                                                     x-transition:leave-end="opacity-0 scale-95"
+                                                     :style="'position: fixed; top: ' + position.top + 'px; left: ' + position.left + 'px; z-index: 9999;' + (openAbove ? ' transform: translateY(-100%);' : '')"
+                                                     class="w-72 bg-white rounded-lg shadow-2xl border border-gray-200">
+                                                    <div class="bg-gray-50 px-3 py-2 border-b border-gray-200 rounded-t-lg">
+                                                        <span class="text-xs font-semibold text-gray-500 uppercase">Daftar Item ({{ $itemCount }})</span>
+                                                    </div>
+                                                    <div class="p-2 space-y-1 max-h-36 overflow-y-auto">
+                                                        @foreach($peminjaman->items as $item)
+                                                            <div class="text-sm text-gray-900 flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                <div class="flex-1 min-w-0 mr-2">
+                                                                    <span class="font-medium">{{ $item->item->kode ?? '-' }}</span>
+                                                                    <span class="text-gray-500 block text-xs truncate">{{ $item->item->nama ?? '-' }}</span>
+                                                                </div>
+                                                                <span class="text-pln-primary font-bold bg-pln-primary/10 px-2 py-0.5 rounded shrink-0">{{ $item->jumlah_dipinjam ?? $item->jumlah }}</span>
                                                             </div>
-                                                            <span class="text-pln-primary font-bold bg-pln-primary/10 px-2 py-0.5 rounded shrink-0">{{ $item->jumlah_dipinjam ?? $item->jumlah }}</span>
-                                                        </div>
-                                                    @endforeach
+                                                        @endforeach
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            </template>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
