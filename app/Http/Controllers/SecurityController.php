@@ -9,6 +9,7 @@ use App\Models\SuratJalan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class SecurityController extends Controller
 {
@@ -174,6 +175,9 @@ class SecurityController extends Controller
             }
         });
 
+        $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
         return redirect()->route('dashboard')
             ->with('success', 'Surat Jalan ' . $suratJalan->nomor . ' berhasil diperiksa dan dikonfirmasi.');
     }
@@ -253,7 +257,35 @@ class SecurityController extends Controller
             }
         });
 
+        $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
         return redirect()->route('dashboard')
             ->with('warning', 'Surat Jalan ' . $suratJalan->nomor . ' telah DITOLAK dengan alasan: ' . $request->alasan);
+    }
+
+    private function bumpSuratJalanCacheVersion(array $gudangIds): void
+    {
+        $uniqueIds = collect($gudangIds)
+            ->filter(fn ($id) => !empty($id))
+            ->unique()
+            ->values();
+
+        foreach ($uniqueIds as $gudangId) {
+            $key = "surat_jalan.version." . (int) $gudangId;
+            $updated = Cache::increment($key);
+            if ($updated === false) {
+                Cache::forever($key, 2);
+            }
+        }
+    }
+
+    private function bumpSuratJalanDetailCacheVersion(int $suratJalanId): void
+    {
+        $key = "surat_jalan.detail.version." . (int) $suratJalanId;
+        $updated = Cache::increment($key);
+        if ($updated === false) {
+            Cache::forever($key, 2);
+        }
     }
 }
