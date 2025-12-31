@@ -1311,6 +1311,12 @@ class SuratJalanController extends Controller
                             'status' => 'DIKEMBALIKAN',
                             'waktu_pengembalian' => now(),
                         ]);
+
+                        // Sync status surat jalan peminjaman (kirim)
+                        if ($peminjaman->surat_jalan_kirim_id) {
+                            SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
+                                ->update(['status' => 'DIKEMBALIKAN']);
+                        }
                     }
                 }
             });
@@ -1323,6 +1329,14 @@ class SuratJalanController extends Controller
 
             $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
+            // Bump cache untuk surat peminjaman juga jika PENGEMBALIAN
+            if ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                if ($peminjaman?->surat_jalan_kirim_id) {
+                    $this->bumpSuratJalanDetailCacheVersion($peminjaman->surat_jalan_kirim_id);
+                }
+            }
 
             return redirect()
                 ->route($redirectRoute, $suratJalan->id)
@@ -1463,6 +1477,14 @@ class SuratJalanController extends Controller
 
             $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
+            // Bump cache untuk surat peminjaman juga jika PENGEMBALIAN
+            if ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                if ($peminjaman?->surat_jalan_kirim_id) {
+                    $this->bumpSuratJalanDetailCacheVersion($peminjaman->surat_jalan_kirim_id);
+                }
+            }
 
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
@@ -1663,7 +1685,14 @@ class SuratJalanController extends Controller
         $direction = $orderBy === 'terlama' ? 'asc' : 'desc';
 
         $query = SuratJalan::query()
-            ->with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan'])
+            ->with([
+                'gudangAsal',
+                'gudangTujuan',
+                'pembuat',
+                'picTujuan',
+                'peminjaman.suratJalanKembali:id,nomor',  // Untuk PEMINJAMAN: cek apakah sudah ada pengembalian
+                'peminjamanKembali.suratJalanKirim:id,nomor',  // Untuk PENGEMBALIAN: ambil surat peminjaman asal
+            ])
             ->withCount('items')
             ->withSum('items', 'jumlah')
             ->orderBy('tanggal', $direction)

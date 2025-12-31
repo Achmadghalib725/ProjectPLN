@@ -70,8 +70,21 @@ class SuratJalan extends Model
         return $this->hasMany(SuratJalanAttachment::class);
     }
 
+    /**
+     * Relasi untuk surat jalan tipe PEMINJAMAN
+     * Mendapatkan record peminjaman yang terkait
+     */
     public function peminjaman()
     {
         return $this->hasOne(Peminjaman::class, 'surat_jalan_kirim_id');
+    }
+
+    /**
+     * Relasi untuk surat jalan tipe PENGEMBALIAN
+     * Mendapatkan record peminjaman yang dikembalikan
+     */
+    public function peminjamanKembali()
+    {
+        return $this->hasOne(Peminjaman::class, 'surat_jalan_kembali_id');
     }
 }

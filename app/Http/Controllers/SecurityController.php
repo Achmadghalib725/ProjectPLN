@@ -171,12 +171,26 @@ class SecurityController extends Controller
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
                 if ($peminjaman && $peminjaman->status === 'DIKEMBALIKAN') {
                     $peminjaman->update(['status' => 'DIPERIKSA']);
+
+                    // Sync status surat jalan peminjaman (kirim)
+                    if ($peminjaman->surat_jalan_kirim_id) {
+                        SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
+                            ->update(['status' => 'DIPERIKSA']);
+                    }
                 }
             }
         });
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
+        // Bump cache untuk surat peminjaman juga jika PENGEMBALIAN
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            if ($peminjaman?->surat_jalan_kirim_id) {
+                $this->bumpSuratJalanDetailCacheVersion($peminjaman->surat_jalan_kirim_id);
+            }
+        }
 
         return redirect()->route('dashboard')
             ->with('success', 'Surat Jalan ' . $suratJalan->nomor . ' berhasil diperiksa dan dikonfirmasi.');
@@ -253,11 +267,25 @@ class SecurityController extends Controller
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
                 if ($peminjaman) {
                     $peminjaman->update(['status' => 'DITOLAK']);
+
+                    // Sync status surat jalan peminjaman (kirim)
+                    if ($peminjaman->surat_jalan_kirim_id) {
+                        SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
+                            ->update(['status' => 'DITOLAK']);
+                    }
                 }
             }
         });
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
+
+        // Bump cache untuk surat peminjaman juga jika PENGEMBALIAN
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            if ($peminjaman?->surat_jalan_kirim_id) {
+                $this->bumpSuratJalanDetailCacheVersion($peminjaman->surat_jalan_kirim_id);
+            }
+        }
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
         return redirect()->route('dashboard')

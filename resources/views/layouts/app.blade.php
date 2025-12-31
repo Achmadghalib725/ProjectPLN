@@ -147,6 +147,26 @@
                 });
             }
 
+            // Handle AJAX form submissions
+            function initAjaxForms() {
+                document.addEventListener('submit', function(e) {
+                    const form = e.target.closest('[data-ajax-form]');
+                    if (!form) return;
+
+                    const contentSelector = form.dataset.ajaxTarget;
+                    if (!contentSelector) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const formData = new FormData(form);
+                    const params = new URLSearchParams(formData).toString();
+                    const url = form.action + (form.action.includes('?') ? '&' : '?') + params;
+
+                    ajaxNavigate(url, contentSelector);
+                });
+            }
+
             // Handle browser back/forward
             window.addEventListener('popstate', function() {
                 window.location.reload();
@@ -155,6 +175,7 @@
             // Initialize
             initAjaxPagination();
             initAjaxTabs();
+            initAjaxForms();
 
             // Re-init after Turbo navigation
             document.addEventListener('turbo:load', function() {

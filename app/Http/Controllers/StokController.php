@@ -380,7 +380,15 @@ class StokController extends Controller
         $gudangTujuan = $request->input('gudang_tujuan');
         $sort = $request->input('sort', 'terbaru');
 
-        $suratJalans = \App\Models\SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item'])
+        $suratJalans = \App\Models\SuratJalan::with([
+                'gudangAsal',
+                'gudangTujuan',
+                'pembuat',
+                'picTujuan',
+                'items.item',
+                'peminjaman.suratJalanKembali:id,nomor',
+                'peminjamanKembali.suratJalanKirim:id,nomor',
+            ])
             ->withCount('items')
             ->withSum('items', 'jumlah')
             ->where(function ($query) use ($gudangId) {

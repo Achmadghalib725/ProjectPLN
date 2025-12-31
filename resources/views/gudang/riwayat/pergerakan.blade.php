@@ -73,7 +73,7 @@
                             <input type="text"
                                    name="search"
                                    value="{{ request('search') }}"
-                                   class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
+                                   class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
                                    placeholder="Cari nama barang, keterangan...">
                         </div>
                     </div>
@@ -82,7 +82,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1.5">Tipe Pergerakan</label>
                         <select name="tipe"
-                                class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                             <option value="">Semua Tipe</option>
                             <option value="IN" {{ request('tipe') === 'IN' ? 'selected' : '' }}>IN (Masuk)</option>
                             <option value="OUT" {{ request('tipe') === 'OUT' ? 'selected' : '' }}>OUT (Keluar)</option>
@@ -93,7 +93,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1.5">Referensi</label>
                         <select name="referensi"
-                                class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                             <option value="">Semua Referensi</option>
                             @foreach($referensiTypes ?? [] as $type)
                                 <option value="{{ $type }}" {{ request('referensi') === $type ? 'selected' : '' }}>
@@ -109,7 +109,7 @@
                         <input type="date"
                                name="tanggal_mulai"
                                value="{{ request('tanggal_mulai') }}"
-                               class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                               class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                     </div>
 
                     {{-- Tanggal Selesai --}}
@@ -118,7 +118,7 @@
                         <input type="date"
                                name="tanggal_selesai"
                                value="{{ request('tanggal_selesai') }}"
-                               class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                               class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                     </div>
                 </div>
 

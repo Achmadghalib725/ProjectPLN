@@ -92,7 +92,6 @@
                             </select>
                         </form>
                         @endif
-                        @if($tab === 'keluar')
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             @if(!$isManager)
                             <button type="button"
@@ -125,7 +124,6 @@
                                 <span>Export Excel</span>
                             </button>
                         </div>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -133,9 +131,11 @@
             {{-- Tabs Navigation --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex" aria-label="Tabs">
+                    <nav class="-mb-px flex" aria-label="Tabs" data-ajax-tabs>
                         <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'keluar']) }}"
-                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                           data-ajax-tab
+                           data-ajax-target="#surat-jalan-content"
+                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
                             <div class="flex items-center justify-center gap-1.5 sm:gap-2">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
@@ -144,7 +144,9 @@
                             </div>
                         </a>
                         <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
-                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                           data-ajax-tab
+                           data-ajax-target="#surat-jalan-content"
+                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
                             <div class="flex items-center justify-center gap-1.5 sm:gap-2">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
@@ -155,6 +157,9 @@
                     </nav>
                 </div>
             </div>
+
+            {{-- AJAX Content Container --}}
+            <div id="surat-jalan-content">
 
             {{-- Statistics (SELESAI removed - now in Riwayat page) --}}
             @if($tab === 'keluar')
@@ -307,6 +312,8 @@
 
                         @if($activeFilters > 0)
                             <a href="{{ route('gudang.surat-jalan.index', ['tab' => $tab]) }}"
+                               data-ajax-tab
+                               data-ajax-target="#surat-jalan-content"
                                class="text-sm text-gray-500 hover:text-red-600 transition flex items-center gap-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -321,10 +328,14 @@
                         <span class="text-sm text-gray-500">Urutkan:</span>
                         <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
                             <a href="{{ route('gudang.surat-jalan.index', array_merge(request()->query(), ['tab' => $tab, 'order_by' => 'terbaru'])) }}"
+                               data-ajax-tab
+                               data-ajax-target="#surat-jalan-content"
                                class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ $currentSort === 'terbaru' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                                 Terbaru
                             </a>
                             <a href="{{ route('gudang.surat-jalan.index', array_merge(request()->query(), ['tab' => $tab, 'order_by' => 'terlama'])) }}"
+                               data-ajax-tab
+                               data-ajax-target="#surat-jalan-content"
                                class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ $currentSort === 'terlama' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                                 Terlama
                             </a>
@@ -335,7 +346,7 @@
                 {{-- Expandable Filter Panel --}}
                 <div x-show="showFilter" x-collapse x-cloak>
                     <div class="px-4 pb-4 border-t border-gray-100 pt-4">
-                        <form method="GET" action="{{ route('gudang.surat-jalan.index') }}">
+                        <form method="GET" action="{{ route('gudang.surat-jalan.index') }}" data-ajax-form data-ajax-target="#surat-jalan-content">
                             <input type="hidden" name="tab" value="{{ $tab }}">
                             <input type="hidden" name="order_by" value="{{ $currentSort }}">
 
@@ -473,9 +484,32 @@
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $statusClass }}">
                                         {{ $status }}
                                     </span>
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium {{ $tipeClass }}">
-                                        {{ $tipeLabel }}
-                                    </span>
+                                    <div class="flex items-center gap-1">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium {{ $tipeClass }}">
+                                            {{ $tipeLabel }}
+                                        </span>
+                                        @if($tipeLabel === 'PEMINJAMAN')
+                                            @if($sj->peminjaman?->suratJalanKembali)
+                                                <span class="text-green-500" title="Sudah dikembalikan">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                    </svg>
+                                                </span>
+                                            @else
+                                                <span class="text-yellow-500" title="Belum dikembalikan">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                    </svg>
+                                                </span>
+                                            @endif
+                                        @elseif($tipeLabel === 'PENGEMBALIAN' && $sj->peminjamanKembali?->suratJalanKirim)
+                                            <span class="text-blue-500" title="Dari: {{ $sj->peminjamanKembali->suratJalanKirim->nomor }}">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                                </svg>
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                             <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
@@ -572,9 +606,34 @@
                                                 default => 'bg-gray-100 text-gray-700',
                                             };
                                         @endphp
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $tipeClass }}">
-                                            {{ $tipeLabel }}
-                                        </span>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $tipeClass }}">
+                                                {{ $tipeLabel }}
+                                            </span>
+                                            @if($tipeLabel === 'PEMINJAMAN')
+                                                @if($sj->peminjaman?->suratJalanKembali)
+                                                    <a href="{{ route('gudang.surat-jalan.show', $sj->peminjaman->suratJalanKembali->id) }}"
+                                                       class="text-green-500 hover:text-green-700" title="Sudah dikembalikan - Klik untuk lihat">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                        </svg>
+                                                    </a>
+                                                @else
+                                                    <span class="text-yellow-500" title="Belum dikembalikan">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                        </svg>
+                                                    </span>
+                                                @endif
+                                            @elseif($tipeLabel === 'PENGEMBALIAN' && $sj->peminjamanKembali?->suratJalanKirim)
+                                                <a href="{{ route('gudang.surat-jalan.show', $sj->peminjamanKembali->suratJalanKirim->id) }}"
+                                                   class="text-blue-500 hover:text-blue-700" title="Dari: {{ $sj->peminjamanKembali->suratJalanKirim->nomor }} - Klik untuk lihat">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                                    </svg>
+                                                </a>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}">
@@ -638,6 +697,8 @@
                     </div>
                 @endif
             </div>
+
+            </div>{{-- End AJAX Content Container --}}
 
         </div>
     </div>
