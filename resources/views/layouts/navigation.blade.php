@@ -66,15 +66,7 @@
                     ],
                     'operator_gudang' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
-                        [
-                            'label' => 'Manajemen Barang',
-                            'icon' => 'clipboard',
-                            'children' => [
-                                ['label' => 'Kelola Barang', 'route' => 'gudang.stok.index'],
-                                ['label' => 'Barang Dipinjamkan', 'route' => 'gudang.stok.barang-dipinjamkan'],
-                                ['label' => 'Barang Pinjaman', 'route' => 'gudang.stok.barang-pinjaman'],
-                            ]
-                        ],
+                        ['label' => 'Manajemen Barang', 'route' => 'gudang.stok.index', 'icon' => 'clipboard'],
                         ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
                         ['label' => 'Riwayat', 'route' => 'gudang.riwayat', 'icon' => 'clock'],
                     ],

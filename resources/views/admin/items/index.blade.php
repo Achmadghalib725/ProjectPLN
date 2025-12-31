@@ -6,7 +6,6 @@
             actionUrl: '{{ old('_method') === 'PUT' ? (old('id') ? url('admin/items').'/'.old('id') : '') : route('admin.items.store') }}',
             form: {
                 id: @json(old('id')),
-                kode: @json(old('kode')),
                 nama: @json(old('nama')),
                 kategori: @json(old('kategori')),
                 satuan: @json(old('satuan')),
@@ -14,7 +13,7 @@
             },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', kode: '', nama: '', kategori: '', satuan: '', deskripsi: '' };
+                this.form = { id: '', nama: '', kategori: '', satuan: '', deskripsi: '' };
                 this.actionUrl = '{{ route('admin.items.store') }}';
                 this.showModal = true;
             },
@@ -117,7 +116,7 @@
                             </div>
                             <input type="text" name="search" value="{{ request('search') }}"
                                 class="block w-full p-2.5 pl-10 text-sm text-gray-900 border border-slate-300 rounded-md focus:ring-[#035b71] focus:border-[#035b71] transition-all"
-                                placeholder="Cari nama atau kode barang...">
+                                placeholder="Cari nama barang...">
                         </div>
 
                         {{-- Filter Kategori --}}
@@ -153,10 +152,7 @@
                             @forelse($items as $item)
                             <tr class="bg-white hover:bg-cyan-50/30 transition-colors duration-200 group">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div>
-                                        <div class="text-sm font-bold text-gray-900 group-hover:text-cyan-700 transition-colors">{{ $item->nama }}</div>
-                                        <div class="text-xs text-gray-500">Kode: {{ $item->kode }}</div>
-                                    </div>
+                                    <div class="text-sm font-bold text-gray-900 group-hover:text-cyan-700 transition-colors">{{ $item->nama }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-purple-100 text-purple-700 border-purple-200">
@@ -235,13 +231,6 @@
                             <template x-if="isEdit">
                                 <input type="hidden" name="_method" value="PUT">
                             </template>
-
-                            {{-- Kode Item --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Kode Item</label>
-                                <input type="text" name="kode" x-model="form.kode" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Contoh: KBL-001">
-                                @error('kode') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
 
                             {{-- Nama Item --}}
                             <div>

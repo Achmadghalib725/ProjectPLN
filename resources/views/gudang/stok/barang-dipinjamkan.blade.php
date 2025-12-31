@@ -48,58 +48,110 @@
                 </div>
             </div>
 
-            {{-- Filters --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 sm:mb-6" x-data="{ showFilter: false }">
-                {{-- Mobile Filter Toggle --}}
-                <div class="sm:hidden p-4 border-b border-gray-100">
-                    <button @click="showFilter = !showFilter" type="button" class="w-full flex items-center justify-between text-gray-700">
-                        <span class="flex items-center gap-2 font-medium">
+            {{-- Filter & Sort Section --}}
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl mb-4 sm:mb-6" x-data="{ showFilter: false }">
+                {{-- Filter Toggle Button --}}
+                <div class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <button @click="showFilter = !showFilter"
+                                type="button"
+                                class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition font-medium text-sm">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                             </svg>
-                            Filter & Pencarian
-                            @if(request()->hasAny(['search', 'status']))
-                                <span class="bg-pln-primary text-white text-xs px-2 py-0.5 rounded-full">Aktif</span>
+                            <span>Filter & Urutkan</span>
+                            @php
+                                $activeFilters = collect(['search', 'status'])->filter(fn($f) => request()->filled($f))->count();
+                            @endphp
+                            @if($activeFilters > 0)
+                                <span class="bg-[#035b71] text-white text-xs px-2 py-0.5 rounded-full">{{ $activeFilters }}</span>
                             @endif
-                        </span>
-                        <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': showFilter }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="showFilter ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        @if($activeFilters > 0)
+                            <a href="{{ route('gudang.stok.barang-dipinjamkan') }}"
+                               class="text-sm text-gray-500 hover:text-red-600 transition flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Hapus Filter
+                            </a>
+                        @endif
+                    </div>
+
+                    {{-- Quick Sort --}}
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-500">Urutkan:</span>
+                        <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
+                            <a href="{{ route('gudang.stok.barang-dipinjamkan', array_merge(request()->query(), ['sort' => 'terbaru'])) }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ (request('sort', 'terbaru') === 'terbaru') ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                                Terbaru
+                            </a>
+                            <a href="{{ route('gudang.stok.barang-dipinjamkan', array_merge(request()->query(), ['sort' => 'terlama'])) }}"
+                               class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ request('sort') === 'terlama' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                                Terlama
+                            </a>
+                        </div>
+                    </div>
                 </div>
 
-                {{-- Filter Form --}}
-                <div class="p-4" :class="{ 'hidden sm:block': !showFilter }">
-                    <form method="GET" class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                        <div class="flex-1">
-                            <input type="text"
-                                   name="search"
-                                   value="{{ request('search') }}"
-                                   placeholder="Cari kode, gudang, atau item..."
-                                   class="w-full rounded-lg border-gray-300 focus:border-pln-primary focus:ring focus:ring-pln-primary/20">
-                        </div>
-                        <div class="sm:w-48">
-                            <select name="status" class="w-full rounded-lg border-gray-300 focus:border-pln-primary focus:ring focus:ring-pln-primary/20">
-                                <option value="">Semua Status</option>
-                                <option value="DIKIRIM" {{ request('status') === 'DIKIRIM' ? 'selected' : '' }}>Dikirim</option>
-                                <option value="DIPERIKSA" {{ request('status') === 'DIPERIKSA' ? 'selected' : '' }}>Diperiksa</option>
-                                <option value="DITERIMA" {{ request('status') === 'DITERIMA' ? 'selected' : '' }}>Diterima</option>
-                                <option value="MENUNGGU_DIKEMBALIKAN" {{ request('status') === 'MENUNGGU_DIKEMBALIKAN' ? 'selected' : '' }}>Menunggu Dikembalikan</option>
-                                <option value="DIKEMBALIKAN" {{ request('status') === 'DIKEMBALIKAN' ? 'selected' : '' }}>Dikembalikan</option>
-                                <option value="overdue" {{ request('status') === 'overdue' ? 'selected' : '' }}>Overdue</option>
-                            </select>
-                        </div>
-                        <div class="flex gap-2">
-                            <button type="submit" class="flex-1 sm:flex-none px-6 py-2.5 sm:py-2 bg-pln-primary text-white rounded-lg hover:bg-pln-primary/90 transition">
-                                Filter
-                            </button>
-                            @if(request()->hasAny(['search', 'status']))
-                                <a href="{{ route('gudang.stok.barang-dipinjamkan') }}" class="px-4 py-2.5 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                                    Reset
-                                </a>
-                            @endif
-                        </div>
-                    </form>
+                {{-- Expandable Filter Panel --}}
+                <div x-show="showFilter"
+                     x-collapse
+                     x-cloak>
+                    <div class="px-4 pb-4 border-t border-gray-100 pt-4">
+                        <form method="GET" action="{{ route('gudang.stok.barang-dipinjamkan') }}">
+                            <input type="hidden" name="sort" value="{{ request('sort', 'terbaru') }}">
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {{-- Search Input --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Pencarian</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                            </svg>
+                                        </div>
+                                        <input type="text"
+                                               name="search"
+                                               value="{{ request('search') }}"
+                                               class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
+                                               placeholder="Cari kode, gudang, item...">
+                                    </div>
+                                </div>
+
+                                {{-- Status Filter --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Status</label>
+                                    <select name="status"
+                                            class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                        <option value="">Semua Status</option>
+                                        <option value="DIKIRIM" {{ request('status') === 'DIKIRIM' ? 'selected' : '' }}>Dikirim</option>
+                                        <option value="DIPERIKSA" {{ request('status') === 'DIPERIKSA' ? 'selected' : '' }}>Diperiksa</option>
+                                        <option value="DITERIMA" {{ request('status') === 'DITERIMA' ? 'selected' : '' }}>Diterima</option>
+                                        <option value="MENUNGGU_DIKEMBALIKAN" {{ request('status') === 'MENUNGGU_DIKEMBALIKAN' ? 'selected' : '' }}>Menunggu Dikembalikan</option>
+                                        <option value="DIKEMBALIKAN" {{ request('status') === 'DIKEMBALIKAN' ? 'selected' : '' }}>Dikembalikan</option>
+                                        <option value="overdue" {{ request('status') === 'overdue' ? 'selected' : '' }}>Overdue</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- Apply Button --}}
+                            <div class="mt-4 flex justify-end">
+                                <button type="submit"
+                                        class="inline-flex items-center gap-2 px-5 py-2 bg-[#035b71] hover:bg-[#024a5c] text-white text-sm font-medium rounded-lg transition shadow-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Terapkan Filter
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 

@@ -173,15 +173,17 @@
                                 'by' => null,
                             ],
                         ];
+                        // currentStep menunjukkan step yang SEDANG aktif (in progress)
+                        // Ketika status = DIKIRIM, artinya sudah dikirim, jadi step Dikirim selesai, step Selesai active
                         $statusIndexMap = [
-                            'DRAFT' => -1,
-                            'MENUNGGU_PERSETUJUAN' => -1,
-                            'DITOLAK_PERSETUJUAN' => -1,
-                            'DIKIRIM' => 0,
-                            'SELESAI' => 1,
+                            'DRAFT' => 0,
+                            'MENUNGGU_PERSETUJUAN' => 0,
+                            'DITOLAK_PERSETUJUAN' => 0,
+                            'DIKIRIM' => 1,      // step 0 (Dikirim) completed, step 1 (Selesai) active
+                            'SELESAI' => 2,      // semua completed
                             'DITOLAK' => -2,
                         ];
-                        $currentStep = $statusIndexMap[$suratStatus] ?? -1;
+                        $currentStep = $statusIndexMap[$suratStatus] ?? 0;
                     } else {
                         $steps = [
                             [
@@ -220,17 +222,20 @@
                                 'by' => null,
                             ],
                         ];
+                        // currentStep menunjukkan step yang SEDANG aktif (in progress)
+                        // DIKIRIM = sudah dikirim, menunggu security -> step Diperiksa active
+                        // DIPERIKSA = sudah diperiksa, menunggu operator terima -> step Selesai active
                         $statusIndexMap = [
-                            'DRAFT' => -1,
-                            'MENUNGGU_PERSETUJUAN' => -1,
-                            'DITOLAK_PERSETUJUAN' => -1,
-                            'DIKIRIM' => 0,
-                            'DIPERIKSA' => 1,
-                            'DITERIMA' => 2,
-                            'SELESAI' => 2,
+                            'DRAFT' => 0,
+                            'MENUNGGU_PERSETUJUAN' => 0,
+                            'DITOLAK_PERSETUJUAN' => 0,
+                            'DIKIRIM' => 1,      // step 0 (Dikirim) completed, step 1 (Diperiksa) active
+                            'DIPERIKSA' => 2,    // step 0,1 completed, step 2 (Selesai) active
+                            'DITERIMA' => 3,     // semua completed
+                            'SELESAI' => 3,      // semua completed
                             'DITOLAK' => -2,
                         ];
-                        $currentStep = $statusIndexMap[$suratStatus] ?? -1;
+                        $currentStep = $statusIndexMap[$suratStatus] ?? 0;
                     }
                 } else {
                     // PEMINJAMAN/PENGEMBALIAN: Alur lengkap sinkronisasi
@@ -278,14 +283,16 @@
                             ],
                         ];
 
+                        // currentStep menunjukkan step yang SEDANG aktif
+                        // Ketika status = DIKIRIM, artinya barang SUDAH dikirim, step 0 completed
                         if ($peminjamanStatus === 'SELESAI' || $suratStatus === 'SELESAI') {
-                            $currentStep = 3;
+                            $currentStep = 3; // semua completed
                         } elseif ($suratStatus === 'MENUNGGU_DIKEMBALIKAN') {
-                            $currentStep = 1;
+                            $currentStep = 2; // step 0,1 completed, step 2 (Selesai) active - menunggu konfirmasi pengembalian
                         } elseif (!in_array($sjKirimStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)) {
-                            $currentStep = 0;
+                            $currentStep = 1; // step 0 (Dikirim) completed, step 1 (Menunggu Dikembalikan) active
                         } else {
-                            $currentStep = 0;
+                            $currentStep = 0; // belum dikirim, step 0 active
                         }
                     } else {
                         $steps = [
@@ -419,10 +426,23 @@
 
                     {{-- Horizontal Progress Bar - Scrollable on Mobile --}}
                     <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        @php
+                            $totalSteps = count($steps);
+                            // Calculate progress bar width to reach center of last completed step
+                            // Each step container is (100/totalSteps)% wide, circles are centered
+                            // For currentStep = C, last completed = C-1, center position = (C-0.5)/totalSteps * 100
+                            if ($currentStep <= 0) {
+                                $progressWidth = 0;
+                            } elseif ($currentStep >= $totalSteps) {
+                                $progressWidth = 100;
+                            } else {
+                                $progressWidth = (($currentStep - 0.5) / $totalSteps) * 100;
+                            }
+                        @endphp
                         <div class="relative min-w-[500px] sm:min-w-0">
                             <div class="absolute top-[22px] sm:top-[26px] left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
                             <div class="absolute top-[22px] sm:top-[26px] left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
-                                 style="width: {{ $currentStep > 0 ? min((($currentStep - 1) / $maxStep) * 100, 100) : 0 }}%"></div>
+                                 style="width: {{ $progressWidth }}%"></div>
 
                             <div class="relative flex justify-between pt-[6px]">
                                 @foreach($steps as $index => $step)
@@ -431,23 +451,25 @@
                                         $isActive = $currentStep === $index;
                                         $isPending = $currentStep < $index;
 
+                                        // Color logic: completed = green, active = teal (pln-primary), pending = gray
                                         if ($isCompleted) {
                                             $circleClass = 'bg-green-500 text-white border-green-500';
                                             $labelClass = 'text-green-700 font-semibold';
                                         } elseif ($isActive) {
-                                            $circleClass = 'bg-pln-primary text-white border-pln-primary ring-4 ring-pln-primary/20';
-                                            $labelClass = 'text-pln-primary font-bold';
+                                            $circleClass = 'bg-[#4a6b7c] text-white border-[#4a6b7c] ring-4 ring-[#4a6b7c]/20';
+                                            $labelClass = 'text-[#4a6b7c] font-bold';
                                         } else {
                                             $circleClass = 'bg-white text-gray-400 border-gray-300';
                                             $labelClass = 'text-gray-400';
                                         }
 
+                                        // Override for rejected status
                                         if ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) {
                                             $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
                                             $labelClass = 'text-red-700 font-bold';
                                         }
                                     @endphp
-                                    <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
+                                    <div class="flex flex-col items-center" style="width: {{ 100 / $totalSteps }}%">
                                         <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold {{ $circleClass }} z-10">
                                             @if($isCompleted)
                                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -483,20 +505,20 @@
                                 @endphp
                                 <div class="flex gap-3 sm:gap-4 {{ !$isCompleted && !$isActive ? 'opacity-40' : '' }}">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-pln-primary ring-4 ring-pln-primary/20' : 'bg-gray-300') }}"></div>
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-[#4a6b7c] ring-4 ring-[#4a6b7c]/20' : 'bg-gray-300') }}"></div>
                                         @if($index < count($steps) - 1)
                                             <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $isCompleted ? 'bg-green-500' : 'bg-gray-200' }}"></div>
                                         @endif
                                     </div>
                                     <div class="flex-1 pb-3 sm:pb-4">
                                         <div class="flex flex-wrap items-center gap-1 sm:gap-2">
-                                            <span class="font-semibold text-sm sm:text-base {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-pln-primary' : 'text-gray-500') }}">
+                                            <span class="font-semibold text-sm sm:text-base {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-[#4a6b7c]' : 'text-gray-500') }}">
                                                 {{ $step['label'] }}
                                             </span>
                                             @if($isCompleted)
                                                 <span class="text-[10px] sm:text-xs bg-green-100 text-green-700 px-1.5 sm:px-2 py-0.5 rounded-full">Selesai</span>
                                             @elseif($isActive)
-                                                <span class="text-[10px] sm:text-xs bg-blue-100 text-blue-700 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">Proses</span>
+                                                <span class="text-[10px] sm:text-xs bg-[#4a6b7c]/10 text-[#4a6b7c] px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">Proses</span>
                                             @endif
                                         </div>
                                         <p class="text-xs sm:text-sm text-gray-500">{{ $step['desc'] }}</p>
@@ -518,7 +540,7 @@
                                                 @endif
                                             </div>
                                         @elseif($isActive)
-                                            <div class="mt-2 text-xs sm:text-sm bg-blue-50 rounded-lg p-2 sm:p-3 text-blue-700">
+                                            <div class="mt-2 text-xs sm:text-sm bg-[#4a6b7c]/10 rounded-lg p-2 sm:p-3 text-[#4a6b7c]">
                                                 <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                 </svg>

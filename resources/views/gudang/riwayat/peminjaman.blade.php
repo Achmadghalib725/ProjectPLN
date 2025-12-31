@@ -70,6 +70,7 @@
 
             @if($activeFilters > 0)
                 <a href="{{ route('gudang.riwayat', ['tab' => 'peminjaman']) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="text-sm text-gray-500 hover:text-red-600 transition flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -84,10 +85,12 @@
             <span class="text-sm text-gray-500">Urutkan:</span>
             <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
                 <a href="{{ route('gudang.riwayat', array_merge(request()->query(), ['tab' => 'peminjaman', 'sort' => 'terbaru'])) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ $currentSort === 'terbaru' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                     Terbaru
                 </a>
                 <a href="{{ route('gudang.riwayat', array_merge(request()->query(), ['tab' => 'peminjaman', 'sort' => 'terlama'])) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ $currentSort === 'terlama' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                     Terlama
                 </a>
@@ -97,7 +100,7 @@
 
     {{-- Expandable Filter Panel --}}
     <div x-show="showFilter" x-collapse x-cloak class="border-t border-gray-100">
-        <form method="GET" action="{{ route('gudang.riwayat') }}" class="p-4">
+        <form method="GET" action="{{ route('gudang.riwayat') }}" class="p-4" data-ajax-form data-ajax-target="#riwayat-content">
             <input type="hidden" name="tab" value="peminjaman">
             <input type="hidden" name="sort" value="{{ $currentSort }}">
 
