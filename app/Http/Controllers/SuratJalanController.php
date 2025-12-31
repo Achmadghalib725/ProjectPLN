@@ -33,6 +33,7 @@ class SuratJalanController extends Controller
         $isAdmin = $user?->role === 'admin';
         $isManager = $user?->role === 'manager';
         $gudangId = $user?->gudang_id;
+        $adminFinish = $isAdmin && $request->boolean('admin_finish');
         $activeGudangId = $gudangId;
         $managedGudangIds = $isManager
             ? $user->managedGudangs()->pluck('gudangs.id')->all()
@@ -177,6 +178,7 @@ class SuratJalanController extends Controller
             abort(403, 'Manager tidak dapat membuat surat jalan.');
         }
         $gudangId = $user?->gudang_id;
+        $adminFinish = $isAdmin && $request->boolean('admin_finish');
         $selectedGudangId = $gudangId ?: ($isAdmin ? (int) $request->input('gudang_asal_id') : null);
 
         if (!$selectedGudangId && !$isAdmin) {
@@ -189,11 +191,7 @@ class SuratJalanController extends Controller
                 'integer',
                 'exists:gudangs,id',
             ],
-            'ttd_pembuat_id' => [
-                Rule::requiredIf($isAdmin && $request->boolean('admin_finish')),
-                'integer',
-                'exists:users,id',
-            ],
+            'ttd_pembuat_id' => ['nullable', 'integer', 'exists:users,id'],
             'mode' => ['required', Rule::in(['transfer', 'peminjaman'])],
             'gudang_tujuan_mode' => ['required', Rule::in(['existing', 'custom'])],
             'gudang_tujuan_id' => [
@@ -380,6 +378,17 @@ class SuratJalanController extends Controller
         $adminFinish = Auth::user()?->role === 'admin' && $request->boolean('admin_finish');
         $ttdPembuatId = $validated['ttd_pembuat_id'] ?? null;
         $ttdPenerimaId = null;
+        $managerSignerId = null;
+
+        if ($adminFinish) {
+            $managerSignerId = $this->resolveManagerSignerId($gudangId);
+            if (!$managerSignerId) {
+                return redirect()
+                    ->route('gudang.surat-jalan.index')
+                    ->with('error', 'Manager pengirim belum ditetapkan untuk gudang ini.');
+            }
+            $ttdPembuatId = $managerSignerId;
+        }
 
         if ($adminFinish) {
             try {
@@ -561,6 +570,16 @@ class SuratJalanController extends Controller
             $gudangId = $peminjaman->gudang_peminjam_id;
         }
 
+        $managerSignerId = null;
+        if ($adminFinish) {
+            $managerSignerId = $this->resolveManagerSignerId($gudangId);
+            if (!$managerSignerId) {
+                return redirect()
+                    ->route('gudang.surat-jalan.index')
+                    ->with('error', 'Manager pengirim belum ditetapkan untuk gudang ini.');
+            }
+        }
+
         $picValid = Pic::where('id', $validated['pic_tujuan_id'])
             ->where('gudang_id', $peminjaman->gudang_pemilik_id)
             ->exists();
@@ -573,9 +592,8 @@ class SuratJalanController extends Controller
         }
 
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
-        $adminFinish = $isAdmin && $request->boolean('admin_finish');
 
-        $suratJalanId = DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman, $adminFinish) {
+        $suratJalanId = DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman, $adminFinish, $managerSignerId) {
             $kembaliAt = $tanggalKirim->copy()->setTime(15, 0);
             $selesaiAt = $kembaliAt->copy()->addHour();
 
@@ -588,7 +606,7 @@ class SuratJalanController extends Controller
                 'status' => $adminFinish ? 'SELESAI' : 'DRAFT',
                 'tanggal' => $tanggalKirim->toDateString(),
                 'created_by' => Auth::id(),
-                'ttd_pembuat_id' => $adminFinish ? Auth::id() : null,
+                'ttd_pembuat_id' => $adminFinish ? $managerSignerId : null,
                 'waktu_ttd_pembuat' => $adminFinish ? $kembaliAt : null,
                 'ttd_penerima_id' => null,
                 'waktu_ttd_penerima' => $adminFinish ? $selesaiAt : null,
@@ -1102,8 +1120,15 @@ class SuratJalanController extends Controller
                 ->with('error', 'Lampiran wajib ada sebelum menyetujui surat jalan.');
         }
 
+        $managerSignerId = $this->resolveManagerSignerId($suratJalan->gudang_asal_id);
+        if (!$managerSignerId) {
+            return redirect()
+                ->route($redirectRoute, $suratJalan->id)
+                ->with('error', 'Manager pengirim belum ditetapkan untuk gudang ini.');
+        }
+
         try {
-            DB::transaction(function () use ($suratJalan, $user) {
+            DB::transaction(function () use ($suratJalan, $user, $managerSignerId) {
                 $isCustomGudang = (bool) $suratJalan->gudang_tujuan_is_custom;
                 $gudangTujuanNama = $suratJalan->gudang_tujuan_is_custom
                     ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
@@ -1169,7 +1194,7 @@ class SuratJalanController extends Controller
                     if ($suratJalan->tipe === 'PEMINJAMAN' && $isCustomGudang) {
                         $suratJalan->update([
                             'status' => 'MENUNGGU_DIKEMBALIKAN',
-                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $user->id,
+                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                             'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                         ]);
 
@@ -1183,7 +1208,7 @@ class SuratJalanController extends Controller
                     } else {
                         $suratJalan->update([
                             'status' => $isCustomGudang && $suratJalan->tipe === 'TRANSFER' ? 'SELESAI' : 'DIKIRIM',
-                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $user->id,
+                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                             'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                         ]);
 
@@ -1202,7 +1227,7 @@ class SuratJalanController extends Controller
                     // PENGEMBALIAN: Update status to DIKEMBALIKAN
                     $suratJalan->update([
                         'status' => 'DIKEMBALIKAN',
-                        'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $user->id,
+                        'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                     ]);
 
@@ -1665,6 +1690,23 @@ class SuratJalanController extends Controller
         return $user->gudang_id ? [$user->gudang_id] : [];
     }
 
+    private function resolveManagerSignerId(?int $gudangId): ?int
+    {
+        if (!$gudangId) {
+            return null;
+        }
+
+        $gudang = Gudang::find($gudangId);
+        if (!$gudang) {
+            return null;
+        }
+
+        return $gudang->managers()
+            ->where('role', 'manager')
+            ->orderBy('name')
+            ->value('users.id');
+    }
+
     private function buildSuratJalanCacheKey(string $type, int $gudangId, array $filters): string
     {
         $version = Cache::get($this->getSuratJalanCacheVersionKey($gudangId), 1);
@@ -1960,7 +2002,7 @@ class SuratJalanController extends Controller
                     'status' => 'SELESAI',
                     'tanggal' => $tanggalKirim->toDateString(),
                     'created_by' => Auth::id(),
-                    'ttd_pembuat_id' => $ttdPembuatId ?? Auth::id(),
+                    'ttd_pembuat_id' => $ttdPembuatId,
                     'waktu_ttd_pembuat' => $kirimAt,
                     'ttd_penerima_id' => null,
                     'waktu_ttd_penerima' => $isCustomGudang ? null : $selesaiAt,
@@ -2038,7 +2080,7 @@ class SuratJalanController extends Controller
                   'status' => $suratJalanStatus,
                   'tanggal' => $tanggalKirim->toDateString(),
                   'created_by' => Auth::id(),
-                  'ttd_pembuat_id' => $ttdPembuatId ?? Auth::id(),
+                  'ttd_pembuat_id' => $ttdPembuatId,
                   'waktu_ttd_pembuat' => $kirimAt,
                   'ttd_penerima_id' => null,
                   'waktu_ttd_penerima' => $isCustomGudang ? null : $diterimaAt,

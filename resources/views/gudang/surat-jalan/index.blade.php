@@ -678,9 +678,7 @@
                   // Data Pendukung
                   itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
                   itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
-                  adminUsers: @js(($adminUsers ?? collect())->values()),
                   asalGudangId: @js($activeGudangId),
-                  selectedPengirim: @js(old('ttd_pembuat_id', '')),
 
                 // Error handling
                 errors: @js($errors->toArray()),
@@ -703,20 +701,6 @@
                     return this.allPics
                         .filter(p => String(p.gudang_id) === String(this.selectedGudang))
                         .filter(p => p.nama.toLowerCase().includes(this.picSearch?.toLowerCase() || ''));
-                },
-                get filteredPengirimUsers() {
-                    if (!this.asalGudangId) {
-                        return [];
-                    }
-                    return this.adminUsers.filter(user => {
-                        if (String(user.gudang_id) === String(this.asalGudangId)) {
-                            return true;
-                        }
-                        if (Array.isArray(user.managed_gudangs)) {
-                            return user.managed_gudangs.some(gudang => String(gudang.id) === String(this.asalGudangId));
-                        }
-                        return false;
-                    });
                 },
                 get isCustomGudang() {
                     return this.gudangMode === 'custom';
@@ -915,33 +899,6 @@
                       </div>
                   </div>
 
-                  @if($isAdmin)
-                  <div class="md:col-span-2 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                      <p class="text-sm font-semibold text-emerald-800 mb-3">Penandatangan</p>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                              <label class="block text-sm font-medium text-gray-700 mb-1">Pengirim</label>
-                              <select name="ttd_pembuat_id"
-                                      x-model="selectedPengirim"
-                                      required
-                                      class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
-                                  <option value="">Pilih pengirim...</option>
-                                  <template x-for="user in filteredPengirimUsers" :key="user.id">
-                                      <option :value="user.id" x-text="user.name + (user.jabatan ? ' - ' + user.jabatan : '')"></option>
-                                  </template>
-                              </select>
-                              <p class="text-xs text-gray-500 mt-1">Diambil dari pengguna gudang asal.</p>
-                          </div>
-                          <div>
-                              <label class="block text-sm font-medium text-gray-700 mb-1">Penerima</label>
-                              <div class="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                                  Mengikuti PIC tujuan
-                              </div>
-                              <p class="text-xs text-gray-500 mt-1">Penerima selalu menggunakan PIC tujuan.</p>
-                          </div>
-                      </div>
-                  </div>
-                  @endif
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kirim</label>
                         <input type="date" name="tanggal_kirim" value="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">

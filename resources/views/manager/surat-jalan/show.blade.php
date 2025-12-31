@@ -18,7 +18,7 @@
                 $statusLabels = [
                     'DRAFT' => 'Draft',
                     'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
-                    'DITOLAK_PERSETUJUAN' => 'Ditolak Persetujuan',
+                    'DITOLAK_PERSETUJUAN' => 'Persetujuan Ditolak',
                     'DIKIRIM' => 'Dikirim',
                     'DIPERIKSA' => 'Diperiksa',
                     'DITERIMA' => 'Diterima',
