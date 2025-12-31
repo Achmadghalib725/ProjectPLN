@@ -16,14 +16,74 @@ use Illuminate\Support\Facades\DB;
 class StokController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource with tabs.
      */
     public function index(Request $request)
     {
         $gudangId = $this->getGudangId();
+        $tab = $request->input('tab', 'stok');
         $search = $request->input('search');
         $kategori = $request->input('kategori');
+        $status = $request->input('status');
 
+        // Common data
+        $lowStockCount = ItemStock::where('gudang_id', $gudangId)
+            ->whereColumn('jumlah', '<', 'stok_minimum')
+            ->count();
+        $totalItems = ItemStock::where('gudang_id', $gudangId)->count();
+        $totalUnits = ItemStock::where('gudang_id', $gudangId)->sum('jumlah');
+        $categories = Item::distinct()->pluck('kategori')->filter();
+
+        // Get items NOT yet in this warehouse (for create modal)
+        $existingItemIds = ItemStock::where('gudang_id', $gudangId)->pluck('item_id');
+        $availableItems = Item::whereNotIn('id', $existingItemIds)->get();
+
+        // Count for tab badges
+        $countDipinjamkan = Peminjaman::where('gudang_pemilik_id', $gudangId)
+            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+            ->count();
+        $countPinjaman = Peminjaman::where('gudang_peminjam_id', $gudangId)
+            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+            ->count();
+
+        // Tab-specific data
+        if ($tab === 'dipinjamkan') {
+            // Barang yang dipinjamkan ke gudang lain
+            $peminjamans = $this->getBarangDipinjamkan($gudangId, $search, $status);
+            $totalAktif = Peminjaman::where('gudang_pemilik_id', $gudangId)
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+                ->count();
+            $totalOverdue = Peminjaman::where('gudang_pemilik_id', $gudangId)
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+                ->whereNotNull('batas_waktu_kembali')
+                ->where('batas_waktu_kembali', '<', now())
+                ->count();
+
+            return view('gudang.stok.index', compact(
+                'tab', 'peminjamans', 'totalAktif', 'totalOverdue',
+                'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+                'countDipinjamkan', 'countPinjaman'
+            ));
+        } elseif ($tab === 'pinjaman') {
+            // Barang yang dipinjam dari gudang lain
+            $peminjamans = $this->getBarangPinjaman($gudangId, $search, $status);
+            $totalAktif = Peminjaman::where('gudang_peminjam_id', $gudangId)
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN'])
+                ->count();
+            $totalOverdue = Peminjaman::where('gudang_peminjam_id', $gudangId)
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN'])
+                ->whereNotNull('batas_waktu_kembali')
+                ->where('batas_waktu_kembali', '<', now())
+                ->count();
+
+            return view('gudang.stok.index', compact(
+                'tab', 'peminjamans', 'totalAktif', 'totalOverdue',
+                'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+                'countDipinjamkan', 'countPinjaman'
+            ));
+        }
+
+        // Default: Stok Gudang
         $stocks = ItemStock::with(['item', 'gudang'])
             ->where('gudang_id', $gudangId)
             ->when($search, function ($query, $search) {
@@ -65,21 +125,78 @@ class StokController extends Controller
             return $stock;
         });
 
-        $lowStockCount = ItemStock::where('gudang_id', $gudangId)
-            ->whereColumn('jumlah', '<', 'stok_minimum')
-            ->count();
+        return view('gudang.stok.index', compact(
+            'tab', 'stocks', 'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+            'countDipinjamkan', 'countPinjaman'
+        ));
+    }
 
-        $totalItems = ItemStock::where('gudang_id', $gudangId)->count();
-        $totalUnits = ItemStock::where('gudang_id', $gudangId)->sum('jumlah');
+    /**
+     * Get barang dipinjamkan data
+     */
+    private function getBarangDipinjamkan(int $gudangId, ?string $search, ?string $status)
+    {
+        return Peminjaman::with(['gudangPeminjam', 'items.item'])
+            ->where('gudang_pemilik_id', $gudangId)
+            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+            ->when($search, function ($query, $search) {
+                $searchLower = strtolower($search);
+                $query->where(function ($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"])
+                        ->orWhereHas('gudangPeminjam', function ($gq) use ($searchLower) {
+                            $gq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
+                        })
+                        ->orWhereHas('items.item', function ($iq) use ($searchLower) {
+                            $iq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
+                        });
+                });
+            })
+            ->when($status, function ($query, $status) {
+                if ($status === 'overdue') {
+                    $query->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+                        ->whereNotNull('batas_waktu_kembali')
+                        ->where('batas_waktu_kembali', '<', now());
+                } else {
+                    $query->where('status', $status);
+                }
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(15)->onEachSide(1)
+            ->withQueryString();
+    }
 
-        // Get available categories for filter
-        $categories = Item::distinct()->pluck('kategori')->filter();
-
-        // Get items NOT yet in this warehouse (for create modal)
-        $existingItemIds = ItemStock::where('gudang_id', $gudangId)->pluck('item_id');
-        $availableItems = Item::whereNotIn('id', $existingItemIds)->get();
-
-        return view('gudang.stok.index', compact('stocks', 'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems'));
+    /**
+     * Get barang pinjaman data
+     */
+    private function getBarangPinjaman(int $gudangId, ?string $search, ?string $status)
+    {
+        return Peminjaman::with(['gudangPemilik', 'items.item'])
+            ->where('gudang_peminjam_id', $gudangId)
+            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+            ->when($search, function ($query, $search) {
+                $searchLower = strtolower($search);
+                $query->where(function ($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"])
+                        ->orWhereHas('gudangPemilik', function ($gq) use ($searchLower) {
+                            $gq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
+                        })
+                        ->orWhereHas('items.item', function ($iq) use ($searchLower) {
+                            $iq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
+                        });
+                });
+            })
+            ->when($status, function ($query, $status) {
+                if ($status === 'overdue') {
+                    $query->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN'])
+                        ->whereNotNull('batas_waktu_kembali')
+                        ->where('batas_waktu_kembali', '<', now());
+                } else {
+                    $query->where('status', $status);
+                }
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(15)->onEachSide(1)
+            ->withQueryString();
     }
 
     /**
@@ -263,7 +380,15 @@ class StokController extends Controller
         $gudangTujuan = $request->input('gudang_tujuan');
         $sort = $request->input('sort', 'terbaru');
 
-        $suratJalans = \App\Models\SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item'])
+        $suratJalans = \App\Models\SuratJalan::with([
+                'gudangAsal',
+                'gudangTujuan',
+                'pembuat',
+                'picTujuan',
+                'items.item',
+                'peminjaman.suratJalanKembali:id,nomor',
+                'peminjamanKembali.suratJalanKirim:id,nomor',
+            ])
             ->withCount('items')
             ->withSum('items', 'jumlah')
             ->where(function ($query) use ($gudangId) {
@@ -452,129 +577,6 @@ class StokController extends Controller
             'tipe_pinjam' => $tipePinjam,
             'stats' => $stats,
         ];
-    }
-
-    /**
-     * Display items lent out to other warehouses (Barang Dipinjamkan)
-     */
-    public function barangDipinjamkan(Request $request)
-    {
-        $gudangId = $this->getGudangId();
-        $search = $request->input('search');
-        $status = $request->input('status');
-
-        // Get peminjaman where this warehouse is the owner (pemilik)
-        $activeStatuses = ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'];
-        $peminjamans = Peminjaman::with([
-                'items.item',
-                'gudangPeminjam',
-                'gudangPemilik',
-                'suratJalanKirim',
-                'suratJalanKembali'
-            ])
-            ->where('gudang_pemilik_id', $gudangId)
-            ->whereIn('status', $activeStatuses)
-            ->when($search, function ($query, $search) {
-                $searchLower = strtolower($search);
-                $query->where(function ($q) use ($searchLower) {
-                    $q->whereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"])
-                        ->orWhereHas('gudangPeminjam', function ($gq) use ($searchLower) {
-                            $gq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
-                        })
-                        ->orWhere(function ($gq) use ($searchLower) {
-                            $gq->where('gudang_peminjam_is_custom', true)
-                                ->whereRaw('LOWER(gudang_peminjam_custom_nama) LIKE ?', ["%{$searchLower}%"]);
-                        })
-                        ->orWhereHas('items.item', function ($iq) use ($searchLower) {
-                            $iq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
-                                ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
-                        });
-                });
-            })
-            ->when($status, function ($query, $status) {
-                if ($status === 'overdue') {
-                    $query->whereNotNull('batas_waktu_kembali')
-                        ->where('batas_waktu_kembali', '<', now())
-                        ->whereIn('status', ['DITERIMA']);
-                } else {
-                    $query->where('status', $status);
-                }
-            })
-            ->orderByDesc('waktu_kirim')
-            ->paginate(15)->onEachSide(1)
-            ->withQueryString();
-
-        // Statistics
-        $totalAktif = Peminjaman::where('gudang_pemilik_id', $gudangId)
-            ->whereIn('status', $activeStatuses)
-            ->count();
-
-        $totalOverdue = Peminjaman::where('gudang_pemilik_id', $gudangId)
-            ->whereNotNull('batas_waktu_kembali')
-            ->where('batas_waktu_kembali', '<', now())
-            ->whereIn('status', ['DITERIMA'])
-            ->count();
-
-        return view('gudang.stok.barang-dipinjamkan', compact('peminjamans', 'totalAktif', 'totalOverdue'));
-    }
-
-    /**
-     * Display items borrowed from other warehouses (Barang Pinjaman)
-     */
-    public function barangPinjaman(Request $request)
-    {
-        $gudangId = $this->getGudangId();
-        $search = $request->input('search');
-        $status = $request->input('status');
-
-        // Get peminjaman where this warehouse is the borrower (peminjam)
-        $peminjamans = Peminjaman::with([
-                'items.item',
-                'gudangPeminjam',
-                'gudangPemilik',
-                'suratJalanKirim',
-                'suratJalanKembali'
-            ])
-            ->where('gudang_peminjam_id', $gudangId)
-            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN'])
-            ->when($search, function ($query, $search) {
-                $searchLower = strtolower($search);
-                $query->where(function ($q) use ($searchLower) {
-                    $q->whereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"])
-                        ->orWhereHas('gudangPemilik', function ($gq) use ($searchLower) {
-                            $gq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
-                        })
-                        ->orWhereHas('items.item', function ($iq) use ($searchLower) {
-                            $iq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
-                                ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
-                        });
-                });
-            })
-            ->when($status, function ($query, $status) {
-                if ($status === 'overdue') {
-                    $query->whereNotNull('batas_waktu_kembali')
-                        ->where('batas_waktu_kembali', '<', now())
-                        ->whereIn('status', ['DITERIMA']);
-                } else {
-                    $query->where('status', $status);
-                }
-            })
-            ->orderByDesc('waktu_kirim')
-            ->paginate(15)->onEachSide(1)
-            ->withQueryString();
-
-        // Statistics
-        $totalAktif = Peminjaman::where('gudang_peminjam_id', $gudangId)
-            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN'])
-            ->count();
-
-        $totalOverdue = Peminjaman::where('gudang_peminjam_id', $gudangId)
-            ->whereNotNull('batas_waktu_kembali')
-            ->where('batas_waktu_kembali', '<', now())
-            ->whereIn('status', ['DITERIMA'])
-            ->count();
-
-        return view('gudang.stok.barang-pinjaman', compact('peminjamans', 'totalAktif', 'totalOverdue'));
     }
 
     /**

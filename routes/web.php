@@ -10,6 +10,7 @@ use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\PublicSuratJalanController;
 use App\Http\Controllers\RekapController;
 use App\Http\Controllers\ManagerSuratJalanController;
+use App\Http\Controllers\AdminSuratJalanController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -152,10 +153,7 @@ Route::middleware('auth')->group(function () {
 
     // ... (Area Operator & Security tetap sama)
     
-    Route::middleware('role:operator_gudang,admin')->prefix('gudang')->name('gudang.')->group(function () {
-        // Routes spesifik HARUS sebelum resource route
-        Route::get('/stok/barang-dipinjamkan', [StokController::class, 'barangDipinjamkan'])->name('stok.barang-dipinjamkan');
-        Route::get('/stok/barang-pinjaman', [StokController::class, 'barangPinjaman'])->name('stok.barang-pinjaman');
+    Route::middleware('role:operator_gudang')->prefix('gudang')->name('gudang.')->group(function () {
         Route::get('/riwayat', [StokController::class, 'riwayat'])->name('riwayat');
         Route::resource('stok', StokController::class);
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
@@ -186,6 +184,29 @@ Route::middleware('auth')->group(function () {
         Route::post('/surat-jalan/{id}/reject', [SuratJalanController::class, 'rejectApproval'])->whereNumber('id')->name('surat-jalan.reject');
         Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
         Route::get('/surat-jalan/{id}/pdf', [SuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
+    });
+
+    // Route khusus Admin Surat Jalan
+    Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/surat-jalan/create', [AdminSuratJalanController::class, 'create'])->name('surat-jalan.create');
+        Route::get('/surat-jalan/index', [AdminSuratJalanController::class, 'index'])->name('surat-jalan.index');
+        Route::post('/surat-jalan', [AdminSuratJalanController::class, 'store'])->name('surat-jalan.store');
+        Route::post('/surat-jalan/pengembalian', [AdminSuratJalanController::class, 'storeReturn'])->name('surat-jalan.return');
+        Route::get('/surat-jalan/{id}', [AdminSuratJalanController::class, 'show'])->whereNumber('id')->name('surat-jalan.show');
+        Route::get('/surat-jalan/{id}/edit', [AdminSuratJalanController::class, 'edit'])->whereNumber('id')->name('surat-jalan.edit');
+        Route::patch('/surat-jalan/{id}', [AdminSuratJalanController::class, 'update'])->whereNumber('id')->name('surat-jalan.update');
+        Route::post('/surat-jalan/{id}/request-approval', [AdminSuratJalanController::class, 'requestApproval'])->whereNumber('id')->name('surat-jalan.request-approval');
+        Route::post('/surat-jalan/{id}/approve', [AdminSuratJalanController::class, 'approve'])->whereNumber('id')->name('surat-jalan.approve');
+        Route::post('/surat-jalan/{id}/reject-approval', [AdminSuratJalanController::class, 'rejectApproval'])->whereNumber('id')->name('surat-jalan.reject-approval');
+        Route::delete('/surat-jalan/{id}', [AdminSuratJalanController::class, 'destroy'])->whereNumber('id')->name('surat-jalan.destroy');
+        Route::get('/surat-jalan/{id}/pdf', [AdminSuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
+        Route::get('/surat-jalan/{id}/preview', [AdminSuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
+        Route::post('/surat-jalan/preview', [AdminSuratJalanController::class, 'previewDraft'])->name('surat-jalan.preview-draft');
+        Route::post('/surat-jalan/{id}/terima', [AdminSuratJalanController::class, 'terima'])->whereNumber('id')->name('surat-jalan.terima');
+        Route::post('/surat-jalan/{id}/confirm-return', [AdminSuratJalanController::class, 'confirmReturnExternal'])->whereNumber('id')->name('surat-jalan.confirm-return');
+        Route::post('/surat-jalan/{id}/finalize-rejected', [AdminSuratJalanController::class, 'finalizeRejected'])->whereNumber('id')->name('surat-jalan.finalize-rejected');
+        Route::delete('/surat-jalan/attachment/{id}', [AdminSuratJalanController::class, 'deleteAttachment'])->whereNumber('id')->name('surat-jalan.delete-attachment');
+        Route::get('/surat-jalan/export-excel', [AdminSuratJalanController::class, 'exportExcel'])->name('surat-jalan.export-excel');
     });
 
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {

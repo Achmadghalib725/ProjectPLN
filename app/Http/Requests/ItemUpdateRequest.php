@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class ItemUpdateRequest extends FormRequest
 {
@@ -22,15 +21,8 @@ class ItemUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        $itemId = $this->route('item'); // Get ID from route parameter
-
         return [
-            'kode' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('items', 'kode')->ignore($itemId)
-            ],
+            // kode tidak bisa diubah (auto-generated)
             'nama' => ['required', 'string', 'max:255'],
             'satuan' => ['required', 'string', 'max:50'],
             'kategori' => ['required', 'string', 'max:100'],
@@ -46,9 +38,6 @@ class ItemUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'kode.required' => 'Kode item harus diisi',
-            'kode.unique' => 'Kode item sudah digunakan, gunakan kode lain',
-            'kode.max' => 'Kode item maksimal 50 karakter',
             'nama.required' => 'Nama item harus diisi',
             'nama.max' => 'Nama item maksimal 255 karakter',
             'satuan.required' => 'Satuan harus diisi',

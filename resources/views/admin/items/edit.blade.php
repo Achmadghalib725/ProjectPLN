@@ -48,11 +48,11 @@
                         @method('PUT')
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {{-- Kode Item --}}
+                            {{-- Kode Item (Readonly - Auto Generated) --}}
                             <div class="space-y-2">
-                                <x-input-label for="kode" :value="'Kode Item *'" class="text-gray-700 font-semibold" />
-                                <x-text-input id="kode" name="kode" type="text" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" :value="old('kode', $item->kode)" required />
-                                <p class="text-[10px] text-gray-400 italic">Kode unik identifikasi sistem</p>
+                                <x-input-label for="kode" :value="'Kode Item'" class="text-gray-700 font-semibold" />
+                                <x-text-input id="kode" type="text" class="block w-full border-gray-200 bg-gray-100 text-gray-500 rounded-xl cursor-not-allowed" :value="$item->kode" disabled />
+                                <p class="text-[10px] text-gray-400 italic">Kode di-generate otomatis oleh sistem</p>
                             </div>
 
                             {{-- Nama Item --}}

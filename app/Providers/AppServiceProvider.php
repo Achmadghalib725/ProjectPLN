@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\SuratJalan;
+use App\Observers\SuratJalanObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,5 +24,7 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') === 'production') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
+
+        SuratJalan::observe(SuratJalanObserver::class);
     }
 }

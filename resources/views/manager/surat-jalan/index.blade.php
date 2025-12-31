@@ -95,7 +95,7 @@
                         <input type="text"
                                name="search"
                                value="{{ $search }}"
-                               placeholder="SJ-XXXX"
+                               placeholder="Contoh: 123/F2206040/YYYY"
                                class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
                     <div>
@@ -154,7 +154,7 @@
                 </div>
             </form>
 
-            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden" data-surat-jalan-list>
                 <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                     <h3 class="font-semibold text-slate-900">Daftar Surat Jalan</h3>
                     <span class="text-xs text-slate-500">Total: {{ $suratJalans->total() }}</span>
@@ -182,7 +182,7 @@
                                         ? ($sj->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
                                         : ($sj->gudangTujuan->nama ?? '-');
                                 @endphp
-                                <tr>
+                                <tr data-surat-jalan-id="{{ $sj->id }}">
                                     <td class="px-5 py-3 text-sm font-semibold text-slate-900">{{ $sj->nomor }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-700">{{ $tipeText }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-600">
@@ -191,7 +191,7 @@
                                     </td>
                                     <td class="px-5 py-3 text-sm text-slate-500">{{ $sj->tanggal?->format('d M Y') ?? '-' }}</td>
                                     <td class="px-5 py-3 text-sm">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}" data-surat-jalan-status data-base-class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold">
                                             {{ $statusText }}
                                         </span>
                                     </td>
@@ -222,4 +222,90 @@
             </div>
         </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.Echo) {
+                return;
+            }
+            const statusLabels = {
+                DRAFT: 'Draft',
+                MENUNGGU_PERSETUJUAN: 'Menunggu Persetujuan',
+                DITOLAK_PERSETUJUAN: 'Ditolak Persetujuan',
+                DIKIRIM: 'Dikirim',
+                DIPERIKSA: 'Diperiksa',
+                DITERIMA: 'Diterima',
+                MENUNGGU_DIKEMBALIKAN: 'Menunggu Dikembalikan',
+                DIKEMBALIKAN: 'Dikembalikan',
+                SELESAI: 'Selesai',
+                DITOLAK: 'Ditolak',
+            };
+            const statusClassMap = {
+                DRAFT: 'bg-slate-100 text-slate-700',
+                MENUNGGU_PERSETUJUAN: 'bg-orange-100 text-orange-800',
+                DITOLAK_PERSETUJUAN: 'bg-red-100 text-red-700',
+                DIKIRIM: 'bg-blue-100 text-blue-700',
+                DIPERIKSA: 'bg-indigo-100 text-indigo-700',
+                DITERIMA: 'bg-emerald-100 text-emerald-700',
+                MENUNGGU_DIKEMBALIKAN: 'bg-amber-100 text-amber-800',
+                DIKEMBALIKAN: 'bg-teal-100 text-teal-700',
+                SELESAI: 'bg-emerald-100 text-emerald-700',
+                DITOLAK: 'bg-red-100 text-red-700',
+            };
+            const gudangIds = @json(($gudangs ?? collect())->pluck('id')->all());
+
+            const refreshList = async () => {
+                const container = document.querySelector('[data-surat-jalan-list]');
+                if (!container) {
+                    return;
+                }
+                try {
+                    const response = await fetch(window.location.href, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    const html = await response.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const next = doc.querySelector('[data-surat-jalan-list]');
+                    if (next) {
+                        container.innerHTML = next.innerHTML;
+                    }
+                } catch (error) {
+                    console.error('Realtime list refresh failed', error);
+                }
+            };
+
+            const updateStatusBadges = (payload) => {
+                const status = payload?.status;
+                if (!status) {
+                    return;
+                }
+                const rows = document.querySelectorAll(`[data-surat-jalan-id="${payload.id}"]`);
+                if (rows.length === 0) {
+                    if (payload?.action === 'created') {
+                        refreshList();
+                    }
+                    return;
+                }
+                rows.forEach((row) => {
+                    row.querySelectorAll('[data-surat-jalan-status]').forEach((badge) => {
+                        const baseClass = badge.dataset.baseClass || '';
+                        const nextClass = statusClassMap[status] || 'bg-slate-100 text-slate-700';
+                        badge.className = `${baseClass} ${nextClass}`.trim();
+                        badge.textContent = statusLabels[status] || status;
+                    });
+                });
+                const statusFilter = document.querySelector('select[name="status"]')?.value;
+                if (statusFilter && statusFilter !== 'ALL' && statusFilter !== status) {
+                    refreshList();
+                }
+            };
+
+            gudangIds.forEach((gudangId) => {
+                window.Echo.channel(`surat-jalan.gudang.${gudangId}`)
+                    .listen('.SuratJalanStatusUpdated', updateStatusBadges);
+            });
+        });
+    </script>
 </x-app-layout>

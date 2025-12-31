@@ -23,6 +23,7 @@
 
             @if($activeFilters > 0)
                 <a href="{{ route('gudang.riwayat', ['tab' => 'pergerakan']) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="text-sm text-gray-500 hover:text-red-600 transition flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -37,10 +38,12 @@
             <span class="text-sm text-gray-500">Urutkan:</span>
             <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
                 <a href="{{ route('gudang.riwayat', array_merge(request()->query(), ['tab' => 'pergerakan', 'sort' => 'terbaru'])) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ (request('sort', 'terbaru') === 'terbaru') ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                     Terbaru
                 </a>
                 <a href="{{ route('gudang.riwayat', array_merge(request()->query(), ['tab' => 'pergerakan', 'sort' => 'terlama'])) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ request('sort') === 'terlama' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                     Terlama
                 </a>
@@ -53,7 +56,7 @@
          x-collapse
          x-cloak>
         <div class="px-4 pb-4 border-t border-gray-100 pt-4">
-            <form method="GET" action="{{ route('gudang.riwayat') }}" id="filterForm">
+            <form method="GET" action="{{ route('gudang.riwayat') }}" id="filterForm" data-ajax-form data-ajax-target="#riwayat-content">
                 <input type="hidden" name="tab" value="pergerakan">
                 <input type="hidden" name="sort" value="{{ request('sort', 'terbaru') }}">
 
@@ -70,7 +73,7 @@
                             <input type="text"
                                    name="search"
                                    value="{{ request('search') }}"
-                                   class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
+                                   class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
                                    placeholder="Cari nama barang, keterangan...">
                         </div>
                     </div>
@@ -79,7 +82,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1.5">Tipe Pergerakan</label>
                         <select name="tipe"
-                                class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                             <option value="">Semua Tipe</option>
                             <option value="IN" {{ request('tipe') === 'IN' ? 'selected' : '' }}>IN (Masuk)</option>
                             <option value="OUT" {{ request('tipe') === 'OUT' ? 'selected' : '' }}>OUT (Keluar)</option>
@@ -90,7 +93,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1.5">Referensi</label>
                         <select name="referensi"
-                                class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                             <option value="">Semua Referensi</option>
                             @foreach($referensiTypes ?? [] as $type)
                                 <option value="{{ $type }}" {{ request('referensi') === $type ? 'selected' : '' }}>
@@ -106,7 +109,7 @@
                         <input type="date"
                                name="tanggal_mulai"
                                value="{{ request('tanggal_mulai') }}"
-                               class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                               class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                     </div>
 
                     {{-- Tanggal Selesai --}}
@@ -115,7 +118,7 @@
                         <input type="date"
                                name="tanggal_selesai"
                                value="{{ request('tanggal_selesai') }}"
-                               class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                               class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                     </div>
                 </div>
 
