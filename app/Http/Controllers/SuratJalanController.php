@@ -27,6 +27,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class SuratJalanController extends Controller
 {
+    private const COMPANY_CODE = 'F2206040';
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -675,10 +677,9 @@ class SuratJalanController extends Controller
             ->with('success', $adminFinish ? 'Surat pengembalian berhasil dibuat dan langsung diselesaikan.' : 'Draft pengembalian peminjaman berhasil dibuat.');
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $cacheKey = $this->buildSuratJalanDetailCacheKey((int) $id);
-        [$suratJalan, $peminjaman] = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($id) {
+        $loadDetail = function () use ($id) {
             $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'])
                 ->findOrFail($id);
 
@@ -710,7 +711,14 @@ class SuratJalanController extends Controller
             }
 
             return [$suratJalan, $peminjaman];
-        });
+        };
+
+        if ($request->boolean('no_cache')) {
+            [$suratJalan, $peminjaman] = $loadDetail();
+        } else {
+            $cacheKey = $this->buildSuratJalanDetailCacheKey((int) $id);
+            [$suratJalan, $peminjaman] = Cache::remember($cacheKey, now()->addMinutes(5), $loadDetail);
+        }
 
         $user = Auth::user();
         $accessibleGudangIds = $this->resolveAccessibleGudangIds($user);
@@ -2147,9 +2155,8 @@ class SuratJalanController extends Controller
     {
         do {
             $prefix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
-            $tanggalKode = $tanggal->format('ymd');
             $tahun = $tanggal->format('Y');
-            $nomor = $prefix . '/SJ' . $tanggalKode . '/' . $tahun;
+            $nomor = $prefix . '/' . self::COMPANY_CODE . '/' . $tahun;
         } while (SuratJalan::where('nomor', $nomor)->exists());
 
         return $nomor;
@@ -2159,9 +2166,8 @@ class SuratJalanController extends Controller
     {
         do {
             $prefix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
-            $tanggalKode = $tanggal->format('ymd');
             $tahun = $tanggal->format('Y');
-            $kode = $prefix . '/SJ' . $tanggalKode . '/' . $tahun;
+            $kode = $prefix . '/' . self::COMPANY_CODE . '/' . $tahun;
         } while (Peminjaman::where('kode', $kode)->exists());
 
         return $kode;

@@ -354,7 +354,7 @@
                                                name="search"
                                                value="{{ $filters['search'] ?? '' }}"
                                                class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
-                                               placeholder="Contoh: 705/SJ251223/2025">
+                                               placeholder="Contoh: 123/F2206040/YYYY">
                                     </div>
                                 </div>
 
@@ -428,7 +428,7 @@
             </div>
 
             {{-- Table --}}
-            <div id="surat-jalan-index-table" class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg" data-ajax-container>
+            <div id="surat-jalan-index-table" class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg" data-ajax-container data-surat-jalan-list>
                 <div class="p-4 sm:p-6 border-b border-gray-100">
                     <div class="flex items-center justify-between">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900">
@@ -464,14 +464,14 @@
                                 default => 'bg-gray-100 text-gray-700',
                             };
                         @endphp
-                        <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}" class="block p-4 hover:bg-gray-50 active:bg-gray-100 transition">
+                        <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}" class="block p-4 hover:bg-gray-50 active:bg-gray-100 transition" data-surat-jalan-id="{{ $sj->id }}">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <p class="font-semibold text-gray-900 text-sm truncate">{{ $sj->nomor ?? '-' }}</p>
                                     <p class="text-xs text-gray-500 mt-0.5">{{ $sj->tanggal?->format('d M Y') ?? '-' }}</p>
                                 </div>
                                 <div class="flex flex-col items-end gap-1">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $statusClass }}">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $statusClass }}" data-surat-jalan-status data-base-class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold">
                                         {{ $status }}
                                     </span>
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium {{ $tipeClass }}">
@@ -546,7 +546,7 @@
                                         default => 'bg-gray-100 text-gray-800',
                                     };
                                 @endphp
-                                <tr>
+                                <tr data-surat-jalan-id="{{ $sj->id }}">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $suratJalans->firstItem() + $index }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                         {{ $sj->nomor ?? '-' }}
@@ -578,7 +578,7 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}" data-surat-jalan-status data-base-class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold">
                                             {{ $status }}
                                         </span>
                                     </td>
@@ -1018,122 +1018,6 @@
         </div>
     </x-modal>
 
-    {{-- Preview PDF Modal --}}
-    <div x-data="{
-            showPreview: false,
-            previewUrl: '',
-            formDataObj: {},
-            submitting: false,
-            submitDraft() {
-                if (Object.keys(this.formDataObj).length === 0) {
-                    alert('Data form tidak ditemukan. Silakan tutup preview dan coba lagi.');
-                    return;
-                }
-
-                this.submitting = true;
-
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '{{ route('gudang.surat-jalan.store') }}';
-
-                const csrf = document.createElement('input');
-                csrf.type = 'hidden';
-                csrf.name = '_token';
-                csrf.value = '{{ csrf_token() }}';
-                form.appendChild(csrf);
-
-                Object.entries(this.formDataObj).forEach(([key, value]) => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = value !== null && value !== undefined ? value : '';
-                    form.appendChild(input);
-                });
-
-                document.body.appendChild(form);
-                form.submit();
-            }
-         }"
-         @open-preview.window="
-            previewUrl = $event.detail.url;
-            formDataObj = $event.detail.formData;
-            showPreview = true;
-         "
-         @close-preview.window="
-            showPreview = false;
-            submitting = false;
-            if (previewUrl) {
-                URL.revokeObjectURL(previewUrl);
-                previewUrl = '';
-            }
-         ">
-        <div x-show="showPreview"
-             x-cloak
-             class="fixed inset-0 z-50 overflow-y-auto"
-             x-transition:enter="ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-                {{-- Backdrop --}}
-                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 z-0"
-                     @click="$dispatch('close-preview')"></div>
-
-                {{-- Modal Content --}}
-                <div class="relative z-20 w-full max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden"
-                     x-transition:enter="ease-out duration-300"
-                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave="ease-in duration-200"
-                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-
-                    {{-- Header --}}
-                    <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-b">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">Preview Surat Jalan</h3>
-                            <p class="text-sm text-gray-500">Periksa kembali data sebelum menyimpan draft</p>
-                        </div>
-                        <button type="button"
-                                class="text-gray-400 hover:text-gray-600"
-                                @click="$dispatch('close-preview')">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    {{-- PDF Preview --}}
-                    <div class="p-4 bg-gray-100" style="height: 70vh;">
-                        <iframe :src="previewUrl"
-                                class="w-full h-full rounded border border-gray-300 bg-white"
-                                style="min-height: 500px;"></iframe>
-                    </div>
-
-                    {{-- Footer Actions --}}
-                    <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t">
-                        <button type="button"
-                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
-                                @click="$dispatch('close-preview')">
-                            Kembali & Edit
-                        </button>
-                        <button type="button"
-                                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                :disabled="submitting"
-                                @click="submitDraft()">
-                            <svg x-show="submitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span x-text="submitting ? 'Menyimpan...' : 'Konfirmasi & Simpan Draft'"></span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <x-modal name="return-peminjaman" focusable>
         <div class="p-6"
@@ -1429,4 +1313,84 @@
             </form>
         </div>
     </x-modal>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.Echo) {
+                return;
+            }
+            const statusClassMap = {
+                DRAFT: 'bg-gray-100 text-gray-800',
+                MENUNGGU_PERSETUJUAN: 'bg-orange-100 text-orange-800',
+                DITOLAK_PERSETUJUAN: 'bg-red-100 text-red-800',
+                DIKIRIM: 'bg-blue-100 text-blue-800',
+                DIKEMBALIKAN: 'bg-indigo-100 text-indigo-800',
+                MENUNGGU_DIKEMBALIKAN: 'bg-yellow-100 text-yellow-800',
+                DIPERIKSA: 'bg-purple-100 text-purple-800',
+                DITERIMA: 'bg-yellow-100 text-yellow-800',
+                DITOLAK: 'bg-red-100 text-red-800',
+                SELESAI: 'bg-green-100 text-green-800',
+            };
+            const gudangIds = Array.from(new Set([
+                @if(!empty($activeGudangId))
+                    {{ (int) $activeGudangId }},
+                @elseif(($selectionGudangs ?? collect())->count() > 0)
+                    ...@json($selectionGudangs->pluck('id')->all()),
+                @endif
+            ].filter(Boolean)));
+
+            const refreshList = async () => {
+                const container = document.querySelector('[data-surat-jalan-list]');
+                if (!container) {
+                    return;
+                }
+                try {
+                    const response = await fetch(window.location.href, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    const html = await response.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const next = doc.querySelector('[data-surat-jalan-list]');
+                    if (next) {
+                        container.innerHTML = next.innerHTML;
+                    }
+                } catch (error) {
+                    console.error('Realtime list refresh failed', error);
+                }
+            };
+
+            const updateStatusBadges = (payload) => {
+                const status = payload?.status;
+                if (!status) {
+                    return;
+                }
+                const rows = document.querySelectorAll(`[data-surat-jalan-id="${payload.id}"]`);
+                if (rows.length === 0) {
+                    if (payload?.action === 'created') {
+                        refreshList();
+                    }
+                    return;
+                }
+                rows.forEach((row) => {
+                    row.querySelectorAll('[data-surat-jalan-status]').forEach((badge) => {
+                        const baseClass = badge.dataset.baseClass || '';
+                        const nextClass = statusClassMap[status] || 'bg-gray-100 text-gray-800';
+                        badge.className = `${baseClass} ${nextClass}`.trim();
+                        badge.textContent = status;
+                    });
+                });
+                const statusFilter = document.querySelector('select[name="status"]')?.value;
+                if (statusFilter && statusFilter !== status) {
+                    refreshList();
+                }
+            };
+
+            gudangIds.forEach((gudangId) => {
+                window.Echo.channel(`surat-jalan.gudang.${gudangId}`)
+                    .listen('.SuratJalanStatusUpdated', updateStatusBadges);
+            });
+        });
+    </script>
 </x-app-layout>

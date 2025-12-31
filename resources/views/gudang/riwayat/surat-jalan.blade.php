@@ -140,7 +140,7 @@
                                    name="search"
                                    value="{{ $search ?? '' }}"
                                    class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
-                                   placeholder="Contoh: 705/SJ251223/2025">
+                                   placeholder="Contoh: 123/F2206040/YYYY">
                         </div>
                     </div>
 

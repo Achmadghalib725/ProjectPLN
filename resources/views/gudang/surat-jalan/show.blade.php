@@ -391,6 +391,7 @@
                 $maxStep = count($steps) - 1;
             @endphp
 
+            <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
             @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($isPeminjaman && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
@@ -550,6 +551,7 @@
                 </div>
             </div>
             @endif
+            </div>
 
             {{-- Info Card --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg">
@@ -617,7 +619,7 @@
                         </div>
                         <div>
                             <p class="text-xs sm:text-sm text-gray-500">Status</p>
-                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->status ?? '-' }}</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900" data-surat-jalan-status-text>{{ $suratJalan->status ?? '-' }}</p>
                         </div>
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Catatan</p>
@@ -1070,4 +1072,47 @@
         </div>
     </x-modal>
     @endif
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.Echo) {
+                return;
+            }
+            const suratJalanId = {{ (int) $suratJalan->id }};
+            const refreshProgress = async () => {
+                const current = document.querySelector('[data-surat-jalan-progress]');
+                if (!current) {
+                    return;
+                }
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('no_cache', '1');
+                    const response = await fetch(url.toString(), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    const html = await response.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const next = doc.querySelector('[data-surat-jalan-progress]');
+                    if (next) {
+                        current.innerHTML = next.innerHTML;
+                    }
+                } catch (error) {
+                    console.error('Realtime refresh failed', error);
+                }
+            };
+
+            window.Echo.channel(`surat-jalan.detail.${suratJalanId}`)
+                .listen('.SuratJalanStatusUpdated', (payload) => {
+                    if (!payload || payload.id !== suratJalanId) {
+                        return;
+                    }
+                    document.querySelectorAll('[data-surat-jalan-status-text]').forEach((node) => {
+                        node.textContent = payload.status || '-';
+                    });
+                    refreshProgress();
+                });
+        });
+    </script>
 </x-app-layout>

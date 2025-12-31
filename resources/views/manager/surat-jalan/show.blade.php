@@ -58,13 +58,13 @@
                     : ($suratJalan->gudangTujuan->telepon ?? '-');
             @endphp
 
-            <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+            <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6" data-surat-jalan-header>
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p class="text-sm text-slate-500">Surat Jalan</p>
                         <h2 class="text-xl sm:text-2xl font-bold text-slate-900">{{ $suratJalan->nomor }}</h2>
                         <div class="mt-2">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}" data-surat-jalan-status data-base-class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold">
                                 {{ $statusText }}
                             </span>
                         </div>
@@ -197,7 +197,7 @@
                         </div>
                         <div>
                             <p class="text-slate-500">Status Peminjaman</p>
-                            <p class="font-semibold text-slate-900">{{ $peminjaman->status }}</p>
+                            <p class="font-semibold text-slate-900" data-peminjaman-status>{{ $peminjaman->status }}</p>
                         </div>
                         <div>
                             <p class="text-slate-500">Waktu Kirim</p>
@@ -270,4 +270,80 @@
             </div>
         </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.Echo) {
+                return;
+            }
+            const suratJalanId = {{ (int) $suratJalan->id }};
+            const refreshHeader = async () => {
+                const current = document.querySelector('[data-surat-jalan-header]');
+                if (!current) {
+                    return;
+                }
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('no_cache', '1');
+                    const response = await fetch(url.toString(), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    const html = await response.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const next = doc.querySelector('[data-surat-jalan-header]');
+                    if (next) {
+                        current.innerHTML = next.innerHTML;
+                    }
+                } catch (error) {
+                    console.error('Realtime refresh failed', error);
+                }
+            };
+            const statusLabels = {
+                DRAFT: 'Draft',
+                MENUNGGU_PERSETUJUAN: 'Menunggu Persetujuan',
+                DITOLAK_PERSETUJUAN: 'Persetujuan Ditolak',
+                DIKIRIM: 'Dikirim',
+                DIPERIKSA: 'Diperiksa',
+                DITERIMA: 'Diterima',
+                MENUNGGU_DIKEMBALIKAN: 'Menunggu Dikembalikan',
+                DIKEMBALIKAN: 'Dikembalikan',
+                SELESAI: 'Selesai',
+                DITOLAK: 'Ditolak',
+            };
+            const statusClassMap = {
+                DRAFT: 'bg-slate-100 text-slate-700',
+                MENUNGGU_PERSETUJUAN: 'bg-orange-100 text-orange-800',
+                DITOLAK_PERSETUJUAN: 'bg-red-100 text-red-700',
+                DIKIRIM: 'bg-blue-100 text-blue-700',
+                DIPERIKSA: 'bg-indigo-100 text-indigo-700',
+                DITERIMA: 'bg-emerald-100 text-emerald-700',
+                MENUNGGU_DIKEMBALIKAN: 'bg-amber-100 text-amber-800',
+                DIKEMBALIKAN: 'bg-teal-100 text-teal-700',
+                SELESAI: 'bg-emerald-100 text-emerald-700',
+                DITOLAK: 'bg-red-100 text-red-700',
+            };
+
+            window.Echo.channel(`surat-jalan.detail.${suratJalanId}`)
+                .listen('.SuratJalanStatusUpdated', (payload) => {
+                    if (!payload || payload.id !== suratJalanId) {
+                        return;
+                    }
+                    const status = payload.status || 'DRAFT';
+                    document.querySelectorAll('[data-surat-jalan-status]').forEach((badge) => {
+                        const baseClass = badge.dataset.baseClass || '';
+                        const nextClass = statusClassMap[status] || 'bg-slate-100 text-slate-700';
+                        badge.className = `${baseClass} ${nextClass}`.trim();
+                        badge.textContent = statusLabels[status] || status;
+                    });
+                    if (payload.peminjaman_status) {
+                        document.querySelectorAll('[data-peminjaman-status]').forEach((node) => {
+                            node.textContent = payload.peminjaman_status;
+                        });
+                    }
+                    refreshHeader();
+                });
+        });
+    </script>
 </x-app-layout>
