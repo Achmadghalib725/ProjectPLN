@@ -77,7 +77,7 @@
                             </p>
                         </div>
                         @if($needsGudangSelection)
-                        <form method="GET" action="{{ route('gudang.surat-jalan.index') }}" class="flex items-center gap-2">
+                        <form method="GET" action="{{ route('admin.surat-jalan.index') }}" class="flex items-center gap-2">
                             <input type="hidden" name="tab" value="{{ $tab }}">
                             <label class="text-xs font-semibold text-gray-500 uppercase">Akses Gudang</label>
                             <select name="gudang_id"
@@ -134,7 +134,7 @@
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex" aria-label="Tabs">
-                        <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'keluar']) }}"
+                        <a href="{{ route('admin.surat-jalan.index', ['tab' => 'keluar']) }}"
                            class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
                             <div class="flex items-center justify-center gap-1.5 sm:gap-2">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +143,7 @@
                                 <span>Surat Keluar</span>
                             </div>
                         </a>
-                        <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
+                        <a href="{{ route('admin.surat-jalan.index', ['tab' => 'masuk']) }}"
                            class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-pln-primary text-pln-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
                             <div class="flex items-center justify-center gap-1.5 sm:gap-2">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,7 +306,7 @@
                         </button>
 
                         @if($activeFilters > 0)
-                            <a href="{{ route('gudang.surat-jalan.index', ['tab' => $tab]) }}"
+                            <a href="{{ route('admin.surat-jalan.index', ['tab' => $tab]) }}"
                                class="text-sm text-gray-500 hover:text-red-600 transition flex items-center gap-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -320,11 +320,11 @@
                     <div class="flex items-center gap-2">
                         <span class="text-sm text-gray-500">Urutkan:</span>
                         <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
-                            <a href="{{ route('gudang.surat-jalan.index', array_merge(request()->query(), ['tab' => $tab, 'order_by' => 'terbaru'])) }}"
+                            <a href="{{ route('admin.surat-jalan.index', array_merge(request()->query(), ['tab' => $tab, 'order_by' => 'terbaru'])) }}"
                                class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ $currentSort === 'terbaru' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                                 Terbaru
                             </a>
-                            <a href="{{ route('gudang.surat-jalan.index', array_merge(request()->query(), ['tab' => $tab, 'order_by' => 'terlama'])) }}"
+                            <a href="{{ route('admin.surat-jalan.index', array_merge(request()->query(), ['tab' => $tab, 'order_by' => 'terlama'])) }}"
                                class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ $currentSort === 'terlama' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                                 Terlama
                             </a>
@@ -335,7 +335,7 @@
                 {{-- Expandable Filter Panel --}}
                 <div x-show="showFilter" x-collapse x-cloak>
                     <div class="px-4 pb-4 border-t border-gray-100 pt-4">
-                        <form method="GET" action="{{ route('gudang.surat-jalan.index') }}">
+                        <form method="GET" action="{{ route('admin.surat-jalan.index') }}">
                             <input type="hidden" name="tab" value="{{ $tab }}">
                             <input type="hidden" name="order_by" value="{{ $currentSort }}">
 
@@ -463,7 +463,7 @@
                                 default => 'bg-gray-100 text-gray-700',
                             };
                         @endphp
-                        <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}" class="block p-4 hover:bg-gray-50 active:bg-gray-100 transition">
+                        <a href="{{ route('admin.surat-jalan.show', $sj->id) }}" class="block p-4 hover:bg-gray-50 active:bg-gray-100 transition">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <p class="font-semibold text-gray-900 text-sm truncate">{{ $sj->nomor ?? '-' }}</p>
@@ -590,7 +590,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex items-center gap-2">
                                             @if(!empty($sj->id))
-                                                <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}"
+                                                <a href="{{ route('admin.surat-jalan.show', $sj->id) }}"
                                                    class="text-pln-primary hover:text-pln-light"
                                                    title="Lihat Detail">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -598,7 +598,7 @@
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                                     </svg>
                                                 </a>
-                                                <a href="{{ route('gudang.surat-jalan.pdf', $sj->id) }}"
+                                                <a href="{{ route('admin.surat-jalan.pdf', $sj->id) }}"
                                                    class="text-green-600 hover:text-green-800"
                                                    title="Download PDF">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -776,7 +776,7 @@
                 </button>
             </div>
 
-              <form method="POST" action="{{ route('gudang.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
+              <form method="POST" action="{{ route('admin.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
                   @csrf
                   @if($isAdmin && $needsGudangSelection)
                       <input type="hidden" name="gudang_asal_id" value="{{ $activeGudangId }}">
@@ -1084,7 +1084,7 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('admin.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="admin_finish" value="1">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1301,7 +1301,7 @@
             </div>
 
             <form method="GET"
-                  action="{{ route('gudang.surat-jalan.export-excel') }}"
+                  action="{{ route('admin.surat-jalan.export-excel') }}"
                   x-data="{
                       periode: '1_bulan',
                       showCustom: false,

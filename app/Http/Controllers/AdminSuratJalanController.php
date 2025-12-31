@@ -25,7 +25,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\SuratJalanExport;
 use Maatwebsite\Excel\Facades\Excel;
 
-class SuratJalanController extends Controller
+class AdminSuratJalanController extends Controller
 {
     public function index(Request $request)
     {
@@ -152,7 +152,7 @@ class SuratJalanController extends Controller
         }
         $activeGudangName = $activeGudangId ? (Gudang::find($activeGudangId)?->nama ?? null) : null;
 
-        return view('gudang.surat-jalan.index', compact(
+        return view('admin.surat-jalan.index', compact(
             'suratJalans',
             'stats',
             'gudangs',
@@ -172,7 +172,7 @@ class SuratJalanController extends Controller
 
     public function create(Request $request)
     {
-        return redirect()->route('gudang.surat-jalan.index');
+        return redirect()->route('admin.surat-jalan.index');
     }
 
     public function store(Request $request)
@@ -394,7 +394,7 @@ class SuratJalanController extends Controller
             $managerSignerId = $this->resolveManagerSignerId($gudangId);
             if (!$managerSignerId) {
                 return redirect()
-                    ->route('gudang.surat-jalan.index')
+                    ->route('admin.surat-jalan.index')
                     ->with('error', 'Manager pengirim belum ditetapkan untuk gudang ini.');
             }
             $ttdPembuatId = $managerSignerId;
@@ -417,7 +417,7 @@ class SuratJalanController extends Controller
                 );
             } catch (\RuntimeException $e) {
                 return redirect()
-                    ->route('gudang.surat-jalan.index')
+                    ->route('admin.surat-jalan.index')
                     ->with('error', $e->getMessage());
             }
 
@@ -429,7 +429,7 @@ class SuratJalanController extends Controller
             $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
 
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalanId)
+                ->route('admin.surat-jalan.show', $suratJalanId)
                 ->with('success', 'Surat Jalan berhasil dibuat dan langsung diselesaikan.');
         }
 
@@ -522,7 +522,7 @@ class SuratJalanController extends Controller
         $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
 
         $redirect = redirect()
-            ->route('gudang.surat-jalan.index')
+            ->route('admin.surat-jalan.index')
             ->with('success', 'Draft Surat Jalan berhasil dibuat.');
 
         if (!empty($warningItems)) {
@@ -619,7 +619,7 @@ class SuratJalanController extends Controller
             $managerSignerId = $this->resolveManagerSignerId($gudangId);
             if (!$managerSignerId) {
                 return redirect()
-                    ->route('gudang.surat-jalan.index')
+                    ->route('admin.surat-jalan.index')
                     ->with('error', 'Manager pengirim belum ditetapkan untuk gudang ini.');
             }
         }
@@ -642,7 +642,7 @@ class SuratJalanController extends Controller
 
             if (!$picValid) {
                 return redirect()
-                    ->route('gudang.surat-jalan.index')
+                    ->route('admin.surat-jalan.index')
                     ->withErrors(['pic_tujuan_id' => 'PIC tujuan tidak sesuai dengan gudang pemilik.'])
                     ->withInput();
             }
@@ -737,7 +737,7 @@ class SuratJalanController extends Controller
         $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
 
         return redirect()
-            ->route('gudang.surat-jalan.index')
+            ->route('admin.surat-jalan.index')
             ->with('success', $adminFinish ? 'Surat pengembalian berhasil dibuat dan langsung diselesaikan.' : 'Draft pengembalian peminjaman berhasil dibuat.');
     }
 
@@ -800,7 +800,7 @@ class SuratJalanController extends Controller
         $isAdmin = $user?->role === 'admin';
         $isManager = $user?->role === 'manager';
 
-        return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin', 'isManager', 'accessibleGudangIds'));
+        return view('admin.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin', 'isManager', 'accessibleGudangIds'));
     }
 
     public function edit($id)
@@ -816,7 +816,7 @@ class SuratJalanController extends Controller
         $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
         if (!in_array($suratJalan->status, $editableStatuses, true)) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Hanya surat jalan Draft atau Ditolak Persetujuan yang bisa diedit.');
         }
 
@@ -845,7 +845,7 @@ class SuratJalanController extends Controller
             $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
         }
 
-        return view('gudang.surat-jalan.edit', compact('suratJalan', 'gudangs', 'pics', 'availableStocks', 'peminjaman'));
+        return view('admin.surat-jalan.edit', compact('suratJalan', 'gudangs', 'pics', 'availableStocks', 'peminjaman'));
     }
 
     public function update(Request $request, $id)
@@ -861,7 +861,7 @@ class SuratJalanController extends Controller
         $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
         if (!in_array($suratJalan->status, $editableStatuses, true)) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Hanya surat jalan Draft atau Ditolak Persetujuan yang bisa diedit.');
         }
 
@@ -898,7 +898,7 @@ class SuratJalanController extends Controller
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('success', 'Draft pengembalian berhasil diperbarui.');
         }
 
@@ -1074,7 +1074,7 @@ class SuratJalanController extends Controller
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
         $redirect = redirect()
-            ->route('gudang.surat-jalan.show', $suratJalan->id)
+            ->route('admin.surat-jalan.show', $suratJalan->id)
             ->with('success', 'Draft surat jalan berhasil diperbarui.');
 
         if (!empty($warningItems)) {
@@ -1101,13 +1101,13 @@ class SuratJalanController extends Controller
 
         if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true)) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini tidak dapat diajukan untuk persetujuan.');
         }
 
         if ($suratJalan->attachments()->count() === 0) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
         }
 
@@ -1119,7 +1119,7 @@ class SuratJalanController extends Controller
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
         return redirect()
-            ->route('gudang.surat-jalan.show', $suratJalan->id)
+            ->route('admin.surat-jalan.show', $suratJalan->id)
             ->with('success', 'Surat Jalan berhasil diajukan untuk persetujuan.');
     }
 
@@ -1129,7 +1129,7 @@ class SuratJalanController extends Controller
         $user = Auth::user();
         $isAdmin = $user?->role === 'admin';
         $isManager = $user?->role === 'manager';
-        $redirectRoute = $isManager ? 'manager.surat-jalan.show' : 'gudang.surat-jalan.show';
+        $redirectRoute = $isManager ? 'manager.surat-jalan.show' : 'admin.surat-jalan.show';
 
         if (!$isAdmin && !$isManager) {
             abort(403, 'Anda tidak berhak menolak persetujuan.');
@@ -1167,7 +1167,7 @@ class SuratJalanController extends Controller
         $user = Auth::user();
         $isAdmin = $user?->role === 'admin';
         $isManager = $user?->role === 'manager';
-        $redirectRoute = $isManager ? 'manager.surat-jalan.show' : 'gudang.surat-jalan.show';
+        $redirectRoute = $isManager ? 'manager.surat-jalan.show' : 'admin.surat-jalan.show';
 
         if (!$isAdmin && !$isManager) {
             abort(403, 'Anda tidak berhak menyetujui surat jalan.');
@@ -1349,7 +1349,7 @@ class SuratJalanController extends Controller
 
         if ($suratJalan->status !== 'DIPERIKSA') {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini belum diperiksa oleh security.');
         }
 
@@ -1465,11 +1465,11 @@ class SuratJalanController extends Controller
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('success', $message);
         } catch (\RuntimeException $e) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', $e->getMessage());
         }
     }
@@ -1485,13 +1485,13 @@ class SuratJalanController extends Controller
 
         if ($suratJalan->tipe !== 'PEMINJAMAN' || !$suratJalan->gudang_tujuan_is_custom) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini bukan peminjaman gudang eksternal.');
         }
 
         if ($suratJalan->status !== 'MENUNGGU_DIKEMBALIKAN') {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Status surat jalan tidak sesuai untuk konfirmasi pengembalian.');
         }
 
@@ -1546,11 +1546,11 @@ class SuratJalanController extends Controller
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('success', 'Pengembalian barang telah dikonfirmasi.');
         } catch (\RuntimeException $e) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', $e->getMessage());
         }
     }
@@ -1566,7 +1566,7 @@ class SuratJalanController extends Controller
 
         if ($suratJalan->status !== 'DITOLAK') {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini belum berstatus Ditolak.');
         }
 
@@ -1601,7 +1601,7 @@ class SuratJalanController extends Controller
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
         return redirect()
-            ->route('gudang.surat-jalan.show', $suratJalan->id)
+            ->route('admin.surat-jalan.show', $suratJalan->id)
             ->with('success', 'Surat Jalan yang ditolak telah diselesaikan.');
     }
 
@@ -1617,7 +1617,7 @@ class SuratJalanController extends Controller
         $deletableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
         if (!in_array($suratJalan->status, $deletableStatuses, true)) {
             return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Hanya surat jalan dengan status Draft atau Ditolak Persetujuan yang bisa dihapus.');
         }
 
@@ -1647,7 +1647,7 @@ class SuratJalanController extends Controller
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
         return redirect()
-            ->route('gudang.surat-jalan.index')
+            ->route('admin.surat-jalan.index')
             ->with('success', 'Draft Surat Jalan berhasil dihapus.');
     }
 

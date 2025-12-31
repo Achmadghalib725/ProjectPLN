@@ -43,7 +43,7 @@
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             {{-- PDF Buttons Row --}}
                             <div class="flex gap-2">
-                                <a href="{{ route('gudang.surat-jalan.preview', $suratJalan->id) }}"
+                                <a href="{{ route('admin.surat-jalan.preview', $suratJalan->id) }}"
                                    target="_blank"
                                    class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 flex items-center justify-center gap-2 text-sm">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,7 +53,7 @@
                                     <span class="hidden sm:inline">Preview PDF</span>
                                     <span class="sm:hidden">Preview</span>
                                 </a>
-                                <a href="{{ route('gudang.surat-jalan.pdf', $suratJalan->id) }}"
+                                <a href="{{ route('admin.surat-jalan.pdf', $suratJalan->id) }}"
                                    class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 flex items-center justify-center gap-2 text-sm">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -64,11 +64,11 @@
                             @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $canEditDraft)
                                 {{-- Draft Actions Row --}}
                                 <div class="flex gap-2">
-                                    <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}"
+                                    <a href="{{ route('admin.surat-jalan.edit', $suratJalan->id) }}"
                                        class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                         Edit Draft
                                     </a>
-                                    <form method="POST" action="{{ route('gudang.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                    <form method="POST" action="{{ route('admin.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
                                         @csrf
                                         <button type="submit"
                                                 class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
@@ -77,7 +77,7 @@
                                     </form>
                                 </div>
                                 <div class="flex gap-2">
-                                    <form method="POST" action="{{ route('gudang.surat-jalan.destroy', $suratJalan->id) }}"
+                                    <form method="POST" action="{{ route('admin.surat-jalan.destroy', $suratJalan->id) }}"
                                           onsubmit="return confirm('Hapus draft surat jalan ini?');"
                                           class="flex-1 sm:flex-none">
                                         @csrf
@@ -87,7 +87,7 @@
                                             Hapus Draft
                                         </button>
                                     </form>
-                                    <a href="{{ route('gudang.surat-jalan.index') }}"
+                                    <a href="{{ route('admin.surat-jalan.index') }}"
                                        class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                         Kembali
                                     </a>
@@ -95,14 +95,14 @@
                             @elseif($suratJalan->status === 'MENUNGGU_PERSETUJUAN' && $canApproveManager)
                                 {{-- Approval Actions Row --}}
                                 <div class="flex gap-2">
-                                    <form method="POST" action="{{ route('gudang.surat-jalan.approve', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                    <form method="POST" action="{{ route('admin.surat-jalan.approve', $suratJalan->id) }}" class="flex-1 sm:flex-none">
                                         @csrf
                                         <button type="submit"
                                                 class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
                                             Approve & Kirim
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ route('gudang.surat-jalan.reject-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none" onsubmit="return confirm('Tolak persetujuan surat jalan ini?');">
+                                    <form method="POST" action="{{ route('admin.surat-jalan.reject-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none" onsubmit="return confirm('Tolak persetujuan surat jalan ini?');">
                                         @csrf
                                         <button type="submit"
                                                 class="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
@@ -110,12 +110,12 @@
                                         </button>
                                     </form>
                                 </div>
-                                <a href="{{ route('gudang.surat-jalan.index') }}"
+                                <a href="{{ route('admin.surat-jalan.index') }}"
                                    class="bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                     Kembali
                                 </a>
                             @else
-                                <a href="{{ route('gudang.surat-jalan.index') }}"
+                                <a href="{{ route('admin.surat-jalan.index') }}"
                                    class="bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                     Kembali
                                 </a>
@@ -173,17 +173,15 @@
                                 'by' => null,
                             ],
                         ];
-                        // currentStep menunjukkan step yang SEDANG aktif (in progress)
-                        // Ketika status = DIKIRIM, artinya sudah dikirim, jadi step Dikirim selesai, step Selesai active
                         $statusIndexMap = [
-                            'DRAFT' => 0,
-                            'MENUNGGU_PERSETUJUAN' => 0,
-                            'DITOLAK_PERSETUJUAN' => 0,
-                            'DIKIRIM' => 1,      // step 0 (Dikirim) completed, step 1 (Selesai) active
-                            'SELESAI' => 2,      // semua completed
+                            'DRAFT' => -1,
+                            'MENUNGGU_PERSETUJUAN' => -1,
+                            'DITOLAK_PERSETUJUAN' => -1,
+                            'DIKIRIM' => 0,
+                            'SELESAI' => 1,
                             'DITOLAK' => -2,
                         ];
-                        $currentStep = $statusIndexMap[$suratStatus] ?? 0;
+                        $currentStep = $statusIndexMap[$suratStatus] ?? -1;
                     } else {
                         $steps = [
                             [
@@ -222,20 +220,17 @@
                                 'by' => null,
                             ],
                         ];
-                        // currentStep menunjukkan step yang SEDANG aktif (in progress)
-                        // DIKIRIM = sudah dikirim, menunggu security -> step Diperiksa active
-                        // DIPERIKSA = sudah diperiksa, menunggu operator terima -> step Selesai active
                         $statusIndexMap = [
-                            'DRAFT' => 0,
-                            'MENUNGGU_PERSETUJUAN' => 0,
-                            'DITOLAK_PERSETUJUAN' => 0,
-                            'DIKIRIM' => 1,      // step 0 (Dikirim) completed, step 1 (Diperiksa) active
-                            'DIPERIKSA' => 2,    // step 0,1 completed, step 2 (Selesai) active
-                            'DITERIMA' => 3,     // semua completed
-                            'SELESAI' => 3,      // semua completed
+                            'DRAFT' => -1,
+                            'MENUNGGU_PERSETUJUAN' => -1,
+                            'DITOLAK_PERSETUJUAN' => -1,
+                            'DIKIRIM' => 0,
+                            'DIPERIKSA' => 1,
+                            'DITERIMA' => 2,
+                            'SELESAI' => 2,
                             'DITOLAK' => -2,
                         ];
-                        $currentStep = $statusIndexMap[$suratStatus] ?? 0;
+                        $currentStep = $statusIndexMap[$suratStatus] ?? -1;
                     }
                 } else {
                     // PEMINJAMAN/PENGEMBALIAN: Alur lengkap sinkronisasi
@@ -283,16 +278,14 @@
                             ],
                         ];
 
-                        // currentStep menunjukkan step yang SEDANG aktif
-                        // Ketika status = DIKIRIM, artinya barang SUDAH dikirim, step 0 completed
                         if ($peminjamanStatus === 'SELESAI' || $suratStatus === 'SELESAI') {
-                            $currentStep = 3; // semua completed
+                            $currentStep = 3;
                         } elseif ($suratStatus === 'MENUNGGU_DIKEMBALIKAN') {
-                            $currentStep = 2; // step 0,1 completed, step 2 (Selesai) active - menunggu konfirmasi pengembalian
+                            $currentStep = 1;
                         } elseif (!in_array($sjKirimStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)) {
-                            $currentStep = 1; // step 0 (Dikirim) completed, step 1 (Menunggu Dikembalikan) active
+                            $currentStep = 0;
                         } else {
-                            $currentStep = 0; // belum dikirim, step 0 active
+                            $currentStep = 0;
                         }
                     } else {
                         $steps = [
@@ -426,23 +419,10 @@
 
                     {{-- Horizontal Progress Bar - Scrollable on Mobile --}}
                     <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-                        @php
-                            $totalSteps = count($steps);
-                            // Calculate progress bar width to reach center of last completed step
-                            // Each step container is (100/totalSteps)% wide, circles are centered
-                            // For currentStep = C, last completed = C-1, center position = (C-0.5)/totalSteps * 100
-                            if ($currentStep <= 0) {
-                                $progressWidth = 0;
-                            } elseif ($currentStep >= $totalSteps) {
-                                $progressWidth = 100;
-                            } else {
-                                $progressWidth = (($currentStep - 0.5) / $totalSteps) * 100;
-                            }
-                        @endphp
                         <div class="relative min-w-[500px] sm:min-w-0">
                             <div class="absolute top-[22px] sm:top-[26px] left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
                             <div class="absolute top-[22px] sm:top-[26px] left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
-                                 style="width: {{ $progressWidth }}%"></div>
+                                 style="width: {{ $currentStep > 0 ? min((($currentStep - 1) / $maxStep) * 100, 100) : 0 }}%"></div>
 
                             <div class="relative flex justify-between pt-[6px]">
                                 @foreach($steps as $index => $step)
@@ -451,25 +431,23 @@
                                         $isActive = $currentStep === $index;
                                         $isPending = $currentStep < $index;
 
-                                        // Color logic: completed = green, active = teal (pln-primary), pending = gray
                                         if ($isCompleted) {
                                             $circleClass = 'bg-green-500 text-white border-green-500';
                                             $labelClass = 'text-green-700 font-semibold';
                                         } elseif ($isActive) {
-                                            $circleClass = 'bg-[#4a6b7c] text-white border-[#4a6b7c] ring-4 ring-[#4a6b7c]/20';
-                                            $labelClass = 'text-[#4a6b7c] font-bold';
+                                            $circleClass = 'bg-pln-primary text-white border-pln-primary ring-4 ring-pln-primary/20';
+                                            $labelClass = 'text-pln-primary font-bold';
                                         } else {
                                             $circleClass = 'bg-white text-gray-400 border-gray-300';
                                             $labelClass = 'text-gray-400';
                                         }
 
-                                        // Override for rejected status
                                         if ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) {
                                             $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
                                             $labelClass = 'text-red-700 font-bold';
                                         }
                                     @endphp
-                                    <div class="flex flex-col items-center" style="width: {{ 100 / $totalSteps }}%">
+                                    <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
                                         <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold {{ $circleClass }} z-10">
                                             @if($isCompleted)
                                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -505,20 +483,20 @@
                                 @endphp
                                 <div class="flex gap-3 sm:gap-4 {{ !$isCompleted && !$isActive ? 'opacity-40' : '' }}">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-[#4a6b7c] ring-4 ring-[#4a6b7c]/20' : 'bg-gray-300') }}"></div>
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-pln-primary ring-4 ring-pln-primary/20' : 'bg-gray-300') }}"></div>
                                         @if($index < count($steps) - 1)
                                             <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $isCompleted ? 'bg-green-500' : 'bg-gray-200' }}"></div>
                                         @endif
                                     </div>
                                     <div class="flex-1 pb-3 sm:pb-4">
                                         <div class="flex flex-wrap items-center gap-1 sm:gap-2">
-                                            <span class="font-semibold text-sm sm:text-base {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-[#4a6b7c]' : 'text-gray-500') }}">
+                                            <span class="font-semibold text-sm sm:text-base {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-pln-primary' : 'text-gray-500') }}">
                                                 {{ $step['label'] }}
                                             </span>
                                             @if($isCompleted)
                                                 <span class="text-[10px] sm:text-xs bg-green-100 text-green-700 px-1.5 sm:px-2 py-0.5 rounded-full">Selesai</span>
                                             @elseif($isActive)
-                                                <span class="text-[10px] sm:text-xs bg-[#4a6b7c]/10 text-[#4a6b7c] px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">Proses</span>
+                                                <span class="text-[10px] sm:text-xs bg-blue-100 text-blue-700 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">Proses</span>
                                             @endif
                                         </div>
                                         <p class="text-xs sm:text-sm text-gray-500">{{ $step['desc'] }}</p>
@@ -540,7 +518,7 @@
                                                 @endif
                                             </div>
                                         @elseif($isActive)
-                                            <div class="mt-2 text-xs sm:text-sm bg-[#4a6b7c]/10 rounded-lg p-2 sm:p-3 text-[#4a6b7c]">
+                                            <div class="mt-2 text-xs sm:text-sm bg-blue-50 rounded-lg p-2 sm:p-3 text-blue-700">
                                                 <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                 </svg>
@@ -730,7 +708,7 @@
                                     </a>
                                     <p class="text-[10px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2 truncate">{{ $attachment->file_name }}</p>
                                     @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $isGudangAsalView)
-                                        <form action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}"
+                                        <form action="{{ route('admin.surat-jalan.delete-attachment', $attachment->id) }}"
                                               method="POST"
                                               class="absolute top-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition">
                                             @csrf
@@ -753,7 +731,7 @@
                 <div class="bg-yellow-50 border border-yellow-200 rounded-xl mt-4 sm:mt-6 p-4">
                     <p class="text-yellow-800 text-xs sm:text-sm">
                         <strong>Perhatian:</strong> Belum ada lampiran gambar. Upload minimal 1 gambar sebelum meminta persetujuan.
-                        <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}" class="underline font-semibold">Edit draft untuk upload gambar</a>.
+                        <a href="{{ route('admin.surat-jalan.edit', $suratJalan->id) }}" class="underline font-semibold">Edit draft untuk upload gambar</a>.
                     </p>
                 </div>
             @endif
@@ -776,7 +754,7 @@
                                 Barang telah diperiksa oleh security. Klik tombol di bawah untuk menerima barang ke gudang Anda.
                             @endif
                         </p>
-                        <form method="POST" action="{{ route('gudang.surat-jalan.terima', $suratJalan->id) }}"
+                        <form method="POST" action="{{ route('admin.surat-jalan.terima', $suratJalan->id) }}"
                               x-data="{ submitting: false }"
                               @submit="submitting = true">
                             @csrf
@@ -828,7 +806,7 @@
                         <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                             Surat jalan ini ditolak oleh security. Klik tombol di bawah untuk menandai proses sebagai selesai.
                         </p>
-                        <form method="POST" action="{{ route('gudang.surat-jalan.finalize-rejected', $suratJalan->id) }}"
+                        <form method="POST" action="{{ route('admin.surat-jalan.finalize-rejected', $suratJalan->id) }}"
                               x-data="{ submitting: false }"
                               @submit="submitting = true">
                             @csrf
@@ -857,7 +835,7 @@
                         <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                             Surat jalan ini dikirim ke gudang eksternal. Klik tombol di bawah jika barang sudah dikembalikan.
                         </p>
-                        <form method="POST" action="{{ route('gudang.surat-jalan.confirm-return', $suratJalan->id) }}"
+                        <form method="POST" action="{{ route('admin.surat-jalan.confirm-return', $suratJalan->id) }}"
                               x-data="{ submitting: false }"
                               @submit="submitting = true">
                             @csrf
@@ -970,7 +948,7 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('admin.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 @if($isAdmin ?? false)
                     <input type="hidden" name="admin_finish" value="1">
