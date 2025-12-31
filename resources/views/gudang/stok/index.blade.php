@@ -106,13 +106,13 @@
             <div id="stok-content" data-ajax-container>
                 @if($tab === 'stok')
                     {{-- KELOLA STOK TAB --}}
-                    @include('gudang.stok.partials.tab-stok')
+                    @include('gudang.stok.tab-stok')
                 @elseif($tab === 'dipinjamkan')
                     {{-- DIPINJAMKAN TAB --}}
-                    @include('gudang.stok.partials.tab-dipinjamkan')
+                    @include('gudang.stok.tab-dipinjamkan')
                 @elseif($tab === 'pinjaman')
                     {{-- PINJAMAN TAB --}}
-                    @include('gudang.stok.partials.tab-pinjaman')
+                    @include('gudang.stok.tab-pinjaman')
                 @endif
             </div>
         </div>

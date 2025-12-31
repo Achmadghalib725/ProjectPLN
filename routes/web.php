@@ -154,9 +154,6 @@ Route::middleware('auth')->group(function () {
     // ... (Area Operator & Security tetap sama)
     
     Route::middleware('role:operator_gudang')->prefix('gudang')->name('gudang.')->group(function () {
-        // Routes spesifik HARUS sebelum resource route
-        Route::get('/stok/barang-dipinjamkan', [StokController::class, 'barangDipinjamkan'])->name('stok.barang-dipinjamkan');
-        Route::get('/stok/barang-pinjaman', [StokController::class, 'barangPinjaman'])->name('stok.barang-pinjaman');
         Route::get('/riwayat', [StokController::class, 'riwayat'])->name('riwayat');
         Route::resource('stok', StokController::class);
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
