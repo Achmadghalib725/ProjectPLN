@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\SuratJalan;
+use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -40,7 +41,8 @@ class SuratJalanExport implements FromQuery, WithHeadings, WithMapping, WithStyl
                 'gudangTujuan',
                 'pembuat',
                 'picTujuan',
-                'items.item'
+                'items.item',
+                'peminjaman'
             ])
             ->withCount('items')
             ->withSum('items', 'jumlah');
@@ -94,6 +96,7 @@ class SuratJalanExport implements FromQuery, WithHeadings, WithMapping, WithStyl
             'Dibuat Oleh',
             'Waktu TTD Pembuat',
             'Waktu TTD Penerima',
+            'Lama Peminjaman',
             'Catatan',
             'Total Jenis Item',
             'Total Jumlah Barang',
@@ -126,10 +129,79 @@ class SuratJalanExport implements FromQuery, WithHeadings, WithMapping, WithStyl
             $suratJalan->pembuat->name ?? '-',
             $suratJalan->waktu_ttd_pembuat?->format('Y-m-d H:i:s') ?? '-',
             $suratJalan->waktu_ttd_penerima?->format('Y-m-d H:i:s') ?? '-',
+            $this->calculateLamaPeminjaman($suratJalan),
             $suratJalan->catatan ?? '-',
             $suratJalan->items_count ?? 0,
             $suratJalan->items_sum_jumlah ?? 0,
         ];
+    }
+
+    /**
+     * Calculate loan duration for PEMINJAMAN type
+     */
+    private function calculateLamaPeminjaman($suratJalan): string
+    {
+        // Only calculate for PEMINJAMAN type
+        if ($suratJalan->tipe !== 'PEMINJAMAN') {
+            return '-';
+        }
+
+        $peminjaman = $suratJalan->peminjaman;
+
+        // If no peminjaman relation found
+        if (!$peminjaman) {
+            return '-';
+        }
+
+        // Determine start time (when items were received)
+        $startTime = $peminjaman->waktu_diterima;
+
+        if (!$startTime) {
+            return 'Belum diterima';
+        }
+
+        // Determine end time (when items were returned, or now if not yet returned)
+        $endTime = $peminjaman->waktu_pengembalian;
+
+        if ($endTime) {
+            // Already returned - calculate duration
+            $duration = $startTime->diff($endTime);
+        } else {
+            // Not yet returned - calculate from start to now
+            $duration = $startTime->diff(Carbon::now());
+        }
+
+        // Format the duration
+        $parts = [];
+
+        if ($duration->y > 0) {
+            $parts[] = $duration->y . ' tahun';
+        }
+        if ($duration->m > 0) {
+            $parts[] = $duration->m . ' bulan';
+        }
+        if ($duration->d > 0) {
+            $parts[] = $duration->d . ' hari';
+        }
+
+        if (empty($parts)) {
+            // Less than a day
+            if ($duration->h > 0) {
+                $parts[] = $duration->h . ' jam';
+            }
+            if ($duration->i > 0) {
+                $parts[] = $duration->i . ' menit';
+            }
+        }
+
+        $durationText = !empty($parts) ? implode(' ', $parts) : 'Kurang dari 1 menit';
+
+        // Add suffix if not yet returned
+        if (!$endTime) {
+            $durationText .= ' (berlangsung)';
+        }
+
+        return $durationText;
     }
 
     public function styles(Worksheet $sheet): array
