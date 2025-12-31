@@ -365,7 +365,7 @@
                                             class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                                         <option value="">Semua Status</option>
                                         @if($tab === 'keluar')
-                                            @foreach(['DRAFT','MENUNGGU_PERSETUJUAN','DITOLAK_PERSETUJUAN','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK'] as $statusOption)
+                                            @foreach(['DRAFT','MENUNGGU_PERSETUJUAN','DITOLAK_PERSETUJUAN','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                                 <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
                                                     {{ $statusOption }}
                                                 </option>

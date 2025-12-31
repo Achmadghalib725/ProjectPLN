@@ -540,6 +540,8 @@ class SuratJalanController extends Controller
             abort(403, 'User tidak memiliki gudang yang ditugaskan');
         }
 
+        $adminFinish = $isAdmin && $request->boolean('admin_finish');
+
         $validated = $request->validate([
             'peminjaman_id' => [
                 'required',
@@ -1606,10 +1608,22 @@ class SuratJalanController extends Controller
             }
         }
 
-        // Exclude SELESAI status by default (moved to riwayat page)
-        // Unless explicitly filtering by SELESAI status
+        $includeAdminReturnSelesai = Auth::user()?->role === 'admin' && $tab === 'keluar';
+
+        // Exclude SELESAI status by default (moved to riwayat page),
+        // but allow admin to see pengembalian yang langsung SELESAI.
         if (empty($filters['status']) || $filters['status'] !== 'SELESAI') {
-            $query->where('status', '!=', 'SELESAI');
+            if ($includeAdminReturnSelesai) {
+                $query->where(function ($subQuery) {
+                    $subQuery->where('status', '!=', 'SELESAI')
+                        ->orWhere(function ($innerQuery) {
+                            $innerQuery->where('status', 'SELESAI')
+                                ->where('tipe', 'PENGEMBALIAN');
+                        });
+                });
+            } else {
+                $query->where('status', '!=', 'SELESAI');
+            }
         }
 
         if (!empty($filters['search'])) {
