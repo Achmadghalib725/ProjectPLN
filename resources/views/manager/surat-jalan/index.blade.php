@@ -95,7 +95,7 @@
                         <input type="text"
                                name="search"
                                value="{{ $search }}"
-                               placeholder="SJ-XXXX"
+                               placeholder="XXX/F22060400/XXXX"
                                class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
                     <div>

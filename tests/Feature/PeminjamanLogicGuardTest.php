@@ -237,7 +237,7 @@ class PeminjamanLogicGuardTest extends TestCase
         ]);
     }
 
-    public function test_admin_approval_sets_admin_as_signer(): void
+    public function test_admin_approval_sets_manager_as_signer(): void
     {
         $data = $this->seedBaseData();
         $tanggalKirim = now()->startOfDay();
@@ -283,7 +283,7 @@ class PeminjamanLogicGuardTest extends TestCase
             ->assertSessionHas('success');
 
         $suratJalan->refresh();
-        $this->assertSame($data['admin']->id, $suratJalan->ttd_pembuat_id);
+        $this->assertSame($data['manager']->id, $suratJalan->ttd_pembuat_id);
         $this->assertSame('DIKIRIM', $suratJalan->status);
         $this->assertDatabaseHas('item_stocks', [
             'gudang_id' => $data['gudangA']->id,

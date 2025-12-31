@@ -403,7 +403,6 @@ class PeminjamanFlowTest extends TestCase
                 ],
             ],
             'admin_finish' => 1,
-            'ttd_pembuat_id' => $data['admin']->id,
         ])->assertSessionHas('success');
 
         $suratJalan = SuratJalan::where('gudang_asal_id', $data['gudangA']->id)

@@ -62,7 +62,7 @@
                         ['label' => 'Kelola User', 'route' => 'admin.users.index', 'icon' => 'users'],
                         ['label' => 'Kelola Barang', 'route' => 'admin.items.index', 'icon' => 'boxes'],
                         ['label' => 'Kelola PIC', 'route' => 'admin.pics.index', 'icon' => 'id'],
-                        ['label' => 'Surat Jalan Cepat', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
+                        ['label' => 'Surat Jalan Cepat', 'route' => 'admin.surat-jalan.index', 'icon' => 'truck'],
                     ],
                     'operator_gudang' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
