@@ -63,14 +63,6 @@
                         @csrf
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {{-- Kode Item --}}
-                            <div class="space-y-2">
-                                <x-input-label for="kode" :value="'Kode Item *'" class="text-gray-700 font-semibold" />
-                                <x-text-input id="kode" name="kode" type="text" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" :value="old('kode')" required placeholder="Contoh: KBL-001" />
-                                <p class="text-[10px] text-gray-400 italic">Kode unik identifikasi item</p>
-                                <x-input-error :messages="$errors->get('kode')" />
-                            </div>
-
                             {{-- Nama Item --}}
                             <div class="space-y-2">
                                 <x-input-label for="nama" :value="'Nama Item *'" class="text-gray-700 font-semibold" />

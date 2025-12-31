@@ -62,19 +62,11 @@
                         ['label' => 'Kelola User', 'route' => 'admin.users.index', 'icon' => 'users'],
                         ['label' => 'Kelola Barang', 'route' => 'admin.items.index', 'icon' => 'boxes'],
                         ['label' => 'Kelola PIC', 'route' => 'admin.pics.index', 'icon' => 'id'],
-                        ['label' => 'Surat Jalan Cepat', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
+                        ['label' => 'Surat Jalan Cepat', 'route' => 'admin.surat-jalan.index', 'icon' => 'truck'],
                     ],
                     'operator_gudang' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
-                        [
-                            'label' => 'Manajemen Barang',
-                            'icon' => 'clipboard',
-                            'children' => [
-                                ['label' => 'Kelola Barang', 'route' => 'gudang.stok.index'],
-                                ['label' => 'Barang Dipinjamkan', 'route' => 'gudang.stok.barang-dipinjamkan'],
-                                ['label' => 'Barang Pinjaman', 'route' => 'gudang.stok.barang-pinjaman'],
-                            ]
-                        ],
+                        ['label' => 'Manajemen Barang', 'route' => 'gudang.stok.index', 'icon' => 'clipboard'],
                         ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
                         ['label' => 'Riwayat', 'route' => 'gudang.riwayat', 'icon' => 'clock'],
                     ],

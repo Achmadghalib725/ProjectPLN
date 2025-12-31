@@ -92,6 +92,7 @@
 
             @if($activeFilters > 0)
                 <a href="{{ route('gudang.riwayat', ['tab' => 'surat-jalan']) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="text-sm text-gray-500 hover:text-red-600 transition flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -106,10 +107,12 @@
             <span class="text-sm text-gray-500">Urutkan:</span>
             <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
                 <a href="{{ route('gudang.riwayat', array_merge(request()->query(), ['tab' => 'surat-jalan', 'sort' => 'terbaru'])) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ (request('sort', 'terbaru') === 'terbaru') ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                     Terbaru
                 </a>
                 <a href="{{ route('gudang.riwayat', array_merge(request()->query(), ['tab' => 'surat-jalan', 'sort' => 'terlama'])) }}"
+                   data-ajax-tab data-ajax-target="#riwayat-content"
                    class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ request('sort') === 'terlama' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
                     Terlama
                 </a>
@@ -122,7 +125,7 @@
          x-collapse
          x-cloak>
         <div class="px-4 pb-4 border-t border-gray-100 pt-4">
-            <form method="GET" action="{{ route('gudang.riwayat') }}">
+            <form method="GET" action="{{ route('gudang.riwayat') }}" data-ajax-form data-ajax-target="#riwayat-content">
                 <input type="hidden" name="tab" value="surat-jalan">
                 <input type="hidden" name="sort" value="{{ request('sort', 'terbaru') }}">
 
@@ -148,7 +151,7 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1.5">Tipe Surat Jalan</label>
                         <select name="tipe_sj"
-                                class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                                class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                             <option value="">Semua Tipe</option>
                             <option value="TRANSFER" {{ ($tipe_sj ?? '') === 'TRANSFER' ? 'selected' : '' }}>Transfer</option>
                             <option value="PEMINJAMAN" {{ ($tipe_sj ?? '') === 'PEMINJAMAN' ? 'selected' : '' }}>Peminjaman</option>
@@ -162,7 +165,7 @@
                         <input type="text"
                                name="gudang_asal"
                                value="{{ request('gudang_asal') }}"
-                               class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
+                               class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
                                placeholder="Cari gudang asal...">
                     </div>
 
@@ -172,7 +175,7 @@
                         <input type="text"
                                name="gudang_tujuan"
                                value="{{ request('gudang_tujuan') }}"
-                               class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
+                               class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
                                placeholder="Cari gudang tujuan...">
                     </div>
 
@@ -182,7 +185,7 @@
                         <input type="date"
                                name="tanggal_mulai"
                                value="{{ $tanggal_mulai ?? '' }}"
-                               class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                               class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                     </div>
 
                     <div>
@@ -190,7 +193,7 @@
                         <input type="date"
                                name="tanggal_selesai"
                                value="{{ $tanggal_selesai ?? '' }}"
-                               class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                               class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                     </div>
                 </div>
 
@@ -222,20 +225,51 @@
                     'TRANSFER' => 'bg-purple-100 text-purple-800',
                     default => 'bg-gray-100 text-gray-700',
                 };
+                $isKeluar = $sj->gudang_asal_id === Auth::user()->gudang_id;
             @endphp
             <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}" class="block p-4 hover:bg-gray-50 active:bg-gray-100 transition">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-gray-900 text-sm truncate">{{ $sj->nomor ?? '-' }}</p>
+                        <div class="flex items-center gap-1.5">
+                            <p class="font-semibold text-gray-900 text-sm truncate">{{ $sj->nomor ?? '-' }}</p>
+                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium {{ $isKeluar ? 'bg-orange-100 text-orange-700' : 'bg-teal-100 text-teal-700' }}">
+                                @if($isKeluar)
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7"/>
+                                    </svg>
+                                    Keluar
+                                @else
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h14"/>
+                                    </svg>
+                                    Masuk
+                                @endif
+                            </span>
+                        </div>
                         <p class="text-xs text-gray-500 mt-0.5">{{ $sj->tanggal?->format('d M Y') ?? '-' }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-1">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">
                             SELESAI
                         </span>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium {{ $tipeClass }}">
-                            {{ $tipeLabel }}
-                        </span>
+                        <div class="flex items-center gap-1">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium {{ $tipeClass }}">
+                                {{ $tipeLabel }}
+                            </span>
+                            @if($tipeLabel === 'PEMINJAMAN' && $sj->peminjaman?->suratJalanKembali)
+                                <span class="text-green-500" title="Sudah dikembalikan">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </span>
+                            @elseif($tipeLabel === 'PENGEMBALIAN' && $sj->peminjamanKembali?->suratJalanKirim)
+                                <span class="text-blue-500" title="Dari: {{ $sj->peminjamanKembali->suratJalanKirim->nomor }}">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                    </svg>
+                                </span>
+                            @endif
+                        </div>
                     </div>
                 </div>
                 <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
@@ -298,10 +332,26 @@
                             'TRANSFER' => 'bg-purple-100 text-purple-800',
                             default => 'bg-gray-100 text-gray-700',
                         };
+                        $isKeluar = $sj->gudang_asal_id === Auth::user()->gudang_id;
                     @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $suratJalans->firstItem() + $index }}
+                            <div class="flex items-center gap-1.5">
+                                {{ $suratJalans->firstItem() + $index }}
+                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium {{ $isKeluar ? 'bg-orange-100 text-orange-700' : 'bg-teal-100 text-teal-700' }}">
+                                    @if($isKeluar)
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7"/>
+                                        </svg>
+                                        Keluar
+                                    @else
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h14"/>
+                                        </svg>
+                                        Masuk
+                                    @endif
+                                </span>
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                             {{ $sj->nomor ?? '-' }}
@@ -319,9 +369,26 @@
                             {{ $sj->picTujuan->nama ?? $sj->pic_tujuan_custom_nama ?? '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $tipeClass }}">
-                                {{ $tipeLabel }}
-                            </span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $tipeClass }}">
+                                    {{ $tipeLabel }}
+                                </span>
+                                @if($tipeLabel === 'PEMINJAMAN' && $sj->peminjaman?->suratJalanKembali)
+                                    <a href="{{ route('gudang.surat-jalan.show', $sj->peminjaman->suratJalanKembali->id) }}"
+                                       class="text-green-500 hover:text-green-700" title="Sudah dikembalikan - Klik untuk lihat">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </a>
+                                @elseif($tipeLabel === 'PENGEMBALIAN' && $sj->peminjamanKembali?->suratJalanKirim)
+                                    <a href="{{ route('gudang.surat-jalan.show', $sj->peminjamanKembali->suratJalanKirim->id) }}"
+                                       class="text-blue-500 hover:text-blue-700" title="Dari: {{ $sj->peminjamanKembali->suratJalanKirim->nomor }} - Klik untuk lihat">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                        </svg>
+                                    </a>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ $sj->items_count ?? 0 }} item / {{ $sj->items_sum_jumlah ?? 0 }} unit

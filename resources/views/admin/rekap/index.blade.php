@@ -114,8 +114,8 @@
                     <div>
                         <h4 class="text-sm font-semibold text-blue-800">Informasi Export</h4>
                         <p class="text-sm text-blue-700 mt-1">
-                            File Excel akan berisi 19 kolom data lengkap meliputi: Nomor Surat Jalan, Tanggal, Tipe, Status,
-                            Gudang Asal & Tujuan, Info Driver & Kendaraan, PIC Tujuan, Pembuat, Waktu TTD, Catatan, dan Total Item/Jumlah.
+                            File Excel akan berisi 20 kolom data lengkap meliputi: Nomor Surat Jalan, Tanggal, Tipe, Status,
+                            Gudang Asal & Tujuan, Info Driver & Kendaraan, PIC Tujuan, Pembuat, Waktu TTD, Lama Peminjaman, Catatan, dan Total Item/Jumlah.
                         </p>
                     </div>
                 </div>
@@ -132,7 +132,7 @@
                                 'Gudang Asal', 'Gudang Tujuan', 'Nama Driver', 'Jenis Kendaraan',
                                 'Nomor Plat', 'PIC Nama', 'PIC Jabatan', 'PIC No HP',
                                 'Dibuat Oleh', 'Waktu TTD Pembuat', 'Waktu TTD Penerima',
-                                'Catatan', 'Total Jenis Item', 'Total Jumlah Barang'
+                                'Lama Peminjaman', 'Catatan', 'Total Jenis Item', 'Total Jumlah Barang'
                             ];
                         @endphp
                         @foreach($columns as $index => $column)
