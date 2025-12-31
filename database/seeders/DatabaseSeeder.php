@@ -51,7 +51,22 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ========================================
-        // 3. BUAT 2 OPERATOR GUDANG
+        // 3. BUAT MANAGER (TARAHAN + TELUK BETUNG)
+        // ========================================
+        $managerGudang = User::create([
+            'name' => 'Mega Sukmawan',
+            'username' => 'manager',
+            'email' => 'manager@egudang.local',
+            'password' => Hash::make('password'),
+            'role' => 'manager',
+            'jabatan' => 'MANAGER ULPLTD/G Tanjung Karang',
+            'no_hp' => '081299998888',
+            'is_active' => true
+        ]);
+        $managerGudang->managedGudangs()->sync([$gudangTarahan->id, $gudangTelukBetung->id]);
+
+        // ========================================
+        // 4. BUAT 2 OPERATOR GUDANG
         // ========================================
 
         // Operator Gudang Tarahan
@@ -81,7 +96,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ========================================
-        // 4. BUAT USER SECURITY
+        // 5. BUAT USER SECURITY
         // ========================================
         User::create([
             'name' => 'Agus Priyanto',
@@ -108,7 +123,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ========================================
-        // 5. BUAT MASTER ITEM (Barang)
+        // 6. BUAT MASTER ITEM (Barang)
         // ========================================
         $item1 = Item::create([
             'kode' => 'KBL-001',
@@ -151,7 +166,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ========================================
-        // 6. ISI STOK AWAL GUDANG TARAHAN
+        // 7. ISI STOK AWAL GUDANG TARAHAN
         // ========================================
         ItemStock::create([
             'item_id' => $item1->id,
@@ -175,7 +190,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ========================================
-        // 7. ISI STOK AWAL GUDANG TELUK BETUNG
+        // 8. ISI STOK AWAL GUDANG TELUK BETUNG
         // ========================================
         ItemStock::create([
             'item_id' => $item1->id,
@@ -199,7 +214,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ========================================
-        // 8. MASTER PIC (DATA NON-USER)
+        // 9. MASTER PIC (DATA NON-USER)
         // ========================================
         $picTarahan = Pic::create([
             'nama' => 'Rama Kurniawan',

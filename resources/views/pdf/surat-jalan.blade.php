@@ -336,6 +336,7 @@
     <div class="watermark">SURAT JALAN</div>
     <div class="container">
         @php
+            $peminjaman = $peminjaman ?? null;
             $buildQrWithLogo = function (string $url, int $size = 90) {
                 $renderer = new \BaconQrCode\Renderer\ImageRenderer(
                     new \BaconQrCode\Renderer\RendererStyle\RendererStyle($size, 1),
@@ -407,10 +408,45 @@
             $gudangTujuanAlamat = $suratJalan->gudang_tujuan_is_custom
                 ? ($suratJalan->gudang_tujuan_custom_alamat ?? '-')
                 : ($suratJalan->gudangTujuan->alamat ?? '-');
+            $lamaPinjamText = null;
+            if (($suratJalan->tipe ?? '') === 'PENGEMBALIAN' && $peminjaman) {
+                $mulaiPinjam = $peminjaman->waktu_diterima
+                    ?? $peminjaman->waktu_ttd_penerima
+                    ?? $peminjaman->waktu_kirim
+                    ?? $peminjaman->waktu_pengajuan
+                    ?? $peminjaman->created_at;
+                $selesaiPinjam = $peminjaman->waktu_pengembalian
+                    ?? $peminjaman->waktu_selesai
+                    ?? $suratJalan->created_at
+                    ?? $suratJalan->tanggal;
+
+                if ($mulaiPinjam && $selesaiPinjam) {
+                    $mulaiPinjam = $mulaiPinjam instanceof \Carbon\CarbonInterface
+                        ? $mulaiPinjam
+                        : \Carbon\Carbon::parse($mulaiPinjam);
+                    $selesaiPinjam = $selesaiPinjam instanceof \Carbon\CarbonInterface
+                        ? $selesaiPinjam
+                        : \Carbon\Carbon::parse($selesaiPinjam);
+
+                    if ($selesaiPinjam->lessThan($mulaiPinjam)) {
+                        $selesaiPinjam = $mulaiPinjam->copy();
+                    }
+
+                    $totalMinutes = $mulaiPinjam->diffInMinutes($selesaiPinjam);
+                    $days = intdiv($totalMinutes, 1440);
+                    $hours = intdiv($totalMinutes % 1440, 60);
+                    $minutes = $totalMinutes % 60;
+
+                    $lamaPinjamText = sprintf('%d hari %d jam %d menit', $days, $hours, $minutes);
+                }
+            }
         @endphp
 
         <div class="intro-section">
             Pada hari ini, <strong>{{ $hariSurat }}</strong> tanggal <strong>{{ $tanggalSurat }}</strong>, kami yang bertanda tangan di bawah ini menyatakan telah dilakukan pengiriman barang sesuai Surat Jalan dengan rincian informasi berikut.
+            @if(($suratJalan->tipe ?? '') === 'PENGEMBALIAN' && $lamaPinjamText)
+                Dengan ini mengembalikan barang yang dipinjam dari <strong>{{ $gudangTujuanNama }}</strong> yang sudah dipinjam selama <strong>{{ $lamaPinjamText }}</strong>.
+            @endif
         </div>
 
         <div class="info-section">
@@ -577,9 +613,14 @@
                         $pengirimQr = $buildQrWithLogo($pengirimUrl, 80);
                     }
 
-                    $pengirimJabatan = $suratJalan->ttdPembuat?->jabatan
-                        ?? $suratJalan->pembuat?->jabatan
-                        ?? '';
+                    $managerSigner = $suratJalan->gudangAsal
+                        ? $suratJalan->gudangAsal->managers()->where('role', 'manager')->orderBy('name')->first()
+                        : null;
+                    $isDraftLike = in_array(($suratJalan->status ?? ''), ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true);
+                    $pengirimSigner = ($isDraftLike && $managerSigner)
+                        ? $managerSigner
+                        : ($suratJalan->ttdPembuat ?? $managerSigner ?? $suratJalan->pembuat);
+                    $pengirimJabatan = $pengirimSigner?->jabatan ?? '';
                     $pengirimJabatanLines = $pengirimJabatan
                         ? preg_split("/\r\n|\r|\n/", $pengirimJabatan)
                         : [];
@@ -599,7 +640,7 @@
                             <img src="{{ $pengirimQr }}" alt="QR TTD Pengirim" style="width: 80px; height: 80px;">
                         @endif
                     </div>
-                    <div class="signature-name">{{ $suratJalan->ttdPembuat->name ?? $suratJalan->pembuat->name ?? '________________' }}</div>
+                    <div class="signature-name">{{ $pengirimSigner?->name ?? '________________' }}</div>
                     <div class="signature-position">{{ $suratJalan->gudangAsal->nama ?? '' }}</div>
                 </div>
             </div>

@@ -7,13 +7,14 @@ use App\Models\Gudang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
     public function index(Request $request)
     {
         // Mulai query user dan load relasi gudang
-        $query = User::with('gudang');
+        $query = User::with(['gudang', 'managedGudangs']);
 
         // 1. Logika Search (Cari berdasarkan Nama atau Username) - Case Insensitive
         if ($request->filled('search')) {
@@ -34,14 +35,14 @@ class UserController extends Controller
         $users = $query->latest()->paginate(10)->appends($request->all());
 
         // Load semua gudang untuk modal create/edit
-        $gudangs = Gudang::all();
+        $gudangs = Gudang::where('kode', '!=', 'GDG-EXT')->orderBy('nama')->get();
 
         return view('admin.users.index', compact('users', 'gudangs'));
     }
 
     public function create()
     {
-        $gudangs = Gudang::all();
+        $gudangs = Gudang::where('kode', '!=', 'GDG-EXT')->orderBy('nama')->get();
         return view('admin.users.create', compact('gudangs'));
     }
 
@@ -51,30 +52,37 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'in:admin,operator_gudang,security'],
+            'role' => ['required', 'in:admin,operator_gudang,security,manager'],
             'gudang_id' => ['nullable', 'exists:gudangs,id'],
+            'gudang_ids' => [Rule::requiredIf($request->role === 'manager'), 'array', 'min:1'],
+            'gudang_ids.*' => ['integer', 'exists:gudangs,id'],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $request->name,
             'username' => $request->username,
             'email' => $request->username . '@egudang.local', // Generate dummy email
             'password' => Hash::make($request->password),
             'role' => $request->role,
-            'gudang_id' => $request->gudang_id, // Nullable jika admin
+            'gudang_id' => $request->role === 'manager' ? null : $request->gudang_id,
             'jabatan' => $request->jabatan,
             'no_hp' => $request->no_hp,
             'is_active' => true,
         ]);
+
+        if ($request->role === 'manager') {
+            $user->managedGudangs()->sync($request->input('gudang_ids', []));
+        }
 
         return redirect()->route('admin.users.index')->with('success', 'User berhasil ditambahkan.');
     }
 
     public function edit(User $user)
     {
-        $gudangs = Gudang::all();
+        $user->load('managedGudangs');
+        $gudangs = Gudang::where('kode', '!=', 'GDG-EXT')->orderBy('nama')->get();
         return view('admin.users.edit', compact('user', 'gudangs'));
     }
 
@@ -83,14 +91,16 @@ class UserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:users,username,'.$user->id],
-            'role' => ['required', 'in:admin,operator_gudang,security'],
+            'role' => ['required', 'in:admin,operator_gudang,security,manager'],
             'gudang_id' => ['nullable', 'exists:gudangs,id'],
+            'gudang_ids' => [Rule::requiredIf($request->role === 'manager'), 'array', 'min:1'],
+            'gudang_ids.*' => ['integer', 'exists:gudangs,id'],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
             'is_active' => ['boolean'],
         ]);
 
-        $data = $request->except('password');
+        $data = $request->except(['password', 'gudang_ids']);
 
         // Admin tidak bisa dinonaktifkan
         if ($user->role === 'admin') {
@@ -110,7 +120,17 @@ class UserController extends Controller
             $data['password'] = Hash::make($request->password);
         }
 
+        if ($request->role === 'manager') {
+            $data['gudang_id'] = null;
+        }
+
         $user->update($data);
+
+        if ($request->role === 'manager') {
+            $user->managedGudangs()->sync($request->input('gudang_ids', []));
+        } else {
+            $user->managedGudangs()->detach();
+        }
 
         return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
     }

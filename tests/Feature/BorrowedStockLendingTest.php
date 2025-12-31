@@ -43,6 +43,15 @@ class BorrowedStockLendingTest extends TestCase
             'gudang_id' => $gudangA->id,
             'is_active' => true,
         ]);
+        $manager = User::create([
+            'name' => 'Manager A',
+            'username' => 'manager_a',
+            'email' => 'manager_a@example.test',
+            'password' => 'password',
+            'role' => 'manager',
+            'is_active' => true,
+        ]);
+        $manager->managedGudangs()->sync([$gudangA->id]);
 
         $item = Item::create([
             'kode' => 'ITM-001',
@@ -97,13 +106,17 @@ class BorrowedStockLendingTest extends TestCase
             'file_name' => 'fixture.jpg',
         ]);
 
-        $response = $this->actingAs($userA)
-            ->post(route('gudang.surat-jalan.approve', $suratJalan->id));
+        $this->actingAs($userA)
+            ->post(route('gudang.surat-jalan.request-approval', $suratJalan->id))
+            ->assertSessionHas('success');
+
+        $response = $this->actingAs($manager)
+            ->post(route('manager.surat-jalan.approve', $suratJalan->id));
 
         $response->assertSessionHas('error');
         $this->assertDatabaseHas('surat_jalans', [
             'id' => $suratJalan->id,
-            'status' => 'DRAFT',
+            'status' => 'MENUNGGU_PERSETUJUAN',
         ]);
         $this->assertDatabaseHas('item_stocks', [
             'item_id' => $item->id,

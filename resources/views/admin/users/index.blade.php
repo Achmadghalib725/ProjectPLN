@@ -12,19 +12,26 @@
                 role: @json(old('role')),
                 jabatan: @json(old('jabatan')),
                 gudang_id: @json(old('gudang_id')),
+                gudang_ids: @json(old('gudang_ids', [])),
                 password: '',
                 password_confirmation: '',
                 is_active: @json(old('is_active', 1)),
             },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', name: '', username: '', no_hp: '', role: '', jabatan: '', gudang_id: '', password: '', password_confirmation: '', is_active: 1 };
+                this.form = { id: '', name: '', username: '', no_hp: '', role: '', jabatan: '', gudang_id: '', gudang_ids: [], password: '', password_confirmation: '', is_active: 1 };
                 this.actionUrl = '{{ route('admin.users.store') }}';
                 this.showModal = true;
             },
             openEdit(user) {
                 this.isEdit = true;
-                this.form = { ...user, password: '', password_confirmation: '', gudang_id: user.gudang_id || '' };
+                this.form = {
+                    ...user,
+                    password: '',
+                    password_confirmation: '',
+                    gudang_id: user.gudang_id || '',
+                    gudang_ids: (user.managed_gudangs || []).map(gudang => gudang.id),
+                };
                 this.actionUrl = '{{ url('admin/users') }}/' + user.id;
                 this.showModal = true;
             }
@@ -84,6 +91,7 @@
                                 <option value="">Semua Role</option>
                                 <option value="admin" {{ request('role') == 'admin' ? 'selected' : '' }}>Admin</option>
                                 <option value="operator_gudang" {{ request('role') == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
+                                <option value="manager" {{ request('role') == 'manager' ? 'selected' : '' }}>Manager</option>
                                 <option value="security" {{ request('role') == 'security' ? 'selected' : '' }}>Security</option>
                             </select>
 
@@ -136,6 +144,7 @@
                                             $roleColors = [
                                                 'admin' => 'bg-purple-100 text-purple-700 border-purple-200',
                                                 'operator_gudang' => 'bg-blue-100 text-blue-700 border-blue-200',
+                                                'manager' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
                                                 'security' => 'bg-amber-100 text-amber-700 border-amber-200',
                                             ];
                                             $colorClass = $roleColors[$user->role] ?? 'bg-gray-100 text-gray-700';
@@ -150,7 +159,15 @@
                                 </td>
 
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                    @if($user->gudang)
+                                    @if($user->role === 'manager' && $user->managedGudangs->count() > 0)
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach($user->managedGudangs as $managedGudang)
+                                                <span class="inline-flex items-center text-gray-700 bg-gray-50 px-3 py-1 rounded-md border border-gray-100 text-xs font-medium">
+                                                    {{ $managedGudang->nama }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @elseif($user->gudang)
                                         <div class="flex items-center text-gray-700 bg-gray-50 px-3 py-1 rounded-md border border-gray-100 inline-block">
                                             <svg class="w-4 h-4 mr-2 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                                             <span class="font-medium">{{ $user->gudang->nama }}</span>
@@ -259,6 +276,7 @@
                                         <option value="">Pilih Role</option>
                                         <option value="admin">Admin</option>
                                         <option value="operator_gudang">Operator Gudang</option>
+                                        <option value="manager">Manager</option>
                                         <option value="security">Security/Pemliharaan </option>
                                     </select>
                                 </div>
@@ -268,7 +286,7 @@
                                 </div>
                             </div>
 
-                            <div>
+                            <div x-show="form.role !== 'manager'">
                                 <label class="block text-sm font-medium text-gray-700">Lokasi Gudang</label>
                                 <select name="gudang_id" x-model="form.gudang_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
                                     <option value="">Tidak ada gudang</option>
@@ -276,6 +294,16 @@
                                         <option value="{{ $gudang->id }}">{{ $gudang->nama }}</option>
                                     @endforeach
                                 </select>
+                            </div>
+
+                            <div x-show="form.role === 'manager'">
+                                <label class="block text-sm font-medium text-gray-700">Gudang yang Dikelola</label>
+                                <select name="gudang_ids[]" x-model="form.gudang_ids" multiple class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                    @foreach($gudangs as $gudang)
+                                        <option value="{{ $gudang->id }}">{{ $gudang->nama }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Pilih satu atau lebih gudang.</p>
                             </div>
 
                             <div>
