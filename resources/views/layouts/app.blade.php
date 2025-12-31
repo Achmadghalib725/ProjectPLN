@@ -12,6 +12,11 @@
         <link rel="icon" type="image/x-icon" href="{{ asset('Logo_PLN.png') }}">
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        {{-- Turbo Drive: Navigasi tanpa full page refresh --}}
+        <script type="module">
+            import * as Turbo from 'https://cdn.skypack.dev/@hotwired/turbo';
+        </script>
     </head>
     <body class="font-sans antialiased bg-gray-50">
         <div x-data="{ sidebarOpen: window.innerWidth >= 768 }" 
@@ -52,5 +57,110 @@
                 </main>
             </div>
         </div>
+
+        {{-- Global AJAX Navigation Script --}}
+        <script>
+        (function() {
+            // Fungsi untuk handle AJAX request
+            function ajaxNavigate(url, targetSelector, onSuccess) {
+                const target = document.querySelector(targetSelector);
+                if (!target) return false;
+
+                // Loading state
+                target.style.opacity = '0.5';
+                target.style.pointerEvents = 'none';
+
+                fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector(targetSelector);
+
+                    if (newContent) {
+                        target.innerHTML = newContent.innerHTML;
+
+                        // Re-init Alpine.js
+                        if (window.Alpine) {
+                            window.Alpine.initTree(target);
+                        }
+
+                        // Update URL
+                        history.pushState({}, '', url);
+
+                        if (onSuccess) onSuccess();
+                    }
+
+                    target.style.opacity = '1';
+                    target.style.pointerEvents = 'auto';
+                })
+                .catch(() => {
+                    window.location.href = url;
+                });
+
+                return true;
+            }
+
+            // Handle pagination clicks
+            function initAjaxPagination() {
+                document.addEventListener('click', function(e) {
+                    const link = e.target.closest('[data-ajax-pagination] a');
+                    if (!link || !link.href) return;
+
+                    const container = e.target.closest('[data-ajax-container]');
+                    if (!container) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const selector = '#' + container.id;
+                    ajaxNavigate(link.href, selector);
+                });
+            }
+
+            // Handle tab clicks
+            function initAjaxTabs() {
+                document.addEventListener('click', function(e) {
+                    const tab = e.target.closest('[data-ajax-tab]');
+                    if (!tab || !tab.href) return;
+
+                    const contentSelector = tab.dataset.ajaxTarget;
+                    if (!contentSelector) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Update active tab style
+                    const tabContainer = tab.closest('[data-ajax-tabs]');
+                    if (tabContainer) {
+                        tabContainer.querySelectorAll('[data-ajax-tab]').forEach(t => {
+                            t.classList.remove('border-[#035b71]', 'text-[#035b71]');
+                            t.classList.add('border-transparent', 'text-gray-500');
+                        });
+                        tab.classList.remove('border-transparent', 'text-gray-500');
+                        tab.classList.add('border-[#035b71]', 'text-[#035b71]');
+                    }
+
+                    ajaxNavigate(tab.href, contentSelector);
+                });
+            }
+
+            // Handle browser back/forward
+            window.addEventListener('popstate', function() {
+                window.location.reload();
+            });
+
+            // Initialize
+            initAjaxPagination();
+            initAjaxTabs();
+
+            // Re-init after Turbo navigation
+            document.addEventListener('turbo:load', function() {
+                // Reset untuk page baru
+            });
+        })();
+        </script>
     </body>
 </html>

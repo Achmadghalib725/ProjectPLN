@@ -30,7 +30,7 @@ class ItemController extends Controller
                 $query->whereRaw('LOWER(kategori) = ?', [strtolower($kategori)]);
             })
             ->orderBy('created_at', 'desc')
-            ->paginate(15)
+            ->paginate(15)->onEachSide(1)
             ->withQueryString();
 
         // Mengambil kategori unik untuk keperluan filter di halaman index

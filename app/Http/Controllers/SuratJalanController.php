@@ -65,24 +65,29 @@ class SuratJalanController extends Controller
         $filters = $request->only(['search', 'status', 'tipe', 'tanggal_mulai', 'tanggal_selesai', 'order_by']);
         $filters['tab'] = $tab;
 
-        $suratJalans = $this->getSuratJalanListItems($filters, $activeGudangId);
+        // Get paginated results
+        $suratJalans = $this->getSuratJalanListItems($filters, $activeGudangId, true);
 
-        // Stats for current tab
-        if ($tab === 'keluar') {
+        // Stats for current tab (excluding SELESAI which is in riwayat)
+        // Calculate stats using separate queries since we're now using pagination
+        if ($tab === 'keluar' && $activeGudangId) {
+            $baseQuery = SuratJalan::where('gudang_asal_id', $activeGudangId)->where('status', '!=', 'SELESAI');
             $stats = [
-                'total' => $suratJalans->count(),
-                'draft' => $suratJalans->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN'])->count(),
-                'dikirim' => $suratJalans->whereIn('status', ['DIKIRIM', 'MENUNGGU_DIKEMBALIKAN'])->count(),
-                'diterima' => $suratJalans->where('status', 'DITERIMA')->count(),
-                'selesai' => $suratJalans->where('status', 'SELESAI')->count(),
+                'total' => (clone $baseQuery)->count(),
+                'draft' => (clone $baseQuery)->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN'])->count(),
+                'dikirim' => (clone $baseQuery)->whereIn('status', ['DIKIRIM', 'MENUNGGU_DIKEMBALIKAN'])->count(),
+                'diterima' => (clone $baseQuery)->where('status', 'DITERIMA')->count(),
+            ];
+        } elseif ($activeGudangId) {
+            $baseQuery = SuratJalan::where('gudang_tujuan_id', $activeGudangId)
+                ->whereNotIn('status', ['DRAFT', 'SELESAI', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
+            $stats = [
+                'total' => (clone $baseQuery)->count(),
+                'menunggu' => (clone $baseQuery)->where('status', 'DIKIRIM')->count(),
+                'diterima' => (clone $baseQuery)->where('status', 'DITERIMA')->count(),
             ];
         } else {
-            $stats = [
-                'total' => $suratJalans->count(),
-                'menunggu' => $suratJalans->where('status', 'DIKIRIM')->count(),
-                'diterima' => $suratJalans->where('status', 'DITERIMA')->count(),
-                'selesai' => $suratJalans->where('status', 'SELESAI')->count(),
-            ];
+            $stats = ['total' => 0, 'draft' => 0, 'dikirim' => 0, 'diterima' => 0, 'menunggu' => 0];
         }
 
         // Count for tab badges
@@ -1572,10 +1577,10 @@ class SuratJalanController extends Controller
             ->with('success', 'Draft Surat Jalan berhasil dihapus.');
     }
 
-    private function getSuratJalanListItems(array $filters = [], ?int $gudangId = null)
+    private function getSuratJalanListItems(array $filters = [], ?int $gudangId = null, bool $paginate = false)
     {
         if (!Schema::hasTable('surat_jalans')) {
-            return collect();
+            return $paginate ? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15) : collect();
         }
 
         $gudangId = $gudangId ?? Auth::user()?->gudang_id;
@@ -1583,76 +1588,64 @@ class SuratJalanController extends Controller
         $orderBy = $filters['order_by'] ?? 'terbaru';
         $direction = $orderBy === 'terlama' ? 'asc' : 'desc';
 
-        $buildQuery = function () use ($gudangId, $tab, $direction, $filters) {
-            $query = SuratJalan::query()
-                ->with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan'])
-                ->withCount('items')
-                ->withSum('items', 'jumlah')
-                ->orderBy('tanggal', $direction)
-                ->orderBy('id', $direction)
-                ->limit(50);
+        $query = SuratJalan::query()
+            ->with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan'])
+            ->withCount('items')
+            ->withSum('items', 'jumlah')
+            ->orderBy('tanggal', $direction)
+            ->orderBy('id', $direction);
 
-            if ($gudangId) {
-                if ($tab === 'keluar') {
-                    // Surat Keluar: Semua surat yang dibuat oleh gudang saya (gudang_asal_id = gudangId)
-                    $query->where('gudang_asal_id', $gudangId);
-                } else {
-                    // Surat Masuk: Semua surat yang ditujukan ke gudang saya, tapi bukan DRAFT
-                    $query->where('gudang_tujuan_id', $gudangId)
-                        ->whereNotIn('status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
-                }
+        if ($gudangId) {
+            if ($tab === 'keluar') {
+                // Surat Keluar: Semua surat yang dibuat oleh gudang saya (gudang_asal_id = gudangId)
+                $query->where('gudang_asal_id', $gudangId);
+            } else {
+                // Surat Masuk: Semua surat yang ditujukan ke gudang saya, exclude DRAFT dan status persetujuan
+                $query->where('gudang_tujuan_id', $gudangId)
+                    ->whereNotIn('status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
             }
-
-            if (!empty($filters['search'])) {
-                $searchLower = strtolower($filters['search']);
-                $query->whereRaw('LOWER(nomor) LIKE ?', ['%' . $searchLower . '%']);
-            }
-
-            if (!empty($filters['tipe'])) {
-                $query->where('tipe', $filters['tipe']);
-            }
-
-            if (!empty($filters['status'])) {
-                $query->where('status', $filters['status']);
-            }
-
-            if (!empty($filters['tanggal_mulai'])) {
-                $query->whereDate('tanggal', '>=', $filters['tanggal_mulai']);
-            }
-
-            if (!empty($filters['tanggal_selesai'])) {
-                $query->whereDate('tanggal', '<=', $filters['tanggal_selesai']);
-            }
-
-            return $query;
-        };
-
-        if (!$gudangId) {
-            return $buildQuery()->get();
         }
 
-        $cacheFilters = [
-            'tab' => $tab,
-            'order_by' => $orderBy,
-            'search' => $filters['search'] ?? null,
-            'tipe' => $filters['tipe'] ?? null,
-            'status' => $filters['status'] ?? null,
-            'tanggal_mulai' => $filters['tanggal_mulai'] ?? null,
-            'tanggal_selesai' => $filters['tanggal_selesai'] ?? null,
-        ];
-        ksort($cacheFilters);
-        $cacheKey = $this->buildSuratJalanCacheKey('list', $gudangId, $cacheFilters);
+        // Exclude SELESAI status by default (moved to riwayat page)
+        // Unless explicitly filtering by SELESAI status
+        if (empty($filters['status']) || $filters['status'] !== 'SELESAI') {
+            $query->where('status', '!=', 'SELESAI');
+        }
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($buildQuery) {
-            return $buildQuery()->get();
-        });
+        if (!empty($filters['search'])) {
+            $searchLower = strtolower($filters['search']);
+            $query->whereRaw('LOWER(nomor) LIKE ?', ['%' . $searchLower . '%']);
+        }
+
+        if (!empty($filters['tipe'])) {
+            $query->where('tipe', $filters['tipe']);
+        }
+
+        if (!empty($filters['status']) && $filters['status'] !== 'SELESAI') {
+            $query->where('status', $filters['status']);
+        }
+
+        if (!empty($filters['tanggal_mulai'])) {
+            $query->whereDate('tanggal', '>=', $filters['tanggal_mulai']);
+        }
+
+        if (!empty($filters['tanggal_selesai'])) {
+            $query->whereDate('tanggal', '<=', $filters['tanggal_selesai']);
+        }
+
+        if ($paginate) {
+            return $query->paginate(15)->onEachSide(1)->withQueryString();
+        }
+
+        return $query->limit(50)->get();
     }
 
     private function countSuratKeluar(int $gudangId): array
     {
         $cacheKey = $this->buildSuratJalanCacheKey('count_keluar', $gudangId, []);
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($gudangId) {
-            $query = SuratJalan::where('gudang_asal_id', $gudangId);
+            // Exclude SELESAI from counts (moved to riwayat)
+            $query = SuratJalan::where('gudang_asal_id', $gudangId)->where('status', '!=', 'SELESAI');
             return [
                 'total' => (clone $query)->count(),
                 'draft' => (clone $query)->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN'])->count(),
@@ -1664,8 +1657,9 @@ class SuratJalanController extends Controller
     {
         $cacheKey = $this->buildSuratJalanCacheKey('count_masuk', $gudangId, []);
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($gudangId) {
+            // Exclude SELESAI, DRAFT, dan status persetujuan dari counts
             $query = SuratJalan::where('gudang_tujuan_id', $gudangId)
-                ->whereNotIn('status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
+                ->whereNotIn('status', ['DRAFT', 'SELESAI', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
             return [
                 'total' => (clone $query)->count(),
                 'menunggu' => (clone $query)->where('status', 'DIKIRIM')->count(),
