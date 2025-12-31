@@ -38,4 +38,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Gudang::class);
     }
+
+    public function managedGudangs()
+    {
+        return $this->belongsToMany(Gudang::class, 'gudang_user');
+    }
 }

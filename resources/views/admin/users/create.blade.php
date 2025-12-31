@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="py-12 bg-gray-50/50 min-h-screen">
+    <div class="py-12 bg-gray-50/50 min-h-screen" x-data="{ role: '{{ old('role', 'operator_gudang') }}' }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
             {{-- Header Section --}}
@@ -71,9 +71,10 @@
                             <div class="space-y-2">
                                 <x-input-label for="role" :value="__('Role Akses')"
                                     class="text-gray-700 font-semibold" />
-                                <select id="role" name="role"
+                                <select id="role" name="role" x-model="role"
                                     class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer">
                                     <option value="operator_gudang" {{ old('role') == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
+                                    <option value="manager" {{ old('role') == 'manager' ? 'selected' : '' }}>Manager</option>
                                     <option value="security" {{ old('role') == 'security' ? 'selected' : '' }}>SecurityPEMIL</option>
                                     <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Admin</option>
                                 </select>
@@ -81,7 +82,7 @@
                             </div>
 
                             {{-- Gudang --}}
-                            <div class="space-y-2">
+                            <div class="space-y-2" x-show="role !== 'manager'">
                                 <x-input-label for="gudang_id" :value="__('Penempatan Gudang')"
                                     class="text-gray-700 font-semibold" />
                                 <select id="gudang_id" name="gudang_id"
@@ -94,6 +95,22 @@
                                     @endforeach
                                 </select>
                                 <x-input-error :messages="$errors->get('gudang_id')" />
+                            </div>
+
+                            {{-- Gudang Manager --}}
+                            <div class="space-y-2" x-show="role === 'manager'">
+                                <x-input-label for="gudang_ids" :value="__('Gudang yang Dikelola')"
+                                    class="text-gray-700 font-semibold" />
+                                <select id="gudang_ids" name="gudang_ids[]"
+                                    multiple
+                                    class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer">
+                                    @foreach($gudangs as $gudang)
+                                        <option value="{{ $gudang->id }}" {{ in_array($gudang->id, old('gudang_ids', [])) ? 'selected' : '' }}>
+                                            {{ $gudang->nama }} {{ $gudang->kode ? '(' . $gudang->kode . ')' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <x-input-error :messages="$errors->get('gudang_ids')" />
                             </div>
 
                             {{-- Jabatan --}}

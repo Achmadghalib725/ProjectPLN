@@ -20,4 +20,9 @@ class Gudang extends Model
     {
         return $this->hasMany(ItemStock::class);
     }
+
+    public function managers()
+    {
+        return $this->belongsToMany(User::class, 'gudang_user');
+    }
 }

@@ -78,6 +78,10 @@
                         ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
                         ['label' => 'Riwayat', 'route' => 'gudang.riwayat', 'icon' => 'clock'],
                     ],
+                    'manager' => [
+                        ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
+                        ['label' => 'Surat Jalan Barang', 'route' => 'manager.surat-jalan.index', 'icon' => 'truck'],
+                    ],
                     'security' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
                     ],

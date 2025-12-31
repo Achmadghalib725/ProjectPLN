@@ -35,6 +35,9 @@
             
             @elseif(Auth::user()->role === 'operator_gudang')
                 @include('dashboard.operator')
+
+            @elseif(Auth::user()->role === 'manager')
+                @include('dashboard.manager')
             
             @elseif(Auth::user()->role === 'security')
                 @include('dashboard.security')

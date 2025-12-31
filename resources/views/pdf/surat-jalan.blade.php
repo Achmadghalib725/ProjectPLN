@@ -613,9 +613,14 @@
                         $pengirimQr = $buildQrWithLogo($pengirimUrl, 80);
                     }
 
-                    $pengirimJabatan = $suratJalan->ttdPembuat?->jabatan
-                        ?? $suratJalan->pembuat?->jabatan
-                        ?? '';
+                    $managerSigner = $suratJalan->gudangAsal
+                        ? $suratJalan->gudangAsal->managers()->where('role', 'manager')->orderBy('name')->first()
+                        : null;
+                    $isDraftLike = in_array(($suratJalan->status ?? ''), ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true);
+                    $pengirimSigner = ($isDraftLike && $managerSigner)
+                        ? $managerSigner
+                        : ($suratJalan->ttdPembuat ?? $managerSigner ?? $suratJalan->pembuat);
+                    $pengirimJabatan = $pengirimSigner?->jabatan ?? '';
                     $pengirimJabatanLines = $pengirimJabatan
                         ? preg_split("/\r\n|\r|\n/", $pengirimJabatan)
                         : [];
@@ -635,7 +640,7 @@
                             <img src="{{ $pengirimQr }}" alt="QR TTD Pengirim" style="width: 80px; height: 80px;">
                         @endif
                     </div>
-                    <div class="signature-name">{{ $suratJalan->ttdPembuat->name ?? $suratJalan->pembuat->name ?? '________________' }}</div>
+                    <div class="signature-name">{{ $pengirimSigner?->name ?? '________________' }}</div>
                     <div class="signature-position">{{ $suratJalan->gudangAsal->nama ?? '' }}</div>
                 </div>
             </div>
