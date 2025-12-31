@@ -104,16 +104,15 @@
                                 </svg>
                                 <span>{{ $isAdmin ? 'Buat Surat Jalan (Admin)' : 'Buat Surat Jalan' }}</span>
                             </button>
-                            @if(!$isAdmin || $hasGudangContext)
+                            @if($isAdmin && $hasGudangContext)
                                 <button type="button"
-                                        class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-yellow-500 hover:bg-yellow-600 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        @if(!$hasGudangContext) disabled @endif
+                                        class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-yellow-500 hover:bg-yellow-600 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm"
                                         @click="$dispatch('open-modal', 'return-peminjaman')">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                                     </svg>
                                     <span class="sm:hidden">Pengembalian</span>
-                                    <span class="hidden sm:inline">{{ $isAdmin ? 'Pengembalian (Admin)' : 'Pengembalian Peminjaman' }}</span>
+                                    <span class="hidden sm:inline">Pengembalian (Admin)</span>
                                 </button>
                             @endif
                             @endif
@@ -1032,14 +1031,15 @@
                 {{-- Lampiran Gambar --}}
                 <div class="border rounded-lg p-4 bg-gray-50">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
+                        Lampiran Gambar @if($isAdmin)<span class="text-red-500">*</span>@endif <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
                     </label>
                     <input type="file"
                            name="attachments[]"
                            multiple
                            accept="image/jpeg,image/jpg,image/png"
+                           @if($isAdmin) required @endif
                            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
+                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. @if($isAdmin)Lampiran gambar wajib diupload.@else Gambar wajib diupload sebelum mengirim surat jalan.@endif</p>
                 </div>
 
                 <div class="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-end">
@@ -1061,128 +1061,16 @@
         </div>
     </x-modal>
 
-    {{-- Preview PDF Modal --}}
-    <div x-data="{
-            showPreview: false,
-            previewUrl: '',
-            formDataObj: {},
-            submitting: false,
-            submitDraft() {
-                if (Object.keys(this.formDataObj).length === 0) {
-                    alert('Data form tidak ditemukan. Silakan tutup preview dan coba lagi.');
-                    return;
-                }
 
-                this.submitting = true;
-
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '{{ route('gudang.surat-jalan.store') }}';
-
-                const csrf = document.createElement('input');
-                csrf.type = 'hidden';
-                csrf.name = '_token';
-                csrf.value = '{{ csrf_token() }}';
-                form.appendChild(csrf);
-
-                Object.entries(this.formDataObj).forEach(([key, value]) => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = value !== null && value !== undefined ? value : '';
-                    form.appendChild(input);
-                });
-
-                document.body.appendChild(form);
-                form.submit();
-            }
-         }"
-         @open-preview.window="
-            previewUrl = $event.detail.url;
-            formDataObj = $event.detail.formData;
-            showPreview = true;
-         "
-         @close-preview.window="
-            showPreview = false;
-            submitting = false;
-            if (previewUrl) {
-                URL.revokeObjectURL(previewUrl);
-                previewUrl = '';
-            }
-         ">
-        <div x-show="showPreview"
-             x-cloak
-             class="fixed inset-0 z-50 overflow-y-auto"
-             x-transition:enter="ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-                {{-- Backdrop --}}
-                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 z-0"
-                     @click="$dispatch('close-preview')"></div>
-
-                {{-- Modal Content --}}
-                <div class="relative z-20 w-full max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden"
-                     x-transition:enter="ease-out duration-300"
-                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave="ease-in duration-200"
-                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-
-                    {{-- Header --}}
-                    <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-b">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">Preview Surat Jalan</h3>
-                            <p class="text-sm text-gray-500">Periksa kembali data sebelum menyimpan draft</p>
-                        </div>
-                        <button type="button"
-                                class="text-gray-400 hover:text-gray-600"
-                                @click="$dispatch('close-preview')">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    {{-- PDF Preview --}}
-                    <div class="p-4 bg-gray-100" style="height: 70vh;">
-                        <iframe :src="previewUrl"
-                                class="w-full h-full rounded border border-gray-300 bg-white"
-                                style="min-height: 500px;"></iframe>
-                    </div>
-
-                    {{-- Footer Actions --}}
-                    <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t">
-                        <button type="button"
-                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
-                                @click="$dispatch('close-preview')">
-                            Kembali & Edit
-                        </button>
-                        <button type="button"
-                                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                :disabled="submitting"
-                                @click="submitDraft()">
-                            <svg x-show="submitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span x-text="submitting ? 'Menyimpan...' : 'Konfirmasi & Simpan Draft'"></span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    {{-- Modal Pengembalian Peminjaman (Admin Only) --}}
+    @if($isAdmin)
     <x-modal name="return-peminjaman" focusable>
         <div class="p-6"
              x-data="{
                 selectedPeminjamanId: @js(old('peminjaman_id', '')),
                 selectedPic: @js(old('pic_tujuan_id', '')),
+                labelPic: '',
+                picOpen: false,
                 peminjamans: @js(($activePeminjamans ?? collect())->map(fn($p) => [
                     'id' => $p->id,
                     'kode' => $p->kode,
@@ -1201,6 +1089,11 @@
                     'jabatan' => $pic->jabatan,
                     'gudang_id' => $pic->gudang_id,
                 ])->values()),
+                customPic: {
+                    nama: @js(old('pic_custom_nama', '')),
+                    jabatan: @js(old('pic_custom_jabatan', '')),
+                    no_hp: @js(old('pic_custom_no_hp', '')),
+                },
                 selectedPeminjaman() {
                     return this.peminjamans.find(p => String(p.id) === String(this.selectedPeminjamanId));
                 },
@@ -1209,10 +1102,14 @@
                     if (!peminjaman) return [];
                     return this.pics.filter(pic => String(pic.gudang_id) === String(peminjaman.gudang_pemilik_id));
                 },
+                get isCustomPic() {
+                    return this.selectedPic === 'lainnya';
+                },
                 handlePeminjamanChange() {
                     const match = this.filteredPics().some(pic => String(pic.id) === String(this.selectedPic));
                     if (!match) {
                         this.selectedPic = '';
+                        this.labelPic = '';
                     }
                 }
              }">
@@ -1220,9 +1117,7 @@
                 <div>
                     <h3 class="text-lg font-bold text-gray-900">Pengembalian Peminjaman Barang</h3>
                     <p class="text-sm text-gray-500 mt-1">Pilih kode peminjaman, lalu sistem menyiapkan surat jalan pengembalian.</p>
-                    @if($isAdmin)
-                        <p class="text-xs text-emerald-700 mt-2">Mode admin: surat pengembalian akan langsung diselesaikan.</p>
-                    @endif
+                    <p class="text-xs text-emerald-700 mt-2">Mode admin: surat pengembalian akan langsung diselesaikan.</p>
                 </div>
                 <button type="button" class="text-gray-400 hover:text-gray-600"
                         x-on:click="$dispatch('close-modal', 'return-peminjaman')">
@@ -1232,11 +1127,9 @@
                 </button>
             </div>
 
-                <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
-                    @csrf
-                    @if($isAdmin)
-                        <input type="hidden" name="admin_finish" value="1">
-                    @endif
+            <form method="POST" action="{{ route('gudang.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="admin_finish" value="1">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>
@@ -1258,17 +1151,39 @@
                                :value="selectedPeminjaman() ? selectedPeminjaman().gudang_pemilik_nama : '-'"
                                readonly>
                     </div>
-                    <div>
+                    {{-- Custom Combobox PIC Tujuan --}}
+                    <div class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
-                        <select name="pic_tujuan_id"
-                                x-model="selectedPic"
-                                required
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                            <option value="">Pilih PIC...</option>
-                            <template x-for="pic in filteredPics()" :key="pic.id">
-                                <option :value="pic.id" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
-                            </template>
-                        </select>
+                        <div class="relative">
+                            <input type="text"
+                                x-model="labelPic"
+                                @click="picOpen = true"
+                                @click.away="picOpen = false"
+                                :required="!isCustomPic"
+                                placeholder="Pilih dari daftar..."
+                                readonly
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary cursor-pointer">
+
+                            <input type="hidden" name="pic_tujuan_id" :value="selectedPic">
+
+                            <div x-show="picOpen" x-cloak class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
+                                <template x-for="pic in filteredPics()" :key="pic.id">
+                                    <button type="button"
+                                            @click="selectedPic = pic.id; labelPic = pic.nama; picOpen = false; customPic = { nama: '', jabatan: '', no_hp: '' }"
+                                            class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
+                                        <span x-text="pic.nama + (pic.jabatan ? ' (' + pic.jabatan + ')' : '')"></span>
+                                    </button>
+                                </template>
+                                <div class="border-t" x-show="selectedPeminjamanId !== ''">
+                                    <button type="button"
+                                            @click="selectedPic = 'lainnya'; labelPic = 'Lainnya'; picOpen = false"
+                                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
+                                        Lainnya...
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
@@ -1278,29 +1193,58 @@
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 
+                    {{-- Form PIC Lainnya (di dalam grid) --}}
+                    <div x-show="isCustomPic" x-cloak class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC <span class="text-red-500">*</span></label>
+                                <input type="text" name="pic_custom_nama" x-model="customPic.nama"
+                                       :required="isCustomPic"
+                                       placeholder="Nama PIC"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                                <input type="text" name="pic_custom_jabatan" x-model="customPic.jabatan"
+                                       placeholder="Jabatan"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">No HP</label>
+                                <input type="text" name="pic_custom_no_hp" x-model="customPic.no_hp"
+                                       placeholder="No HP"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver <span class="text-red-500">*</span></label>
                         <input type="text"
                                name="nama_driver"
                                value="{{ old('nama_driver') }}"
+                               required
                                placeholder="Contoh: Budi Santoso"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan <span class="text-red-500">*</span></label>
                         <input type="text"
                                name="jenis_kendaraan"
                                value="{{ old('jenis_kendaraan') }}"
+                               required
                                placeholder="Contoh: Truk Box"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat <span class="text-red-500">*</span></label>
                         <input type="text"
                                name="nomor_plat"
                                value="{{ old('nomor_plat') }}"
+                               required
                                placeholder="Contoh: B 1234 CD"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
@@ -1317,14 +1261,20 @@
                 {{-- Lampiran Gambar --}}
                 <div class="border rounded-lg p-4 bg-gray-50">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, Maks 3 gambar, maks 10MB/gambar)</span>
                     </label>
                     <input type="file"
                            name="attachments[]"
                            multiple
                            accept="image/jpeg,image/jpg,image/png"
                            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. Gambar wajib diupload sebelum mengirim surat jalan.</p>
+                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG.</p>
+                    <p class="text-xs text-amber-600 mt-1">
+                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Jika tidak mengupload gambar baru, sistem akan menggunakan lampiran dari surat jalan peminjaman awal.
+                    </p>
                 </div>
 
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
@@ -1369,14 +1319,15 @@
                             x-on:click="$dispatch('close-modal', 'return-peminjaman')">
                         Batal
                     </button>
-                      <button type="submit"
-                              class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
-                          {{ $isAdmin ? 'Simpan dan Selesaikan (Admin)' : 'Simpan Draft Pengembalian' }}
-                      </button>
-                  </div>
-              </form>
-          </div>
-      </x-modal>
+                    <button type="submit"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                        Simpan dan Selesaikan (Admin)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+    @endif
 
     {{-- Export Excel Modal --}}
     <x-modal name="export-excel" focusable maxWidth="md">

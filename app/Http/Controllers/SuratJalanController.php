@@ -277,7 +277,11 @@ class SuratJalanController extends Controller
             ],
             'items.*.jumlah' => ['required', 'integer', 'min:1'],
             'items.*.keterangan' => ['nullable', 'string'],
-            'attachments' => ['nullable', 'array', 'max:3'],
+            'attachments' => [
+                Rule::requiredIf($isAdmin),
+                'array',
+                'max:3',
+            ],
             'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], [
             // Gudang Asal
@@ -338,6 +342,7 @@ class SuratJalanController extends Controller
             'items.*.jumlah.min' => 'Jumlah barang minimal 1.',
 
             // Attachments
+            'attachments.required' => 'Lampiran gambar wajib diupload.',
             'attachments.array' => 'Format lampiran tidak valid.',
             'attachments.max' => 'Maksimal 3 lampiran gambar.',
             'attachments.*.file' => 'Lampiran harus berupa file.',
@@ -544,21 +549,53 @@ class SuratJalanController extends Controller
                         ->whereNull('surat_jalan_kembali_id');
                 }),
             ],
-            'pic_tujuan_id' => ['required', 'integer', 'exists:pics,id'],
+            'pic_tujuan_id' => [
+                'required',
+                Rule::when(
+                    $request->input('pic_tujuan_id') !== 'lainnya',
+                    ['integer', 'exists:pics,id']
+                ),
+                Rule::when(
+                    $request->input('pic_tujuan_id') === 'lainnya',
+                    ['in:lainnya']
+                ),
+            ],
+            'pic_custom_nama' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'required_if:pic_tujuan_id,lainnya',
+                'string',
+                'max:255',
+            ],
+            'pic_custom_jabatan' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'pic_custom_no_hp' => [
+                'exclude_unless:pic_tujuan_id,lainnya',
+                'nullable',
+                'string',
+                'max:50',
+            ],
             'tanggal_kirim' => ['required', 'date'],
             'catatan' => ['nullable', 'string'],
-            'nama_driver' => ['nullable', 'string', 'max:100'],
-            'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
-            'nomor_plat' => ['nullable', 'string', 'max:50'],
+            'nama_driver' => ['required', 'string', 'max:100'],
+            'jenis_kendaraan' => ['required', 'string', 'max:100'],
+            'nomor_plat' => ['required', 'string', 'max:50'],
             'attachments' => ['nullable', 'array', 'max:3'],
             'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], [
             'peminjaman_id.required' => 'Kode peminjaman wajib dipilih.',
             'peminjaman_id.exists' => 'Kode peminjaman tidak valid atau sudah dikembalikan.',
             'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
+            'pic_custom_nama.required_if' => 'Nama PIC wajib diisi jika memilih Lainnya.',
+            'nama_driver.required' => 'Nama driver wajib diisi.',
+            'jenis_kendaraan.required' => 'Jenis kendaraan wajib diisi.',
+            'nomor_plat.required' => 'Nomor plat wajib diisi.',
         ]);
 
-        $peminjaman = Peminjaman::with(['items', 'gudangPemilik'])
+        $peminjaman = Peminjaman::with(['items', 'gudangPemilik', 'suratJalanKirim.attachments'])
             ->where('id', $validated['peminjaman_id'])
             ->firstOrFail();
 
@@ -566,21 +603,34 @@ class SuratJalanController extends Controller
             $gudangId = $peminjaman->gudang_peminjam_id;
         }
 
-        $picValid = Pic::where('id', $validated['pic_tujuan_id'])
-            ->where('gudang_id', $peminjaman->gudang_pemilik_id)
-            ->exists();
+        // Handle PIC custom
+        $picTujuanId = $validated['pic_tujuan_id'];
+        $picCustomData = null;
+        if ($picTujuanId === 'lainnya') {
+            $picCustomData = [
+                'nama' => $validated['pic_custom_nama'],
+                'jabatan' => $validated['pic_custom_jabatan'] ?? null,
+                'no_hp' => $validated['pic_custom_no_hp'] ?? null,
+            ];
+            $picTujuanId = null;
+        } else {
+            // Validate PIC exists in gudang pemilik
+            $picValid = Pic::where('id', $picTujuanId)
+                ->where('gudang_id', $peminjaman->gudang_pemilik_id)
+                ->exists();
 
-        if (!$picValid) {
-            return redirect()
-                ->route('gudang.surat-jalan.index')
-                ->withErrors(['pic_tujuan_id' => 'PIC tujuan tidak sesuai dengan gudang pemilik.'])
-                ->withInput();
+            if (!$picValid) {
+                return redirect()
+                    ->route('gudang.surat-jalan.index')
+                    ->withErrors(['pic_tujuan_id' => 'PIC tujuan tidak sesuai dengan gudang pemilik.'])
+                    ->withInput();
+            }
         }
 
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
         $adminFinish = $isAdmin && $request->boolean('admin_finish');
 
-        $suratJalanId = DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman, $adminFinish) {
+        $suratJalanId = DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman, $adminFinish, $picTujuanId, $picCustomData) {
             $kembaliAt = $tanggalKirim->copy()->setTime(15, 0);
             $selesaiAt = $kembaliAt->copy()->addHour();
 
@@ -588,7 +638,10 @@ class SuratJalanController extends Controller
                 'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
                 'gudang_asal_id' => $gudangId,
                 'gudang_tujuan_id' => $peminjaman->gudang_pemilik_id,
-                'pic_tujuan_id' => $validated['pic_tujuan_id'],
+                'pic_tujuan_id' => $picTujuanId,
+                'pic_tujuan_custom_nama' => $picCustomData['nama'] ?? null,
+                'pic_tujuan_custom_jabatan' => $picCustomData['jabatan'] ?? null,
+                'pic_tujuan_custom_no_hp' => $picCustomData['no_hp'] ?? null,
                 'tipe' => 'PENGEMBALIAN',
                 'status' => $adminFinish ? 'SELESAI' : 'DRAFT',
                 'tanggal' => $tanggalKirim->toDateString(),
@@ -644,7 +697,14 @@ class SuratJalanController extends Controller
 
         // Handle attachment upload
         if ($request->hasFile('attachments')) {
+            // Jika ada upload baru, gunakan file yang diupload
             $this->storeAttachments($suratJalanId, $request->file('attachments'));
+        } else {
+            // Jika tidak ada upload, copy attachment dari surat jalan peminjaman awal
+            $suratJalanAwal = $peminjaman->suratJalanKirim;
+            if ($suratJalanAwal && $suratJalanAwal->attachments->isNotEmpty()) {
+                $this->copyAttachmentsFromSuratJalan($suratJalanId, $suratJalanAwal);
+            }
         }
 
         $this->bumpSuratJalanCacheVersion([$gudangId, $peminjaman->gudang_pemilik_id]);
@@ -1635,7 +1695,7 @@ class SuratJalanController extends Controller
             // Exclude SELESAI, DRAFT, dan status persetujuan dari counts
             $query = SuratJalan::where('gudang_tujuan_id', $gudangId)
                 ->whereNotIn('status', ['DRAFT', 'SELESAI', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
-            return [
+           return [
                 'total' => (clone $query)->count(),
                 'menunggu' => (clone $query)->where('status', 'DIKIRIM')->count(),
             ];
@@ -2263,6 +2323,33 @@ class SuratJalanController extends Controller
                 'surat_jalan_id' => $suratJalanId,
                 'file_path' => $path,
                 'file_name' => $file->getClientOriginalName(),
+            ]);
+        }
+    }
+
+    /**
+     * Copy attachments from source surat jalan to target surat jalan
+     */
+    private function copyAttachmentsFromSuratJalan(int $targetSuratJalanId, SuratJalan $sourceSuratJalan): void
+    {
+        foreach ($sourceSuratJalan->attachments as $attachment) {
+            // Check if source file exists
+            if (!Storage::disk('public')->exists($attachment->file_path)) {
+                continue;
+            }
+
+            // Generate new file path
+            $extension = pathinfo($attachment->file_path, PATHINFO_EXTENSION);
+            $newFileName = 'surat-jalan-attachments/' . uniqid() . '_' . time() . '.' . $extension;
+
+            // Copy file to new location
+            Storage::disk('public')->copy($attachment->file_path, $newFileName);
+
+            // Create new attachment record
+            SuratJalanAttachment::create([
+                'surat_jalan_id' => $targetSuratJalanId,
+                'file_path' => $newFileName,
+                'file_name' => $attachment->file_name,
             ]);
         }
     }

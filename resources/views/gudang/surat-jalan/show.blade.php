@@ -775,13 +775,17 @@
                 </div>
             @endif
 
-            {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam (status DITERIMA, tipe PEMINJAMAN) --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && $isGudangTujuan && $peminjaman && !$peminjaman->surat_jalan_kembali_id && !$isManagerView)
+            {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin (status DITERIMA, tipe PEMINJAMAN) --}}
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && ($isGudangTujuan || ($isAdmin ?? false)) && $peminjaman && !$peminjaman->surat_jalan_kembali_id && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Barang</h3>
                         <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
-                            Barang peminjaman sudah diterima. Jika sudah selesai digunakan, Anda dapat membuat surat jalan pengembalian.
+                            @if($isAdmin ?? false)
+                                Mode admin: Anda dapat membuat surat jalan pengembalian untuk peminjaman ini.
+                            @else
+                                Barang peminjaman sudah diterima. Jika sudah selesai digunakan, Anda dapat membuat surat jalan pengembalian.
+                            @endif
                         </p>
                         <button type="button"
                                 @click="$dispatch('open-modal', 'return-peminjaman-modal')"
@@ -912,11 +916,21 @@
         <div class="p-6"
              x-data="{
                 selectedPic: '',
+                labelPic: '',
+                picOpen: false,
                 pics: @js($pics->map(fn($pic) => [
                     'id' => $pic->id,
                     'nama' => $pic->nama,
                     'jabatan' => $pic->jabatan,
                 ])->values()),
+                customPic: {
+                    nama: '',
+                    jabatan: '',
+                    no_hp: '',
+                },
+                get isCustomPic() {
+                    return this.selectedPic === 'lainnya';
+                },
              }">
             <div class="flex items-center justify-between mb-4">
                 <div>
@@ -956,17 +970,39 @@
                                value="{{ $peminjaman->gudangPemilik->nama ?? '-' }}"
                                readonly>
                     </div>
-                    <div>
+                    {{-- Custom Combobox PIC Tujuan --}}
+                    <div class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">PIC Tujuan <span class="text-red-500">*</span></label>
-                        <select name="pic_tujuan_id"
-                                x-model="selectedPic"
-                                required
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                            <option value="">Pilih PIC...</option>
-                            <template x-for="pic in pics" :key="pic.id">
-                                <option :value="pic.id" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
-                            </template>
-                        </select>
+                        <div class="relative">
+                            <input type="text"
+                                x-model="labelPic"
+                                @click="picOpen = true"
+                                @click.away="picOpen = false"
+                                :required="!isCustomPic"
+                                placeholder="Pilih dari daftar..."
+                                readonly
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary cursor-pointer">
+
+                            <input type="hidden" name="pic_tujuan_id" :value="selectedPic">
+
+                            <div x-show="picOpen" x-cloak class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
+                                <template x-for="pic in pics" :key="pic.id">
+                                    <button type="button"
+                                            @click="selectedPic = pic.id; labelPic = pic.nama; picOpen = false; customPic = { nama: '', jabatan: '', no_hp: '' }"
+                                            class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
+                                        <span x-text="pic.nama + (pic.jabatan ? ' (' + pic.jabatan + ')' : '')"></span>
+                                    </button>
+                                </template>
+                                <div class="border-t">
+                                    <button type="button"
+                                            @click="selectedPic = 'lainnya'; labelPic = 'Lainnya'; picOpen = false"
+                                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
+                                        Lainnya...
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
@@ -976,26 +1012,55 @@
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 
+                    {{-- Form PIC Lainnya (di dalam grid) --}}
+                    <div x-show="isCustomPic" x-cloak class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <p class="text-sm font-semibold text-gray-900 mb-3">PIC Lainnya</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama PIC <span class="text-red-500">*</span></label>
+                                <input type="text" name="pic_custom_nama" x-model="customPic.nama"
+                                       :required="isCustomPic"
+                                       placeholder="Nama PIC"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                                <input type="text" name="pic_custom_jabatan" x-model="customPic.jabatan"
+                                       placeholder="Jabatan"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">No HP</label>
+                                <input type="text" name="pic_custom_no_hp" x-model="customPic.no_hp"
+                                       placeholder="No HP"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Driver <span class="text-red-500">*</span></label>
                         <input type="text"
                                name="nama_driver"
+                               required
                                placeholder="Contoh: Budi Santoso"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kendaraan <span class="text-red-500">*</span></label>
                         <input type="text"
                                name="jenis_kendaraan"
+                               required
                                placeholder="Contoh: Truk Box"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Plat <span class="text-red-500">*</span></label>
                         <input type="text"
                                name="nomor_plat"
+                               required
                                placeholder="Contoh: B 1234 CD"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
@@ -1012,7 +1077,7 @@
                 {{-- Lampiran Gambar --}}
                 <div class="border rounded-lg p-4 bg-gray-50">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Lampiran Gambar <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
+                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, Maks 3 gambar, maks 10MB/gambar)</span>
                     </label>
                     <input type="file"
                            name="attachments[]"
@@ -1020,6 +1085,12 @@
                            accept="image/jpeg,image/jpg,image/png"
                            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
                     <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG.</p>
+                    <p class="text-xs text-amber-600 mt-1">
+                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Jika tidak mengupload gambar baru, sistem akan menggunakan lampiran dari surat jalan peminjaman awal.
+                    </p>
                 </div>
 
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
