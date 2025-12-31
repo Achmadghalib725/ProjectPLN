@@ -424,7 +424,7 @@
             </div>
 
             {{-- Table --}}
-            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg">
+            <div id="surat-jalan-index-table" class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg" data-ajax-container>
                 <div class="p-4 sm:p-6 border-b border-gray-100">
                     <div class="flex items-center justify-between">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900">
@@ -626,12 +626,11 @@
 
                 {{-- Pagination --}}
                 @if($suratJalans->hasPages())
-                    <div class="px-4 sm:px-6 py-4 border-t border-gray-200">
+                    <div class="px-4 sm:px-6 py-4 border-t border-gray-200" data-ajax-pagination>
                         {{ $suratJalans->links() }}
                     </div>
                 @endif
             </div>
-
 
         </div>
     </div>

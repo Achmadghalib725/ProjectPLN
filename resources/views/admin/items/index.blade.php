@@ -102,7 +102,7 @@
             @endif
 
             {{-- Main Content Card --}}
-            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-slate-200">
+            <div id="items-table" class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-slate-200" data-ajax-container>
 
                 {{-- Toolbar (Filter & Search) --}}
                 <div class="p-4 sm:p-6 border-b border-slate-200">
@@ -200,7 +200,7 @@
                 </div>
 
                 {{-- Pagination Footer --}}
-                <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 sm:px-6">
+                <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 sm:px-6" data-ajax-pagination>
                     {{ $items->links() }}
                 </div>
             </div>

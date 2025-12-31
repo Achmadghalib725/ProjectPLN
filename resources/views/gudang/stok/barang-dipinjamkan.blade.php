@@ -104,7 +104,7 @@
             </div>
 
             {{-- Table --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div id="barang-dipinjamkan-table" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" data-ajax-container>
                 {{-- Mobile Card View --}}
                 <div class="sm:hidden">
                     @forelse($peminjamans as $peminjaman)
@@ -398,7 +398,7 @@
                 </div>
 
                 @if($peminjamans->hasPages())
-                    <div class="px-6 py-4 border-t border-gray-100">
+                    <div class="px-6 py-4 border-t border-gray-100" data-ajax-pagination>
                         {{ $peminjamans->links() }}
                     </div>
                 @endif

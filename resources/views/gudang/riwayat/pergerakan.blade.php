@@ -135,7 +135,7 @@
 </div>
 
 {{-- Movement History Table --}}
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+<div id="pergerakan-table" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" data-ajax-container>
     {{-- Mobile Card View --}}
     <div class="sm:hidden">
         @forelse($movements ?? [] as $movement)
@@ -284,7 +284,7 @@
 
     {{-- Pagination --}}
     @if(isset($movements) && $movements->hasPages())
-        <div class="px-6 py-4 border-t border-gray-100">
+        <div class="px-6 py-4 border-t border-gray-100" data-ajax-pagination>
             {{ $movements->links() }}
         </div>
     @endif

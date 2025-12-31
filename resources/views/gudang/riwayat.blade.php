@@ -23,8 +23,10 @@
             {{-- Tabs Navigation --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg mb-4 sm:mb-6">
                 <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex" aria-label="Tabs">
+                    <nav class="-mb-px flex" aria-label="Tabs" data-ajax-tabs>
                         <a href="{{ route('gudang.riwayat', ['tab' => 'pergerakan']) }}"
+                           data-ajax-tab
+                           data-ajax-target="#riwayat-content"
                            class="w-1/3 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'pergerakan' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
                             <div class="flex items-center justify-center gap-1.5 sm:gap-2">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,6 +37,8 @@
                             </div>
                         </a>
                         <a href="{{ route('gudang.riwayat', ['tab' => 'surat-jalan']) }}"
+                           data-ajax-tab
+                           data-ajax-target="#riwayat-content"
                            class="w-1/3 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'surat-jalan' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
                             <div class="flex items-center justify-center gap-1.5 sm:gap-2">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,6 +49,8 @@
                             </div>
                         </a>
                         <a href="{{ route('gudang.riwayat', ['tab' => 'peminjaman']) }}"
+                           data-ajax-tab
+                           data-ajax-target="#riwayat-content"
                            class="w-1/3 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'peminjaman' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
                             <div class="flex items-center justify-center gap-1.5 sm:gap-2">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,13 +64,15 @@
             </div>
 
             {{-- Tab Content --}}
-            @if($tab === 'pergerakan')
-                @include('gudang.riwayat.pergerakan')
-            @elseif($tab === 'surat-jalan')
-                @include('gudang.riwayat.surat-jalan')
-            @elseif($tab === 'peminjaman')
-                @include('gudang.riwayat.peminjaman')
-            @endif
+            <div id="riwayat-content">
+                @if($tab === 'pergerakan')
+                    @include('gudang.riwayat.pergerakan')
+                @elseif($tab === 'surat-jalan')
+                    @include('gudang.riwayat.surat-jalan')
+                @elseif($tab === 'peminjaman')
+                    @include('gudang.riwayat.peminjaman')
+                @endif
+            </div>
         </div>
     </div>
 </x-app-layout>
