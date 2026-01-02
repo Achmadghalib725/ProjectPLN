@@ -1,19 +1,21 @@
 <x-app-layout>
-    <div class="py-12 bg-gray-50/50 min-h-screen">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="py-4 sm:py-8 lg:py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-            {{-- Header --}}
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800 tracking-tight">
-                        Rekap Surat Jalan
-                    </h2>
-                    <p class="text-sm text-gray-500 mt-1">Export data surat jalan dari semua gudang untuk pengarsipan.</p>
+            {{-- Header Section --}}
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg">
+                <div class="p-4 sm:p-6">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+                        <div class="text-center sm:text-left">
+                            <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Rekap Surat Jalan</h2>
+                            <p class="text-xs sm:text-sm text-gray-600 mt-1">Export data surat jalan dari semua gudang untuk pengarsipan.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {{-- Export Form Card --}}
-            <div class="bg-white border border-gray-100 rounded-2xl shadow-xl shadow-gray-200/50 overflow-hidden">
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-gray-200">
                 <div class="p-6">
                     <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +124,7 @@
             </div>
 
             {{-- Column Preview Card --}}
-            <div class="bg-white border border-gray-100 rounded-2xl shadow-lg overflow-hidden">
+            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-gray-200">
                 <div class="p-6">
                     <h3 class="text-lg font-bold text-gray-900 mb-4">Kolom Data yang Diekspor</h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

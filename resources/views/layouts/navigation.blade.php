@@ -60,7 +60,7 @@
                     'admin' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
                         ['label' => 'Kelola User', 'route' => 'admin.users.index', 'icon' => 'users'],
-                        ['label' => 'Kelola Barang', 'route' => 'admin.items.index', 'icon' => 'boxes'],
+                        ['label' => 'Kelola Barang', 'route' => 'admin.items.index', 'icon' => 'clipboard'],
                         ['label' => 'Kelola PIC', 'route' => 'admin.pics.index', 'icon' => 'id'],
                         ['label' => 'Surat Jalan Cepat', 'route' => 'admin.surat-jalan.index', 'icon' => 'truck'],
                     ],

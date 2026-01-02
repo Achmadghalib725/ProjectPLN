@@ -80,9 +80,8 @@
         </button>
     </div>
 
-    {{-- Filter Form --}}
-    <div class="p-4 sm:p-6" :class="{ 'hidden': !showFilter }" x-bind:class="{ 'hidden': !showFilter }" x-cloak>
-        <div class="hidden sm:block"></div>
+    {{-- Filter Form - Hidden on mobile by default, always visible on desktop --}}
+    <div class="p-4 sm:p-6 hidden sm:!block" :class="{ 'hidden': !showFilter, 'block': showFilter }">
         <form method="GET" action="{{ route('gudang.stok.index') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4" data-ajax-form data-ajax-target="#stok-content">
             <input type="hidden" name="tab" value="stok">
             <div class="sm:col-span-2">
@@ -119,13 +118,6 @@
             </div>
         </form>
     </div>
-
-    {{-- Desktop: Always show filter --}}
-    <style>
-        @media (min-width: 640px) {
-            [x-cloak] { display: block !important; }
-        }
-    </style>
 </div>
 
 {{-- Stock Table --}}

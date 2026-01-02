@@ -227,6 +227,7 @@
                                 <input type="date"
                                        name="tanggal_kirim"
                                        value="{{ old('tanggal_kirim', $suratJalan->tanggal?->format('Y-m-d')) }}"
+                                       min="{{ date('Y-m-d') }}"
                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                             </div>
 
@@ -236,6 +237,7 @@
                                     <input type="date"
                                            name="tanggal_kembali"
                                            value="{{ old('tanggal_kembali', $peminjaman?->batas_waktu_kembali?->format('Y-m-d')) }}"
+                                           min="{{ date('Y-m-d') }}"
                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                 </div>
                             @endif
