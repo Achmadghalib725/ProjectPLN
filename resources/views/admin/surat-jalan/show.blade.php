@@ -174,14 +174,14 @@
                             ],
                         ];
                         $statusIndexMap = [
-                            'DRAFT' => -1,
-                            'MENUNGGU_PERSETUJUAN' => -1,
-                            'DITOLAK_PERSETUJUAN' => -1,
-                            'DIKIRIM' => 0,
-                            'SELESAI' => 1,
+                            'DRAFT' => 0,
+                            'MENUNGGU_PERSETUJUAN' => 0,
+                            'DITOLAK_PERSETUJUAN' => 0,
+                            'DIKIRIM' => 1,
+                            'SELESAI' => 2,
                             'DITOLAK' => -2,
                         ];
-                        $currentStep = $statusIndexMap[$suratStatus] ?? -1;
+                        $currentStep = $statusIndexMap[$suratStatus] ?? 0;
                     } else {
                         $steps = [
                             [
@@ -221,16 +221,16 @@
                             ],
                         ];
                         $statusIndexMap = [
-                            'DRAFT' => -1,
-                            'MENUNGGU_PERSETUJUAN' => -1,
-                            'DITOLAK_PERSETUJUAN' => -1,
-                            'DIKIRIM' => 0,
-                            'DIPERIKSA' => 1,
-                            'DITERIMA' => 2,
-                            'SELESAI' => 2,
+                            'DRAFT' => 0,
+                            'MENUNGGU_PERSETUJUAN' => 0,
+                            'DITOLAK_PERSETUJUAN' => 0,
+                            'DIKIRIM' => 1,
+                            'DIPERIKSA' => 2,
+                            'DITERIMA' => 3,
+                            'SELESAI' => 3,
                             'DITOLAK' => -2,
                         ];
-                        $currentStep = $statusIndexMap[$suratStatus] ?? -1;
+                        $currentStep = $statusIndexMap[$suratStatus] ?? 0;
                     }
                 } else {
                     // PEMINJAMAN/PENGEMBALIAN: Alur lengkap sinkronisasi
@@ -391,6 +391,7 @@
                 $maxStep = count($steps) - 1;
             @endphp
 
+            <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
             @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($isPeminjaman && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
@@ -419,10 +420,23 @@
 
                     {{-- Horizontal Progress Bar - Scrollable on Mobile --}}
                     <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        @php
+                            $totalSteps = count($steps);
+                            // Calculate progress bar width to reach center of last completed step
+                            // Each step container is (100/totalSteps)% wide, circles are centered
+                            // For currentStep = C, last completed = C-1, center position = (C-0.5)/totalSteps * 100
+                            if ($currentStep <= 0) {
+                                $progressWidth = 0;
+                            } elseif ($currentStep >= $totalSteps) {
+                                $progressWidth = 100;
+                            } else {
+                                $progressWidth = (($currentStep - 0.5) / $totalSteps) * 100;
+                            }
+                        @endphp
                         <div class="relative min-w-[500px] sm:min-w-0">
                             <div class="absolute top-[22px] sm:top-[26px] left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
                             <div class="absolute top-[22px] sm:top-[26px] left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
-                                 style="width: {{ $currentStep > 0 ? min((($currentStep - 1) / $maxStep) * 100, 100) : 0 }}%"></div>
+                                 style="width: {{ $progressWidth }}%"></div>
 
                             <div class="relative flex justify-between pt-[6px]">
                                 @foreach($steps as $index => $step)
@@ -533,23 +547,85 @@
                 </div>
             </div>
             @else
-            {{-- DRAFT Status Card --}}
-            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6 text-center mb-4 sm:mb-6">
-                @php
-                    $draftMessage = match ($suratStatus) {
-                        'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
-                        'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
-                        default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
-                    };
-                @endphp
-                <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-gray-100 text-gray-700 rounded-xl">
-                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    <span class="font-semibold text-sm sm:text-base text-center">{{ $draftMessage }}</span>
+            {{-- DRAFT Status Card with Blurred Progress Background --}}
+            @php
+                $draftMessage = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                    'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                    default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
+                };
+
+                $draftIcon = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'clock',
+                    'DITOLAK_PERSETUJUAN' => 'x-circle',
+                    default => 'document',
+                };
+
+                $draftBgClass = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
+                    'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
+                    default => 'bg-gray-50 border-gray-200',
+                };
+
+                $draftTextClass = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
+                    'DITOLAK_PERSETUJUAN' => 'text-red-800',
+                    default => 'text-gray-700',
+                };
+
+                $draftIconBgClass = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
+                    'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
+                    default => 'bg-gray-100 text-gray-600',
+                };
+            @endphp
+            <div class="relative bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
+                {{-- Blurred Progress Steps Background --}}
+                <div class="p-4 sm:p-6 blur-[2px] opacity-30 select-none pointer-events-none">
+                    <div class="flex items-center justify-between mb-4 sm:mb-6">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">Riwayat Status</h3>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute top-[16px] sm:top-[20px] left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
+                        <div class="relative flex justify-between">
+                            @foreach($steps as $index => $step)
+                                <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
+                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold bg-white text-gray-400 border-gray-300 z-10">
+                                        {{ $index + 1 }}
+                                    </div>
+                                    <span class="mt-2 text-[10px] sm:text-xs text-center text-gray-400 leading-tight">
+                                        {{ $step['label'] }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Overlay Status Message --}}
+                <div class="absolute inset-0 flex items-center justify-center p-4">
+                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-5 sm:px-8 py-4 {{ $draftBgClass }} border rounded-2xl shadow-lg backdrop-blur-sm">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full {{ $draftIconBgClass }} flex items-center justify-center flex-shrink-0">
+                            @if($draftIcon === 'clock')
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            @elseif($draftIcon === 'x-circle')
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            @else
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            @endif
+                        </div>
+                        <span class="font-semibold text-sm sm:text-base text-center {{ $draftTextClass }}">{{ $draftMessage }}</span>
+                    </div>
                 </div>
             </div>
             @endif
+            </div>
 
             {{-- Info Card --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg">
@@ -1161,4 +1237,47 @@
         </div>
     </x-modal>
     @endif
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.Echo) {
+                return;
+            }
+            const suratJalanId = {{ (int) $suratJalan->id }};
+            const refreshProgress = async () => {
+                const current = document.querySelector('[data-surat-jalan-progress]');
+                if (!current) {
+                    return;
+                }
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('no_cache', '1');
+                    const response = await fetch(url.toString(), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    const html = await response.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const next = doc.querySelector('[data-surat-jalan-progress]');
+                    if (next) {
+                        current.innerHTML = next.innerHTML;
+                    }
+                } catch (error) {
+                    console.error('Realtime refresh failed', error);
+                }
+            };
+
+            window.Echo.channel(`surat-jalan.detail.${suratJalanId}`)
+                .listen('.SuratJalanStatusUpdated', (payload) => {
+                    if (!payload || payload.id !== suratJalanId) {
+                        return;
+                    }
+                    document.querySelectorAll('[data-surat-jalan-status-text]').forEach((node) => {
+                        node.textContent = payload.status || '-';
+                    });
+                    refreshProgress();
+                });
+        });
+    </script>
 </x-app-layout>

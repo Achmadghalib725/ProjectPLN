@@ -58,11 +58,15 @@
                         [
                             'label' => 'Dikirim',
                             'desc' => 'Barang dikirim',
-                            'detail' => $sjKirim->status !== 'DRAFT'
+                            'detail' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                 ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$sjKirim->gudangTujuan->nama}</strong>"
                                 : null,
-                            'time' => $sjKirim->status !== 'DRAFT' ? $formatWaktu($sjKirim->updated_at) : null,
-                            'by' => $sjKirim->status !== 'DRAFT' ? $sjKirim->pembuat?->name : null,
+                            'time' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
+                                ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
+                                : null,
+                            'by' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
+                                ? $sjKirim->pembuat?->name
+                                : null,
                         ],
                         [
                             'label' => 'Diperiksa',
@@ -84,14 +88,16 @@
                         ],
                     ];
                     $statusIndexMap = [
-                        'DRAFT' => -1,
-                        'DIKIRIM' => 0,
-                        'DIPERIKSA' => 1,
-                        'DITERIMA' => 2,
-                        'SELESAI' => 2,
+                        'DRAFT' => 0,
+                        'MENUNGGU_PERSETUJUAN' => 0,
+                        'DITOLAK_PERSETUJUAN' => 0,
+                        'DIKIRIM' => 1,
+                        'DIPERIKSA' => 2,
+                        'DITERIMA' => 3,
+                        'SELESAI' => 3,
                         'DITOLAK' => -2,
                     ];
-                    $currentStep = $statusIndexMap[$suratStatus] ?? -1;
+                    $currentStep = $statusIndexMap[$suratStatus] ?? 0;
                 } else {
                     // PEMINJAMAN/PENGEMBALIAN: Alur lengkap sinkronisasi
                     $sjKirim = $peminjaman?->suratJalanKirim;
@@ -103,7 +109,7 @@
                         [
                             'label' => 'Dikirim',
                             'desc' => 'Barang dikirim ke peminjam',
-                            'detail' => $sjKirim && $sjKirim->status !== 'DRAFT'
+                            'detail' => $sjKirim && !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                 ? "Dikirim dari <strong>{$gudangPemilik?->nama}</strong> ke <strong>{$gudangPeminjam?->nama}</strong>"
                                 : null,
                             'time' => $peminjaman?->waktu_kirim ? $formatWaktu($peminjaman->waktu_kirim) : null,
@@ -189,8 +195,9 @@
                 $maxStep = count($steps) - 1;
             @endphp
 
-            {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if($suratStatus !== 'DRAFT')
+            <div id="surat-jalan-progress-container" data-surat-jalan-progress>
+            {{-- Riwayat Status --}}
+            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -217,12 +224,25 @@
 
                     {{-- Horizontal Progress Bar - Scrollable on Mobile --}}
                     <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        @php
+                            $totalSteps = count($steps);
+                            // Calculate progress bar width to reach center of last completed step
+                            // Each step container is (100/totalSteps)% wide, circles are centered
+                            // For currentStep = C, last completed = C-1, center position = (C-0.5)/totalSteps * 100
+                            if ($currentStep <= 0) {
+                                $progressWidth = 0;
+                            } elseif ($currentStep >= $totalSteps) {
+                                $progressWidth = 100;
+                            } else {
+                                $progressWidth = (($currentStep - 0.5) / $totalSteps) * 100;
+                            }
+                        @endphp
                         <div class="relative min-w-[500px] sm:min-w-0">
-                            <div class="absolute top-5 left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
-                            <div class="absolute top-5 left-0 h-1 bg-green-500 rounded-full transition-all duration-500"
-                                 style="width: {{ $currentStep > 0 ? min((($currentStep - 1) / $maxStep) * 100, 100) : 0 }}%"></div>
+                            <div class="absolute top-[22px] sm:top-[26px] left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
+                            <div class="absolute top-[22px] sm:top-[26px] left-0 h-1 {{ $isRejected ? 'bg-red-500' : 'bg-green-500' }} rounded-full transition-all duration-500"
+                                 style="width: {{ $progressWidth }}%"></div>
 
-                            <div class="relative flex justify-between">
+                            <div class="relative flex justify-between pt-[6px]">
                                 @foreach($steps as $index => $step)
                                     @php
                                         $isCompleted = $currentStep > $index;
@@ -323,95 +343,166 @@
                     </div>
                 </div>
             </div>
-            @endif
+            @else
+            {{-- DRAFT/MENUNGGU_PERSETUJUAN Status Card with Blurred Progress Background --}}
+            @php
+                $draftMessage = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                    'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                    default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
+                };
 
-            {{-- Info Cards --}}
+                $draftIcon = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'clock',
+                    'DITOLAK_PERSETUJUAN' => 'x-circle',
+                    default => 'document',
+                };
+
+                $draftBgClass = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
+                    'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
+                    default => 'bg-gray-50 border-gray-200',
+                };
+
+                $draftTextClass = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
+                    'DITOLAK_PERSETUJUAN' => 'text-red-800',
+                    default => 'text-gray-700',
+                };
+
+                $draftIconBgClass = match ($suratStatus) {
+                    'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
+                    'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
+                    default => 'bg-gray-100 text-gray-600',
+                };
+            @endphp
+            <div class="relative bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
+                {{-- Blurred Progress Steps Background --}}
+                <div class="p-4 sm:p-6 blur-[2px] opacity-30 select-none pointer-events-none">
+                    <div class="flex items-center justify-between mb-4 sm:mb-6">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">Riwayat Status</h3>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute top-[16px] sm:top-[20px] left-0 right-0 h-1 bg-gray-200 rounded-full"></div>
+                        <div class="relative flex justify-between">
+                            @foreach($steps as $index => $step)
+                                <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
+                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold bg-white text-gray-400 border-gray-300 z-10">
+                                        {{ $index + 1 }}
+                                    </div>
+                                    <span class="mt-2 text-[10px] sm:text-xs text-center text-gray-400 leading-tight">
+                                        {{ $step['label'] }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Overlay Status Message --}}
+                <div class="absolute inset-0 flex items-center justify-center p-4">
+                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-5 sm:px-8 py-4 {{ $draftBgClass }} border rounded-2xl shadow-lg backdrop-blur-sm">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full {{ $draftIconBgClass }} flex items-center justify-center flex-shrink-0">
+                            @if($draftIcon === 'clock')
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            @elseif($draftIcon === 'x-circle')
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            @else
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            @endif
+                        </div>
+                        <span class="font-semibold text-sm sm:text-base text-center {{ $draftTextClass }}">{{ $draftMessage }}</span>
+                    </div>
+                </div>
+            </div>
+            @endif
+            </div>
+
+            {{-- Info Card --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg">
                 <div class="p-4 sm:p-6">
-                    <div class="grid grid-cols-1 gap-6">
-                        {{-- Informasi Pengiriman --}}
+                    <div class="grid grid-cols-2 gap-4 sm:gap-6">
                         <div>
-                            <h3 class="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Informasi Pengiriman</h3>
-                            <div class="grid grid-cols-2 gap-3 sm:gap-4">
-                                <div class="col-span-2 sm:col-span-1">
-                                    <dt class="text-xs sm:text-sm text-gray-500">Tipe</dt>
-                                    <dd class="mt-1">
-                                        @php
-                                            $tipeBadge = match($suratJalan->tipe) {
-                                                'TRANSFER' => 'bg-blue-100 text-blue-800',
-                                                'PEMINJAMAN' => 'bg-purple-100 text-purple-800',
-                                                'PENGEMBALIAN' => 'bg-orange-100 text-orange-800',
-                                                default => 'bg-gray-100 text-gray-800'
-                                            };
-                                        @endphp
-                                        <span class="inline-flex px-2 py-1 text-xs sm:text-sm font-semibold rounded-full {{ $tipeBadge }}">
-                                            {{ $suratJalan->tipe }}
-                                        </span>
-                                    </dd>
-                                </div>
-                                <div class="col-span-2 sm:col-span-1">
-                                    <dt class="text-xs sm:text-sm text-gray-500">Status</dt>
-                                    <dd class="mt-1">
-                                        @php
-                                            $statusBadge = match($suratJalan->status) {
-                                                'DRAFT' => 'bg-gray-100 text-gray-800',
-                                                'DIKIRIM' => 'bg-blue-100 text-blue-800',
-                                                'DIPERIKSA' => 'bg-yellow-100 text-yellow-800',
-                                                'DITERIMA' => 'bg-green-100 text-green-800',
-                                                'DIKEMBALIKAN' => 'bg-orange-100 text-orange-800',
-                                                'SELESAI' => 'bg-green-100 text-green-800',
-                                                'DITOLAK' => 'bg-red-100 text-red-800',
-                                                default => 'bg-gray-100 text-gray-800'
-                                            };
-                                        @endphp
-                                        <span class="inline-flex px-2 py-1 text-xs sm:text-sm font-semibold rounded-full {{ $statusBadge }}">
-                                            {{ $suratJalan->status }}
-                                        </span>
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs sm:text-sm text-gray-500">Tanggal Kirim</dt>
-                                    <dd class="mt-1 text-sm sm:text-base text-gray-900 font-medium">{{ \Carbon\Carbon::parse($suratJalan->tanggal)->format('d M Y') }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs sm:text-sm text-gray-500">Nama Driver</dt>
-                                    <dd class="mt-1 text-sm sm:text-base text-gray-900 font-medium">{{ $suratJalan->nama_driver ?? '-' }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs sm:text-sm text-gray-500">Jenis Kendaraan</dt>
-                                    <dd class="mt-1 text-sm sm:text-base text-gray-900 font-medium">{{ $suratJalan->jenis_kendaraan ?? '-' }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs sm:text-sm text-gray-500">Nomor Plat</dt>
-                                    <dd class="mt-1 text-sm sm:text-base text-gray-900 font-medium">{{ $suratJalan->nomor_plat ?? '-' }}</dd>
-                                </div>
-                                @if($suratJalan->catatan)
-                                <div class="col-span-2">
-                                    <dt class="text-xs sm:text-sm text-gray-500">Catatan</dt>
-                                    <dd class="mt-1 text-sm sm:text-base text-gray-900">{{ $suratJalan->catatan }}</dd>
-                                </div>
-                                @endif
-                            </div>
+                            <p class="text-xs sm:text-sm text-gray-500">Gudang Asal</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->gudangAsal->nama ?? '-' }}</p>
                         </div>
-
-                        {{-- Gudang Info --}}
-                        <div class="border-t pt-4 sm:pt-6">
-                            <h3 class="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Rute Pengiriman</h3>
-                            <div class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-                                <div class="flex-1 w-full bg-blue-50 rounded-xl p-3 sm:p-4 text-center">
-                                    <p class="text-[10px] sm:text-xs text-blue-600 uppercase font-medium">Asal</p>
-                                    <p class="text-sm sm:text-base font-bold text-blue-900 mt-1">{{ $suratJalan->gudangAsal->nama ?? '-' }}</p>
-                                </div>
-                                <div class="flex-shrink-0 rotate-90 sm:rotate-0">
-                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                                    </svg>
-                                </div>
-                                <div class="flex-1 w-full bg-green-50 rounded-xl p-3 sm:p-4 text-center">
-                                    <p class="text-[10px] sm:text-xs text-green-600 uppercase font-medium">Tujuan</p>
-                                    <p class="text-sm sm:text-base font-bold text-green-900 mt-1">{{ $suratJalan->gudangTujuan->nama ?? '-' }}</p>
-                                </div>
-                            </div>
+                        <div>
+                            <p class="text-xs sm:text-sm text-gray-500">Gudang Tujuan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->gudangTujuan->nama ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs sm:text-sm text-gray-500">Tanggal</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->tanggal?->format('d M Y') ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs sm:text-sm text-gray-500">Nama Driver</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->nama_driver ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs sm:text-sm text-gray-500">Jenis Kendaraan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->jenis_kendaraan ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs sm:text-sm text-gray-500">Nomor Plat</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->nomor_plat ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs sm:text-sm text-gray-500">Tipe</p>
+                            @php
+                                $tipeBadge = match($suratJalan->tipe) {
+                                    'TRANSFER' => 'bg-blue-100 text-blue-800',
+                                    'PEMINJAMAN' => 'bg-purple-100 text-purple-800',
+                                    'PENGEMBALIAN' => 'bg-teal-100 text-teal-800',
+                                    default => 'bg-gray-100 text-gray-800'
+                                };
+                            @endphp
+                            <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ $tipeBadge }}">
+                                {{ $suratJalan->tipe }}
+                            </span>
+                        </div>
+                        <div>
+                            <p class="text-xs sm:text-sm text-gray-500">Status</p>
+                            @php
+                                $statusBadge = match($suratJalan->status) {
+                                    'DRAFT' => 'bg-gray-100 text-gray-800',
+                                    'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
+                                    'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
+                                    'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                                    'DIPERIKSA' => 'bg-indigo-100 text-indigo-800',
+                                    'DITERIMA' => 'bg-emerald-100 text-emerald-800',
+                                    'MENUNGGU_DIKEMBALIKAN' => 'bg-amber-100 text-amber-800',
+                                    'DIKEMBALIKAN' => 'bg-teal-100 text-teal-800',
+                                    'SELESAI' => 'bg-green-100 text-green-800',
+                                    'DITOLAK' => 'bg-red-100 text-red-800',
+                                    default => 'bg-gray-100 text-gray-800'
+                                };
+                                $statusLabel = match($suratJalan->status) {
+                                    'DRAFT' => 'Draft',
+                                    'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
+                                    'DITOLAK_PERSETUJUAN' => 'Persetujuan Ditolak',
+                                    'DIKIRIM' => 'Dikirim',
+                                    'DIPERIKSA' => 'Diperiksa',
+                                    'DITERIMA' => 'Diterima',
+                                    'MENUNGGU_DIKEMBALIKAN' => 'Menunggu Dikembalikan',
+                                    'DIKEMBALIKAN' => 'Dikembalikan',
+                                    'SELESAI' => 'Selesai',
+                                    'DITOLAK' => 'Ditolak',
+                                    default => $suratJalan->status
+                                };
+                            @endphp
+                            <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ $statusBadge }}">
+                                {{ $statusLabel }}
+                            </span>
+                        </div>
+                        <div class="col-span-2">
+                            <p class="text-xs sm:text-sm text-gray-500">Catatan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->catatan ?? '-' }}</p>
                         </div>
                     </div>
                 </div>
@@ -590,51 +681,6 @@
                     </div>
                 </div>
                 @endif
-            @elseif($suratJalan->status === 'DIPERIKSA')
-                <div class="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
-                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-green-100 text-green-800 rounded-xl">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="font-semibold text-sm sm:text-base text-center">Surat Jalan sudah DIPERIKSA - Menunggu konfirmasi operator</span>
-                    </div>
-                </div>
-            @elseif($suratJalan->status === 'DITERIMA')
-                <div class="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
-                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-green-100 text-green-800 rounded-xl">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="font-semibold text-sm sm:text-base">Surat Jalan sudah DITERIMA oleh operator</span>
-                    </div>
-                </div>
-            @elseif($suratJalan->status === 'DITOLAK')
-                <div class="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
-                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-red-100 text-red-800 rounded-xl">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="font-semibold text-sm sm:text-base">Surat Jalan telah DITOLAK</span>
-                    </div>
-                </div>
-            @elseif($suratJalan->status === 'DRAFT')
-                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
-                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-gray-100 text-gray-800 rounded-xl">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="font-semibold text-sm sm:text-base">Surat Jalan masih DRAFT, belum bisa dikonfirmasi</span>
-                    </div>
-                </div>
-            @else
-                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
-                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-blue-100 text-blue-800 rounded-xl">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="font-semibold text-sm sm:text-base">Surat Jalan berstatus {{ $suratJalan->status }}</span>
-                    </div>
-                </div>
             @endif
         </div>
     </div>
@@ -642,4 +688,63 @@
     <style>
         [x-cloak] { display: none !important; }
     </style>
+    <script>
+        (function() {
+            const suratJalanId = {{ (int) $suratJalan->id }};
+
+            const refreshProgress = async () => {
+                const current = document.querySelector('[data-surat-jalan-progress]');
+                if (!current) {
+                    return;
+                }
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('no_cache', '1');
+                    const response = await fetch(url.toString(), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    const html = await response.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const next = doc.querySelector('[data-surat-jalan-progress]');
+                    if (next) {
+                        current.innerHTML = next.innerHTML;
+                    }
+                } catch (error) {
+                    console.error('Realtime refresh failed', error);
+                }
+            };
+
+            const initEchoListener = () => {
+                if (!window.Echo) {
+                    console.log('[Security] Echo not ready, retrying in 500ms...');
+                    setTimeout(initEchoListener, 500);
+                    return;
+                }
+
+                console.log('[Security] Subscribing to channel: surat-jalan.detail.' + suratJalanId);
+
+                window.Echo.channel(`surat-jalan.detail.${suratJalanId}`)
+                    .listen('.SuratJalanStatusUpdated', (payload) => {
+                        console.log('[Security] Received event:', payload);
+                        if (!payload || payload.id !== suratJalanId) {
+                            return;
+                        }
+                        document.querySelectorAll('[data-surat-jalan-status-text]').forEach((node) => {
+                            node.textContent = payload.status || '-';
+                        });
+                        refreshProgress();
+                    });
+            };
+
+            // Wait for DOM and then try to init Echo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initEchoListener);
+            } else {
+                initEchoListener();
+            }
+        })();
+    </script>
 </x-app-layout>
