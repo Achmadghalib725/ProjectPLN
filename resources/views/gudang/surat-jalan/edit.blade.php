@@ -47,6 +47,7 @@
                             'jumlah' => $item->jumlah,
                             'keterangan' => $item->keterangan,
                         ])->values())),
+                        isPengembalian: @js($suratJalan->tipe === 'PENGEMBALIAN'),
                         gudangMode: @js(old('gudang_tujuan_mode', $suratJalan->gudang_tujuan_is_custom ? 'custom' : 'existing')),
                         selectedGudang: String(@js(old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id)) || ''),
                         selectedPic: String(@js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id ?? ($suratJalan->pic_tujuan_custom_nama ? 'lainnya' : ''))) || ''),
@@ -75,10 +76,16 @@
                         addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
                         removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
                         filteredPics() {
+                            // Untuk PENGEMBALIAN, selalu tampilkan PIC dari gudang tujuan
+                            if (this.isPengembalian) {
+                                return this.pics.filter(pic => String(pic.gudang_id) === String(this.selectedGudang));
+                            }
                             if (this.isCustomGudang || !this.selectedGudang) return [];
                             return this.pics.filter(pic => String(pic.gudang_id) === String(this.selectedGudang));
                         },
                         get isCustomGudang() {
+                            // Untuk PENGEMBALIAN, selalu anggap bukan custom
+                            if (this.isPengembalian) return false;
                             return this.gudangMode === 'custom';
                         },
                         get isCustomPic() {
@@ -188,7 +195,7 @@
                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                     <option value="">Pilih PIC...</option>
                                     <template x-for="pic in filteredPics()" :key="pic.id">
-                                        <option :value="pic.id" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
+                                        <option :value="String(pic.id)" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
                                     </template>
                                     <option value="lainnya">Lainnya...</option>
                                 </select>
