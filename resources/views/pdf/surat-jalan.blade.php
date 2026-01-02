@@ -685,11 +685,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            Dokumen ini dicetak pada {{ now()->format('d F Y H:i') }} WIB
-        </div>
     </div>
 
     <!-- Page 2: Attachments -->
@@ -746,11 +741,6 @@
                         @endif
                     </tr>
                 </table>
-            </div>
-
-            <!-- Footer Page 2 -->
-            <div class="footer">
-                Lampiran Surat Jalan {{ $suratJalan->nomor ?? 'DRAFT' }} - Halaman 2
             </div>
         </div>
     @endif

@@ -96,15 +96,18 @@ Route::get('/dashboard', function () {
                 ->limit(6)
                 ->get()
             : collect(),
-        // Stats untuk Security
+        // Stats untuk Security (filter by gudang_tujuan_id untuk security role)
         'stats' => [
-            'diterima_hari_ini' => Schema::hasTable('surat_jalans')
-                ? SuratJalan::where('status', 'DITERIMA')
+            'diterima_hari_ini' => $gudangId && Schema::hasTable('surat_jalans')
+                ? SuratJalan::where('gudang_tujuan_id', $gudangId)
+                    ->where('status', 'DIPERIKSA')
                     ->whereDate('updated_at', today())
                     ->count()
                 : 0,
-            'menunggu' => Schema::hasTable('surat_jalans')
-                ? SuratJalan::where('status', 'DIKIRIM')->count()
+            'menunggu' => $gudangId && Schema::hasTable('surat_jalans')
+                ? SuratJalan::where('gudang_tujuan_id', $gudangId)
+                    ->whereIn('status', ['DIKIRIM', 'DIKEMBALIKAN'])
+                    ->count()
                 : 0,
         ],
         'managerStats' => [

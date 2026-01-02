@@ -960,12 +960,12 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kirim</label>
-                        <input type="date" name="tanggal_kirim" value="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
+                        <input type="date" name="tanggal_kirim" value="{{ date('Y-m-d') }}" min="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
                     </div>
 
                     <div x-show="mode === 'peminjaman'">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kembali</label>
-                        <input type="date" name="tanggal_kembali" class="w-full rounded-md border-gray-300">
+                        <input type="date" name="tanggal_kembali" min="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
                     </div>
 
                     <div>
@@ -1208,6 +1208,7 @@
                         <input type="date"
                                name="tanggal_kirim"
                                value="{{ old('tanggal_kirim', now()->toDateString()) }}"
+                               min="{{ date('Y-m-d') }}"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 

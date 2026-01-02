@@ -885,9 +885,12 @@ class SuratJalanController extends Controller
                 'nama_driver' => ['nullable', 'string', 'max:100'],
                 'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
                 'nomor_plat' => ['nullable', 'string', 'max:50'],
+                'attachments' => ['nullable', 'array', 'max:' . (3 - $suratJalan->attachments()->count())],
+                'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             ], [
                 'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
+                'attachments.max' => 'Maksimal 3 lampiran gambar per surat jalan.',
             ]);
 
             $suratJalan->update([
@@ -901,6 +904,11 @@ class SuratJalanController extends Controller
                 'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
                 'nomor_plat' => $validated['nomor_plat'] ?? null,
             ]);
+
+            // Handle attachment upload for PENGEMBALIAN
+            if ($request->hasFile('attachments')) {
+                $this->storeAttachments($suratJalan->id, $request->file('attachments'));
+            }
 
             $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $oldTujuanId, $suratJalan->gudang_tujuan_id]);
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
