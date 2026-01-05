@@ -735,6 +735,9 @@ class AdminSuratJalanController extends Controller
 
         $this->bumpSuratJalanCacheVersion([$gudangId, $peminjaman->gudang_pemilik_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
+        if ($peminjaman->surat_jalan_kirim_id) {
+            $this->bumpSuratJalanDetailCacheVersion($peminjaman->surat_jalan_kirim_id);
+        }
 
         return redirect()
             ->route('admin.surat-jalan.index')
