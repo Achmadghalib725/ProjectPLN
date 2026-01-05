@@ -13,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     // --- TEMPEL KODENYA DI SINI (BAGIAN INI) ---
     ->withMiddleware(function (Middleware $middleware) {
-        
+
+        // Trust ngrok proxy
+        $middleware->trustProxies(at: '*');
+
         // Daftarkan Alias Middleware Anda di sini
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,

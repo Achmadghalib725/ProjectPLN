@@ -742,7 +742,7 @@ class SuratJalanController extends Controller
         }
 
         return redirect()
-            ->route('gudang.surat-jalan.index')
+            ->route('gudang.surat-jalan.show', $suratJalanId)
             ->with('success', $adminFinish ? 'Surat pengembalian berhasil dibuat dan langsung diselesaikan.' : 'Draft pengembalian peminjaman berhasil dibuat.');
     }
 
