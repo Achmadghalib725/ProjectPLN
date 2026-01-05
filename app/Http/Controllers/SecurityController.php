@@ -146,7 +146,14 @@ class SecurityController extends Controller
 
         // Check if security's gudang matches the destination gudang
         $user = Auth::user();
-        if ($user->gudang_id !== $suratJalan->gudang_tujuan_id) {
+        $expectedGudangId = $suratJalan->gudang_tujuan_id;
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            if ($peminjaman?->gudang_pemilik_id) {
+                $expectedGudangId = $peminjaman->gudang_pemilik_id;
+            }
+        }
+        if ($user->gudang_id !== $expectedGudangId) {
             return back()->with('error', 'Anda tidak memiliki akses untuk mengkonfirmasi surat jalan ini. Surat jalan ini ditujukan ke gudang lain.');
         }
 
@@ -210,7 +217,14 @@ class SecurityController extends Controller
 
         // Check if security's gudang matches the destination gudang
         $user = Auth::user();
-        if ($user->gudang_id !== $suratJalan->gudang_tujuan_id) {
+        $expectedGudangId = $suratJalan->gudang_tujuan_id;
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            if ($peminjaman?->gudang_pemilik_id) {
+                $expectedGudangId = $peminjaman->gudang_pemilik_id;
+            }
+        }
+        if ($user->gudang_id !== $expectedGudangId) {
             return back()->with('error', 'Anda tidak memiliki akses untuk menolak surat jalan ini. Surat jalan ini ditujukan ke gudang lain.');
         }
 
