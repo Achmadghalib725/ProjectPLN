@@ -77,16 +77,15 @@
                                     </form>
                                 </div>
                                 <div class="flex gap-2">
-                                    <form method="POST" action="{{ route('admin.surat-jalan.destroy', $suratJalan->id) }}"
-                                          onsubmit="return confirm('Hapus draft surat jalan ini?');"
-                                          class="flex-1 sm:flex-none">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                                class="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                            Hapus Draft
-                                        </button>
-                                    </form>
+                                    <button type="button"
+                                        @click="$dispatch('open-delete-modal', {
+                                            title: 'Hapus Draft Surat Jalan',
+                                            message: 'Apakah Anda yakin ingin menghapus draft surat jalan ini? Data tidak dapat dikembalikan.',
+                                            action: '{{ route('admin.surat-jalan.destroy', $suratJalan->id) }}'
+                                        })"
+                                        class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                        Hapus Draft
+                                    </button>
                                     <a href="{{ route('admin.surat-jalan.index') }}"
                                        class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                         Kembali
@@ -1317,4 +1316,7 @@
                 });
         });
     </script>
+
+    {{-- Delete Confirmation Modal --}}
+    <x-confirm-delete-modal />
 </x-app-layout>
