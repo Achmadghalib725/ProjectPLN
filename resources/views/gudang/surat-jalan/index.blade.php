@@ -1017,6 +1017,7 @@
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Barang</th>
                                 <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-24">Jumlah</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Keterangan</th>
                                 <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16"></th>
                             </tr>
                         </thead>
@@ -1033,6 +1034,9 @@
                                     </td>
                                     <td class="px-4 py-2">
                                         <input type="number" x-model="row.jumlah" :name="`items[${idx}][jumlah]`" min="1" class="w-full text-sm rounded-md border-gray-300">
+                                    </td>
+                                    <td class="px-4 py-2">
+                                        <input type="text" x-model="row.keterangan" :name="`items[${idx}][keterangan]`" placeholder="Opsional..." class="w-full text-sm rounded-md border-gray-300">
                                     </td>
                                     <td class="px-4 py-2 text-right">
                                         <button type="button" @click="removeRow(idx)" class="text-red-500 hover:text-red-700">
