@@ -400,7 +400,9 @@
 
         <!-- Info Section -->
         @php
-            $tanggalSurat = $suratJalan->tanggal ? $suratJalan->tanggal->format('d F Y') : now()->format('d F Y');
+            $tanggalSurat = $suratJalan->tanggal
+                ? $suratJalan->tanggal->locale('id')->translatedFormat('d F Y')
+                : now()->locale('id')->translatedFormat('d F Y');
             $hariSurat = ($suratJalan->tanggal ?? now())->locale('id')->translatedFormat('l');
             $gudangTujuanNama = $suratJalan->gudang_tujuan_is_custom
                 ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
@@ -541,7 +543,7 @@
             <div class="return-info">
                 <div class="return-info-text">
                     <strong>PEMINJAMAN:</strong> Barang harus dikembalikan paling lambat
-                    <span class="return-info-date">{{ $suratJalan->tanggal_kembali->format('d F Y') }}</span>
+                    <span class="return-info-date">{{ $suratJalan->tanggal_kembali->locale('id')->translatedFormat('d F Y') }}</span>
                 </div>
             </div>
         @endif
