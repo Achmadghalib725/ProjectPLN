@@ -1634,19 +1634,23 @@ class AdminSuratJalanController extends Controller
     {
         $suratJalan = SuratJalan::with('items')->findOrFail($id);
 
-        $gudangId = Auth::user()?->gudang_id;
-        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
-            abort(403, 'Anda tidak berhak menghapus surat jalan gudang lain.');
-        }
-
-        $deletableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
-        if (!in_array($suratJalan->status, $deletableStatuses, true)) {
+        // Admin bisa membatalkan semua surat jalan kecuali yang sudah SELESAI
+        if ($suratJalan->status === 'SELESAI') {
             return redirect()
                 ->route('admin.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Hanya surat jalan dengan status Draft atau Ditolak Persetujuan yang bisa dihapus.');
+                ->with('error', 'Surat jalan yang sudah SELESAI tidak dapat dibatalkan.');
         }
 
-        DB::transaction(function () use ($suratJalan) {
+        $nomorSuratJalan = $suratJalan->nomor;
+        $hasStockMovements = $this->hasStockMovements($suratJalan->id);
+
+        DB::transaction(function () use ($suratJalan, $hasStockMovements) {
+            // Rollback stock movements jika ada
+            if ($hasStockMovements) {
+                $this->reverseStockMovements($suratJalan);
+            }
+
+            // Handle peminjaman records
             if ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
 
@@ -1664,6 +1668,14 @@ class AdminSuratJalanController extends Controller
                 }
             }
 
+            // Delete attachments if any
+            foreach ($suratJalan->attachments ?? [] as $attachment) {
+                if ($attachment->file_path && Storage::disk('public')->exists($attachment->file_path)) {
+                    Storage::disk('public')->delete($attachment->file_path);
+                }
+                $attachment->delete();
+            }
+
             $suratJalan->items()->delete();
             $suratJalan->delete();
         });
@@ -1671,9 +1683,82 @@ class AdminSuratJalanController extends Controller
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
 
+        $message = $hasStockMovements
+            ? "Surat Jalan {$nomorSuratJalan} berhasil dibatalkan dan stok telah dikembalikan."
+            : "Surat Jalan {$nomorSuratJalan} berhasil dihapus.";
+
         return redirect()
             ->route('admin.surat-jalan.index')
-            ->with('success', 'Draft Surat Jalan berhasil dihapus.');
+            ->with('success', $message);
+    }
+
+    /**
+     * Check if surat jalan has any stock movements
+     */
+    private function hasStockMovements(int $suratJalanId): bool
+    {
+        return StockMovement::where('referensi_type', 'SuratJalan')
+            ->where('referensi_id', $suratJalanId)
+            ->exists();
+    }
+
+    /**
+     * Reverse all stock movements for a surat jalan
+     */
+    private function reverseStockMovements(SuratJalan $suratJalan): void
+    {
+        $movements = StockMovement::where('referensi_type', 'SuratJalan')
+            ->where('referensi_id', $suratJalan->id)
+            ->get();
+
+        $now = now();
+
+        foreach ($movements as $movement) {
+            $stock = ItemStock::where('gudang_id', $movement->gudang_id)
+                ->where('item_id', $movement->item_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$stock) {
+                // Create stock record if it doesn't exist (edge case)
+                $stock = ItemStock::create([
+                    'gudang_id' => $movement->gudang_id,
+                    'item_id' => $movement->item_id,
+                    'jumlah' => 0,
+                    'stok_minimum' => 0,
+                ]);
+            }
+
+            $stokSebelum = $stock->jumlah;
+
+            if ($movement->tipe === 'OUT') {
+                // Reverse OUT: add back to stock
+                $stock->increment('jumlah', $movement->jumlah);
+                $reverseTipe = 'IN';
+            } else {
+                // Reverse IN: remove from stock
+                $stock->decrement('jumlah', $movement->jumlah);
+                $reverseTipe = 'OUT';
+            }
+
+            $stokSesudah = $stock->fresh()->jumlah;
+
+            // Create reverse movement for audit trail
+            StockMovement::create([
+                'item_id' => $movement->item_id,
+                'gudang_id' => $movement->gudang_id,
+                'tipe' => $reverseTipe,
+                'jumlah' => $movement->jumlah,
+                'stok_sebelum' => $stokSebelum,
+                'stok_sesudah' => $stokSesudah,
+                'referensi_type' => 'SuratJalan',
+                'referensi_id' => $suratJalan->id,
+                'created_by' => Auth::id(),
+                'keterangan' => "ROLLBACK: Pembatalan Surat Jalan {$suratJalan->nomor}",
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
     }
 
     private function getSuratJalanListItems(array $filters = [], ?int $gudangId = null, bool $paginate = false)
