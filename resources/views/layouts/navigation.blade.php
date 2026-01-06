@@ -77,6 +77,10 @@
                     'security' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
                     ],
+                    'penerima' => [
+                        ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
+                        ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
+                    ],
                 ];
                 $navItems = $menuByRole[$role] ?? [['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid']];
             @endphp

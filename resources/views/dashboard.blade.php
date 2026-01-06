@@ -41,6 +41,9 @@
             
             @elseif(Auth::user()->role === 'security')
                 @include('dashboard.security')
+
+            @elseif(Auth::user()->role === 'penerima')
+                @include('dashboard.penerima')
             
             @else
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">

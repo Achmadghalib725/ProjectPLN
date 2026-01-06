@@ -5,17 +5,17 @@
             isEdit: {{ old('_method') === 'PUT' ? 'true' : 'false' }},
             actionUrl: '{{ old('_method') === 'PUT' ? (old('id') ? url('admin/users').'/'.old('id') : '') : route('admin.users.store') }}',
             form: {
-                id: @json(old('id')),
-                name: @json(old('name')),
-                username: @json(old('username')),
-                no_hp: @json(old('no_hp')),
-                role: @json(old('role')),
-                jabatan: @json(old('jabatan')),
-                gudang_id: @json(old('gudang_id')),
-                gudang_ids: @json(old('gudang_ids', [])),
+                id: @js(old('id')),
+                name: @js(old('name')),
+                username: @js(old('username')),
+                no_hp: @js(old('no_hp')),
+                role: @js(old('role')),
+                jabatan: @js(old('jabatan')),
+                gudang_id: @js(old('gudang_id')),
+                gudang_ids: @js(old('gudang_ids', [])),
                 password: '',
                 password_confirmation: '',
-                is_active: @json(old('is_active', 1)),
+                is_active: @js(old('is_active', 1)),
             },
             openCreate() {
                 this.isEdit = false;
@@ -103,6 +103,7 @@
                                 <option value="operator_gudang" {{ request('role') == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
                                 <option value="manager" {{ request('role') == 'manager' ? 'selected' : '' }}>Manager</option>
                                 <option value="security" {{ request('role') == 'security' ? 'selected' : '' }}>Security</option>
+                                <option value="penerima" {{ request('role') == 'penerima' ? 'selected' : '' }}>Penerima</option>
                             </select>
 
                             @if(request('search') || request('role'))
@@ -156,6 +157,7 @@
                                                 'operator_gudang' => 'bg-blue-100 text-blue-700 border-blue-200',
                                                 'manager' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
                                                 'security' => 'bg-amber-100 text-amber-700 border-amber-200',
+                                                'penerima' => 'bg-teal-100 text-teal-700 border-teal-200',
                                             ];
                                             $colorClass = $roleColors[$user->role] ?? 'bg-gray-100 text-gray-700';
                                         @endphp
@@ -201,22 +203,24 @@
 
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <div class="flex items-center justify-center space-x-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <button @click='openEdit(@json($user))' class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit User">
+                                        <button @click="openEdit(@js($user))" class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit User">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                         </button>
                                         
                                         @if($user->id !== auth()->id())
-                                        <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus user {{ $user->name }}? Data tidak dapat dikembalikan.');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-all duration-200" title="Hapus User">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                </svg>
-                                            </button>
-                                        </form>
+                                        <button type="button"
+                                            @click="$dispatch('open-delete-modal', {
+                                                title: 'Hapus User',
+                                                message: 'Apakah Anda yakin ingin menghapus user {{ $user->name }}? Data tidak dapat dikembalikan.',
+                                                action: '{{ route('admin.users.destroy', $user->id) }}'
+                                            })"
+                                            class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-all duration-200" title="Hapus User">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
                                         @endif
                                     </div>
                                 </td>
@@ -257,7 +261,13 @@
                         <h3 class="text-lg leading-6 font-medium text-gray-900">
                             <span x-text="isEdit ? 'Edit User' : 'Tambah User Baru'"></span>
                         </h3>
-                        
+
+                        @if($errors->any())
+                            <div class="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                {{ $errors->first() }}
+                            </div>
+                        @endif
+
                         <form :action="actionUrl" method="POST" class="mt-4 space-y-4">
                             @csrf
                             <template x-if="isEdit">
@@ -287,7 +297,8 @@
                                         <option value="admin">Admin</option>
                                         <option value="operator_gudang">Operator Gudang</option>
                                         <option value="manager">Manager</option>
-                                        <option value="security">Security/Pemliharaan </option>
+                                        <option value="security">Security</option>
+                                        <option value="penerima">Penerima</option>
                                     </select>
                                 </div>
                                 <div>
@@ -352,4 +363,7 @@
             </div>
         </div>
     </div>
+
+    {{-- Delete Confirmation Modal --}}
+    <x-confirm-delete-modal />
 </x-app-layout>

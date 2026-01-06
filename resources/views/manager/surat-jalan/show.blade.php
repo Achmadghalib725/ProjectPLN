@@ -108,16 +108,17 @@
                                 @endif
                             </button>
                         </form>
-                        <form method="POST"
-                              action="{{ route('manager.surat-jalan.reject', $suratJalan->id) }}"
-                              onsubmit="return confirm('Tolak persetujuan surat jalan ini?');"
-                              class="sm:flex-1">
-                            @csrf
-                            <button type="submit"
-                                    class="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">
-                                Tolak Persetujuan
-                            </button>
-                        </form>
+                        <button type="button"
+                                @click="$dispatch('open-delete-modal', {
+                                    title: 'Tolak Persetujuan',
+                                    message: 'Apakah Anda yakin ingin menolak persetujuan surat jalan ini?',
+                                    action: '{{ route('manager.surat-jalan.reject', $suratJalan->id) }}',
+                                    method: 'POST',
+                                    confirmText: 'Tolak'
+                                })"
+                                class="w-full sm:flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">
+                            Tolak Persetujuan
+                        </button>
                     </div>
                     @if($isFutureDate)
                         <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -371,4 +372,5 @@
                 });
         });
     </script>
+    <x-confirm-delete-modal />
 </x-app-layout>

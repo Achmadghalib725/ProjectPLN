@@ -34,6 +34,7 @@ class SuratJalanController extends Controller
         $user = Auth::user();
         $isAdmin = $user?->role === 'admin';
         $isManager = $user?->role === 'manager';
+        $isDivisi = $user?->role === 'penerima';
         $gudangId = $user?->gudang_id;
         $adminFinish = $isAdmin && $request->boolean('admin_finish');
         $activeGudangId = $gudangId;
@@ -64,6 +65,9 @@ class SuratJalanController extends Controller
         }
 
         $tab = $request->input('tab', 'keluar'); // Default to 'keluar'
+        if ($isDivisi) {
+            $tab = 'masuk';
+        }
         $filters = $request->only(['search', 'status', 'tipe', 'tanggal_mulai', 'tanggal_selesai', 'order_by']);
         $filters['tab'] = $tab;
 
@@ -83,6 +87,7 @@ class SuratJalanController extends Controller
         } elseif ($activeGudangId) {
             $baseQuery = SuratJalan::where('gudang_tujuan_id', $activeGudangId)
                 ->whereNotIn('status', ['DRAFT', 'SELESAI', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
+            $baseQuery = $this->applyDivisiPicFilter($baseQuery, $user);
             $stats = [
                 'total' => (clone $baseQuery)->count(),
                 'menunggu' => (clone $baseQuery)->where('status', 'DIKIRIM')->count(),
@@ -93,52 +98,62 @@ class SuratJalanController extends Controller
         }
 
         // Count for tab badges
-        $countKeluar = $activeGudangId ? $this->countSuratKeluar($activeGudangId) : ['total' => 0, 'draft' => 0];
+        $countKeluar = $activeGudangId
+            ? ($isDivisi ? ['total' => 0, 'draft' => 0] : $this->countSuratKeluar($activeGudangId))
+            : ['total' => 0, 'draft' => 0];
         $countMasuk = $activeGudangId ? $this->countSuratMasuk($activeGudangId) : ['total' => 0, 'menunggu' => 0];
 
-        $gudangs = Schema::hasTable('gudangs')
-            ? tap(Gudang::query()->where('kode', '!=', 'GDG-EXT'), function ($query) use ($activeGudangId) {
-                if ($activeGudangId) {
-                    $query->where('id', '!=', $activeGudangId);
-                }
-            })
-                ->orderBy('nama')
-                ->get()
-            : collect();
+        $gudangs = collect();
+        $pics = collect();
+        $adminUsers = collect();
+        $availableStocks = collect();
+        $activePeminjamans = collect();
 
-        $pics = Schema::hasTable('pics')
-            ? Pic::query()->with('gudang')->orderBy('nama')->get()
-            : collect();
-
-        $adminUsers = Schema::hasTable('users')
-            ? User::query()
-                ->where(function ($query) {
-                    $query->whereNotNull('gudang_id')
-                        ->orWhere('role', 'manager');
+        if (!$isDivisi) {
+            $gudangs = Schema::hasTable('gudangs')
+                ? tap(Gudang::query()->where('kode', '!=', 'GDG-EXT'), function ($query) use ($activeGudangId) {
+                    if ($activeGudangId) {
+                        $query->where('id', '!=', $activeGudangId);
+                    }
                 })
-                ->with('managedGudangs:id')
-                ->orderBy('name')
-                ->get(['id', 'name', 'gudang_id', 'jabatan', 'role'])
-            : collect();
+                    ->orderBy('nama')
+                    ->get()
+                : collect();
 
-        $availableStocks = Schema::hasTable('item_stocks') && $activeGudangId
-            ? ItemStock::query()
-                ->with('item')
-                ->where('gudang_id', $activeGudangId)
-                ->orderBy('item_id')
-                ->get()
-            : collect();
+            $pics = Schema::hasTable('pics')
+                ? Pic::query()->with('gudang')->orderBy('nama')->get()
+                : collect();
 
-        // Only show peminjaman that have been received (DITERIMA) and not yet returned
-        $activePeminjamans = $activeGudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
-            ? Peminjaman::query()
-                ->with(['items.item', 'gudangPemilik'])
-                ->where('gudang_peminjam_id', $activeGudangId)
-                ->where('status', 'DITERIMA')
-                ->whereNull('surat_jalan_kembali_id')
-                ->orderByDesc('waktu_pengajuan')
-                ->get()
-            : collect();
+            $adminUsers = Schema::hasTable('users')
+                ? User::query()
+                    ->where(function ($query) {
+                        $query->whereNotNull('gudang_id')
+                            ->orWhere('role', 'manager');
+                    })
+                    ->with('managedGudangs:id')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'gudang_id', 'jabatan', 'role'])
+                : collect();
+
+            $availableStocks = Schema::hasTable('item_stocks') && $activeGudangId
+                ? ItemStock::query()
+                    ->with('item')
+                    ->where('gudang_id', $activeGudangId)
+                    ->orderBy('item_id')
+                    ->get()
+                : collect();
+
+            // Only show peminjaman that have been received (DITERIMA) and not yet returned
+            $activePeminjamans = $activeGudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
+                ? Peminjaman::query()
+                    ->with(['items.item', 'gudangPemilik'])
+                    ->where('gudang_peminjam_id', $activeGudangId)
+                    ->where('status', 'DITERIMA')
+                    ->whereNull('surat_jalan_kembali_id')
+                    ->orderByDesc('waktu_pengajuan')
+                    ->get()
+                : collect();
+        }
 
         $selectionGudangs = collect();
         if (Schema::hasTable('gudangs')) {
@@ -801,6 +816,18 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak mengakses surat jalan gudang lain.');
         }
 
+        if ($user?->role === 'penerima') {
+            $divisi = trim((string) ($user->jabatan ?? ''));
+            $picDivisi = $suratJalan->picTujuan?->jabatan;
+            if ($suratJalan->gudang_tujuan_id !== $user->gudang_id
+                || $divisi === ''
+                || !$picDivisi
+                || strcasecmp($picDivisi, $divisi) !== 0
+            ) {
+                abort(403, 'Anda tidak berhak mengakses surat jalan divisi lain.');
+            }
+        }
+
         $pics = collect();
         if ($peminjaman && $peminjaman->status === 'DITERIMA' && !$peminjaman->surat_jalan_kembali_id) {
             $pics = Schema::hasTable('pics')
@@ -1397,9 +1424,18 @@ class SuratJalanController extends Controller
     {
         $suratJalan = SuratJalan::with('items.item')->findOrFail($id);
 
-        $gudangId = Auth::user()?->gudang_id;
+        $user = Auth::user();
+        $gudangId = $user?->gudang_id;
         if (!$gudangId || $suratJalan->gudang_tujuan_id !== $gudangId) {
             abort(403, 'Anda tidak berhak menerima surat jalan ini.');
+        }
+
+        if ($user?->role === 'penerima') {
+            $divisi = trim((string) ($user->jabatan ?? ''));
+            $picDivisi = $suratJalan->picTujuan?->jabatan;
+            if ($divisi === '' || !$picDivisi || strcasecmp($picDivisi, $divisi) !== 0) {
+                abort(403, 'Anda tidak berhak menerima surat jalan divisi lain.');
+            }
         }
 
         if ($suratJalan->status !== 'DIPERIKSA') {
@@ -1720,8 +1756,13 @@ class SuratJalanController extends Controller
             return $paginate ? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15) : collect();
         }
 
+        $user = Auth::user();
+        $isDivisi = $user?->role === 'penerima';
         $gudangId = $gudangId ?? Auth::user()?->gudang_id;
         $tab = $filters['tab'] ?? 'keluar';
+        if ($isDivisi && $tab !== 'masuk') {
+            return $paginate ? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15) : collect();
+        }
         $orderBy = $filters['order_by'] ?? 'terbaru';
         $direction = $orderBy === 'terlama' ? 'asc' : 'desc';
 
@@ -1748,6 +1789,10 @@ class SuratJalanController extends Controller
                 $query->where('gudang_tujuan_id', $gudangId)
                     ->whereNotIn('status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
             }
+        }
+
+        if ($isDivisi) {
+            $query = $this->applyDivisiPicFilter($query, $user);
         }
 
         $includeAdminReturnSelesai = Auth::user()?->role === 'admin' && $tab === 'keluar';
@@ -1796,8 +1841,33 @@ class SuratJalanController extends Controller
         return $query->limit(50)->get();
     }
 
+    private function applyDivisiPicFilter($query, ?User $user)
+    {
+        if (!$user || $user->role !== 'penerima') {
+            return $query;
+        }
+
+        $divisi = trim((string) ($user->jabatan ?? ''));
+        if ($divisi === '') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if (!Schema::hasTable('pics') || !Schema::hasColumn('pics', 'jabatan')) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $divisiLower = strtolower($divisi);
+        return $query->whereNotNull('pic_tujuan_id')
+            ->whereHas('picTujuan', function ($subQuery) use ($divisiLower) {
+                $subQuery->whereRaw('LOWER(jabatan) = ?', [$divisiLower]);
+            });
+    }
+
     private function countSuratKeluar(int $gudangId): array
     {
+        if (Auth::user()?->role === 'penerima') {
+            return ['total' => 0, 'draft' => 0];
+        }
         $cacheKey = $this->buildSuratJalanCacheKey('count_keluar', $gudangId, []);
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($gudangId) {
             // Exclude SELESAI from counts (moved to riwayat)
@@ -1811,11 +1881,17 @@ class SuratJalanController extends Controller
 
     private function countSuratMasuk(int $gudangId): array
     {
-        $cacheKey = $this->buildSuratJalanCacheKey('count_masuk', $gudangId, []);
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($gudangId) {
+        $user = Auth::user();
+        $cacheFilters = [];
+        if ($user?->role === 'penerima') {
+            $cacheFilters['jabatan'] = strtolower(trim((string) ($user->jabatan ?? '')));
+        }
+        $cacheKey = $this->buildSuratJalanCacheKey('count_masuk', $gudangId, $cacheFilters);
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($gudangId, $user) {
             // Exclude SELESAI, DRAFT, dan status persetujuan dari counts
             $query = SuratJalan::where('gudang_tujuan_id', $gudangId)
                 ->whereNotIn('status', ['DRAFT', 'SELESAI', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
+            $query = $this->applyDivisiPicFilter($query, $user);
            return [
                 'total' => (clone $query)->count(),
                 'menunggu' => (clone $query)->where('status', 'DIKIRIM')->count(),

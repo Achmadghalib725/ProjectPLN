@@ -50,7 +50,8 @@
                         isPengembalian: @js($suratJalan->tipe === 'PENGEMBALIAN'),
                         gudangMode: @js(old('gudang_tujuan_mode', $suratJalan->gudang_tujuan_is_custom ? 'custom' : 'existing')),
                         selectedGudang: String(@js(old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id)) || ''),
-                        selectedPic: String(@js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id ?? ($suratJalan->pic_tujuan_custom_nama ? 'lainnya' : ''))) || ''),
+                        initialPic: String(@js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id ?? ($suratJalan->pic_tujuan_custom_nama ? 'lainnya' : ''))) || ''),
+                        selectedPic: '',
                         customGudang: {
                             nama: @js(old('gudang_custom_nama', $suratJalan->gudang_tujuan_custom_nama)),
                             alamat: @js(old('gudang_custom_alamat', $suratJalan->gudang_tujuan_custom_alamat)),
@@ -82,6 +83,24 @@
                             }
                             if (this.isCustomGudang || !this.selectedGudang) return [];
                             return this.pics.filter(pic => String(pic.gudang_id) === String(this.selectedGudang));
+                        },
+                        storedPicOption() {
+                            const targetPic = this.selectedPic || this.initialPic;
+                            if (!targetPic || targetPic === 'lainnya') return null;
+                            const inList = this.filteredPics().some(pic => String(pic.id) === String(targetPic));
+                            if (inList) return null;
+                            const pic = this.pics.find(item => String(item.id) === String(targetPic));
+                            if (!pic) return { value: targetPic, label: 'PIC tersimpan (tidak ditemukan)' };
+                            const label = pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '');
+                            return { value: String(pic.id), label };
+                        },
+                        init() {
+                            this.selectedPic = this.initialPic;
+                            this.$nextTick(() => {
+                                if (!this.selectedPic && this.initialPic) {
+                                    this.selectedPic = this.initialPic;
+                                }
+                            });
                         },
                         get isCustomGudang() {
                             // Untuk PENGEMBALIAN, selalu anggap bukan custom
@@ -194,6 +213,9 @@
                                         required
                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                     <option value="">Pilih PIC...</option>
+                                    <template x-if="storedPicOption()">
+                                        <option :value="storedPicOption().value" x-text="storedPicOption().label"></option>
+                                    </template>
                                     <template x-for="pic in filteredPics()" :key="pic.id">
                                         <option :value="String(pic.id)" x-text="pic.nama + (pic.jabatan ? ' - ' + pic.jabatan : '')"></option>
                                     </template>
