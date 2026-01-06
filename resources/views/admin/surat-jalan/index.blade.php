@@ -819,11 +819,6 @@
                 </div>
             </template>
 
-            @if($isAdmin)
-                <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    Mode admin: surat jalan akan langsung diselesaikan saat Anda memilih tombol admin.
-                </div>
-            @endif
 
             {{-- Mode Switcher --}}
             <div class="flex gap-3 mb-6">
@@ -960,7 +955,7 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kirim</label>
-                        <input type="date" name="tanggal_kirim" value="{{ date('Y-m-d') }}" min="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
+                        <input type="date" name="tanggal_kirim" value="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
                     </div>
 
                     <div x-show="mode === 'peminjaman'">
@@ -1017,6 +1012,7 @@
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Barang</th>
                                 <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-24">Jumlah</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Keterangan</th>
                                 <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16"></th>
                             </tr>
                         </thead>
@@ -1033,6 +1029,9 @@
                                     </td>
                                     <td class="px-4 py-2">
                                         <input type="number" x-model="row.jumlah" :name="`items[${idx}][jumlah]`" min="1" class="w-full text-sm rounded-md border-gray-300">
+                                    </td>
+                                    <td class="px-4 py-2">
+                                        <input type="text" x-model="row.keterangan" :name="`items[${idx}][keterangan]`" placeholder="Opsional..." class="w-full text-sm rounded-md border-gray-300">
                                     </td>
                                     <td class="px-4 py-2 text-right">
                                         <button type="button" @click="removeRow(idx)" class="text-red-500 hover:text-red-700">
@@ -1135,7 +1134,7 @@
                 <div>
                     <h3 class="text-lg font-bold text-gray-900">Pengembalian Peminjaman Barang</h3>
                     <p class="text-sm text-gray-500 mt-1">Pilih kode peminjaman, lalu sistem menyiapkan surat jalan pengembalian.</p>
-                    <p class="text-xs text-emerald-700 mt-2">Mode admin: surat pengembalian akan langsung diselesaikan.</p>
+                    <p class="text-xs text-emerald-700 mt-2">Surat pengembalian akan langsung diselesaikan.</p>
                 </div>
                 <button type="button" class="text-gray-400 hover:text-gray-600"
                         x-on:click="$dispatch('close-modal', 'return-peminjaman')">

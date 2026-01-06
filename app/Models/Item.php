@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Item extends Model
 {
@@ -48,8 +49,10 @@ class Item extends Model
             ?? strtoupper(substr($kategoriLower, 0, 3));
 
         // Cari nomor urut terakhir untuk prefix ini
+        $driver = DB::connection()->getDriverName();
+        $castType = $driver === 'mysql' ? 'UNSIGNED' : 'INTEGER';
         $lastItem = self::where('kode', 'LIKE', $prefix . '-%')
-            ->orderByRaw("CAST(SUBSTRING(kode, LENGTH(?) + 2) AS UNSIGNED) DESC", [$prefix])
+            ->orderByRaw("CAST(SUBSTRING(kode, LENGTH(?) + 2) AS {$castType}) DESC", [$prefix])
             ->first();
 
         if ($lastItem) {
