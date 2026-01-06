@@ -22,7 +22,7 @@
             {{-- Form Card --}}
             <div class="bg-white border border-gray-100 rounded-2xl shadow-xl shadow-gray-200/50 overflow-hidden">
                 <div class="p-8">
-                    <form action="{{ route('admin.pics.store') }}" method="POST">
+                    <form action="{{ route('admin.pics.store') }}" method="POST" autocomplete="off">
                         @csrf
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -38,6 +38,33 @@
                                 <x-input-label for="jabatan" :value="__('Jabatan')" class="text-gray-700 font-semibold" />
                                 <x-text-input id="jabatan" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" type="text" name="jabatan" :value="old('jabatan')" placeholder="Contoh: Supervisor, Manager, dll" />
                                 <x-input-error :messages="$errors->get('jabatan')" />
+                            </div>
+
+                            {{-- Akun Login --}}
+                            <div class="space-y-2 md:col-span-2">
+                                <div class="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
+                                    Bagian ini dipakai untuk membuat akun login PIC.
+                                </div>
+                            </div>
+
+                            {{-- Username --}}
+                            <div class="space-y-2">
+                                <x-input-label for="username" :value="__('Username')" class="text-gray-700 font-semibold" />
+                                <x-text-input id="username" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" type="text" name="username" :value="old('username')" placeholder="contoh: pic_k3" autocomplete="off" />
+                                <x-input-error :messages="$errors->get('username')" />
+                            </div>
+
+                            {{-- Password --}}
+                            <div class="space-y-2">
+                                <x-input-label for="password" :value="__('Password')" class="text-gray-700 font-semibold" />
+                                <x-text-input id="password" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" type="password" name="password" placeholder="Masukkan password" autocomplete="new-password" />
+                                <x-input-error :messages="$errors->get('password')" />
+                            </div>
+
+                            {{-- Konfirmasi Password --}}
+                            <div class="space-y-2">
+                                <x-input-label for="password_confirmation" :value="__('Konfirmasi Password')" class="text-gray-700 font-semibold" />
+                                <x-text-input id="password_confirmation" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" type="password" name="password_confirmation" placeholder="Ulangi password" autocomplete="new-password" />
                             </div>
 
                             {{-- No HP --}}

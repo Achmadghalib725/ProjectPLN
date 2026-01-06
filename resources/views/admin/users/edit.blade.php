@@ -80,6 +80,7 @@
                                     <option value="operator_gudang" {{ old('role', $user->role) == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
                                     <option value="manager" {{ old('role', $user->role) == 'manager' ? 'selected' : '' }}>Manager</option>
                                     <option value="security" {{ old('role', $user->role) == 'security' ? 'selected' : '' }}>Security</option>
+                                    <option value="lainnya" {{ old('role', $user->role) == 'lainnya' ? 'selected' : '' }}>Divisi Lainnya</option>
                                     <option value="admin" {{ old('role', $user->role) == 'admin' ? 'selected' : '' }}>Admin</option>
                                 </select>
                                 <x-input-error :messages="$errors->get('role')" />

@@ -4,6 +4,7 @@
             @php
                 $isAdmin = Auth::user()->role === 'admin';
                 $isManager = Auth::user()->role === 'manager';
+                $isDivisi = Auth::user()->role === 'lainnya';
                 $needsGudangSelection = ($selectionGudangs ?? collect())->count() > 0;
                 $hasGudangContext = !$needsGudangSelection || !empty($activeGudangId);
                 $displayGudangName = $activeGudangName ?? (Auth::user()->gudang?->nama ?? '');
@@ -31,7 +32,7 @@
             @endif
 
             {{-- Error ditampilkan di dalam modal popup, auto-open modal saat ada error --}}
-            @if($errors->any())
+            @if($errors->any() && !$isDivisi)
                 <script>
                     document.addEventListener('alpine:init', () => {
                         // Dispatch after Alpine is ready
@@ -93,7 +94,7 @@
                         </form>
                         @endif
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                            @if(!$isManager)
+                        @if(!$isManager && !$isDivisi)
                             <button type="button"
                                     class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 {{ $isAdmin ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-pln-primary hover:bg-pln-light' }} active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                     @if(!$hasGudangContext) disabled @endif
@@ -115,14 +116,16 @@
                                 </button>
                             @endif
                             @endif
-                            <button type="button"
-                                    class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm"
-                                    @click="$dispatch('open-modal', 'export-excel')">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                </svg>
-                                <span>Export Excel</span>
-                            </button>
+                            @if(!$isDivisi)
+                                <button type="button"
+                                        class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm"
+                                        @click="$dispatch('open-modal', 'export-excel')">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    <span>Export Excel</span>
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -132,28 +135,42 @@
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex" aria-label="Tabs" data-ajax-tabs>
-                        <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'keluar']) }}"
-                           data-ajax-tab
-                           data-ajax-target="#surat-jalan-content"
-                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
-                            <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                                </svg>
-                                <span>Surat Keluar</span>
-                            </div>
-                        </a>
-                        <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
-                           data-ajax-tab
-                           data-ajax-target="#surat-jalan-content"
-                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
-                            <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                                </svg>
-                                <span>Surat Masuk</span>
-                            </div>
-                        </a>
+                        @if($isDivisi)
+                            <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
+                               data-ajax-tab
+                               data-ajax-target="#surat-jalan-content"
+                               class="w-full py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm border-[#035b71] text-[#035b71] active:bg-gray-50 transition">
+                                <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                                    </svg>
+                                    <span>Surat Masuk</span>
+                                </div>
+                            </a>
+                        @else
+                            <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'keluar']) }}"
+                               data-ajax-tab
+                               data-ajax-target="#surat-jalan-content"
+                               class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                                <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                    </svg>
+                                    <span>Surat Keluar</span>
+                                </div>
+                            </a>
+                            <a href="{{ route('gudang.surat-jalan.index', ['tab' => 'masuk']) }}"
+                               data-ajax-tab
+                               data-ajax-target="#surat-jalan-content"
+                               class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                                <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                                    </svg>
+                                    <span>Surat Masuk</span>
+                                </div>
+                            </a>
+                        @endif
                     </nav>
                 </div>
             </div>
@@ -538,7 +555,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                             </svg>
                             <p class="mt-2 font-medium text-sm">Belum ada Surat Jalan</p>
-                            <p class="text-xs">Mulai dengan membuat Surat Jalan baru.</p>
+                            <p class="text-xs">
+                                {{ $isDivisi ? 'Belum ada surat masuk untuk divisi ini.' : 'Mulai dengan membuat Surat Jalan baru.' }}
+                            </p>
                         </div>
                     @endforelse
                 </div>
@@ -682,7 +701,9 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                                         </svg>
                                         <p class="mt-2 font-medium">Belum ada Surat Jalan</p>
-                                        <p class="text-sm">Mulai dengan membuat Surat Jalan baru.</p>
+                                        <p class="text-sm">
+                                            {{ $isDivisi ? 'Belum ada surat masuk untuk divisi ini.' : 'Mulai dengan membuat Surat Jalan baru.' }}
+                                        </p>
                                     </td>
                                 </tr>
                             @endforelse
@@ -703,6 +724,7 @@
         </div>
     </div>
 
+    @if(!$isDivisi)
     <x-modal name="create-surat-jalan" focusable>
         <div class="p-6"
             x-data="{
@@ -1442,6 +1464,7 @@
             </form>
         </div>
     </x-modal>
+    @endif
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (!window.Echo) {

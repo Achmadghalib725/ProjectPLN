@@ -7,13 +7,14 @@
             form: {
                 id: @json(old('id')),
                 nama: @json(old('nama')),
+                username: @json(old('username')),
                 jabatan: @json(old('jabatan')),
                 no_hp: @json(old('no_hp')),
                 gudang_id: @json(old('gudang_id')),
             },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', nama: '', jabatan: '', no_hp: '', gudang_id: '' };
+                this.form = { id: '', nama: '', username: '', jabatan: '', no_hp: '', gudang_id: '' };
                 this.actionUrl = '{{ route('admin.pics.store') }}';
                 this.showModal = true;
             },
@@ -229,7 +230,7 @@
                             <span x-text="isEdit ? 'Edit PIC' : 'Tambah PIC Baru'"></span>
                         </h3>
 
-                        <form :action="actionUrl" method="POST" class="mt-4 space-y-4">
+                        <form :action="actionUrl" method="POST" class="mt-4 space-y-4" autocomplete="off">
                             @csrf
                             {{-- Method Spoofing for PUT (only when editing) --}}
                             <template x-if="isEdit">
@@ -249,6 +250,29 @@
                                 <input type="text" name="jabatan" x-model="form.jabatan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Contoh: Supervisor, Manager, dll">
                                 @error('jabatan') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
+
+                            {{-- Akun Login --}}
+                            <template x-if="!isEdit">
+                                <div class="space-y-4">
+                                    <div class="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
+                                        Bagian ini dipakai untuk membuat akun login PIC.
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Username</label>
+                                        <input type="text" name="username" x-model="form.username" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="contoh: pic_k3" autocomplete="off">
+                                        @error('username') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Password</label>
+                                        <input type="password" name="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Masukkan password" autocomplete="new-password">
+                                        @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
+                                        <input type="password" name="password_confirmation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Ulangi password" autocomplete="new-password">
+                                    </div>
+                                </div>
+                            </template>
 
                             {{-- No HP --}}
                             <div>

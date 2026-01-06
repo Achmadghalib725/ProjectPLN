@@ -103,6 +103,7 @@
                                 <option value="operator_gudang" {{ request('role') == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
                                 <option value="manager" {{ request('role') == 'manager' ? 'selected' : '' }}>Manager</option>
                                 <option value="security" {{ request('role') == 'security' ? 'selected' : '' }}>Security</option>
+                                <option value="lainnya" {{ request('role') == 'lainnya' ? 'selected' : '' }}>Divisi Lainnya</option>
                             </select>
 
                             @if(request('search') || request('role'))
@@ -156,6 +157,7 @@
                                                 'operator_gudang' => 'bg-blue-100 text-blue-700 border-blue-200',
                                                 'manager' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
                                                 'security' => 'bg-amber-100 text-amber-700 border-amber-200',
+                                                'lainnya' => 'bg-teal-100 text-teal-700 border-teal-200',
                                             ];
                                             $colorClass = $roleColors[$user->role] ?? 'bg-gray-100 text-gray-700';
                                         @endphp
@@ -287,7 +289,8 @@
                                         <option value="admin">Admin</option>
                                         <option value="operator_gudang">Operator Gudang</option>
                                         <option value="manager">Manager</option>
-                                        <option value="security">Security/Pemliharaan </option>
+                                        <option value="security">Security</option>
+                                        <option value="lainnya">Divisi Lainnya</option>
                                     </select>
                                 </div>
                                 <div>

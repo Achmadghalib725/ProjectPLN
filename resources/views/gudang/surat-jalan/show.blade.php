@@ -24,11 +24,18 @@
             @php
                 $isAdminView = $isAdmin ?? (Auth::user()?->role === 'admin');
                 $isManagerView = $isManager ?? (Auth::user()?->role === 'manager');
+                $isDivisiView = Auth::user()?->role === 'lainnya';
                 $accessibleGudangIds = $accessibleGudangIds ?? (Auth::user()?->gudang_id ? [Auth::user()->gudang_id] : []);
                 $isGudangAsalView = !empty($accessibleGudangIds) && in_array($suratJalan->gudang_asal_id, $accessibleGudangIds, true);
                 $isGudangTujuanView = !empty($accessibleGudangIds) && in_array($suratJalan->gudang_tujuan_id, $accessibleGudangIds, true);
-                $canEditDraft = !$isManagerView && $isGudangAsalView;
+                $canEditDraft = !$isManagerView && !$isDivisiView && $isGudangAsalView;
                 $canApproveManager = $isAdminView || ($isManagerView && $isGudangAsalView);
+                $divisiMatches = true;
+                if ($isDivisiView) {
+                    $divisiMatches = !empty($suratJalan->picTujuan?->jabatan)
+                        && !empty(Auth::user()?->jabatan)
+                        && strcasecmp($suratJalan->picTujuan->jabatan, Auth::user()->jabatan) === 0;
+                }
             @endphp
 
             {{-- Header Card --}}
@@ -828,7 +835,7 @@
             @endphp
 
             {{-- Tombol Terima Barang untuk Operator Gudang Tujuan (status DIPERIKSA) --}}
-            @if($suratJalan->status === 'DIPERIKSA' && $isGudangTujuan && !$isManagerView)
+            @if($suratJalan->status === 'DIPERIKSA' && $isGudangTujuan && !$isManagerView && (!$isDivisiView || $divisiMatches))
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Penerimaan</h3>
@@ -861,7 +868,7 @@
             @endif
 
             {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin (status DITERIMA, tipe PEMINJAMAN) --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && ($isGudangTujuan || ($isAdmin ?? false)) && $peminjaman && !$peminjaman->surat_jalan_kembali_id && !$isManagerView)
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && ($isGudangTujuan || ($isAdmin ?? false)) && $peminjaman && !$peminjaman->surat_jalan_kembali_id && !$isManagerView && !$isDivisiView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Barang</h3>
@@ -884,7 +891,7 @@
                 </div>
             @endif
 
-            @if($suratJalan->status === 'DITOLAK' && $isGudangAsal && !$isManagerView)
+            @if($suratJalan->status === 'DITOLAK' && $isGudangAsal && !$isManagerView && !$isDivisiView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Penyelesaian Surat Ditolak</h3>
@@ -913,7 +920,7 @@
             @endif
 
             {{-- Konfirmasi Pengembalian Manual untuk Gudang Eksternal --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'MENUNGGU_DIKEMBALIKAN' && $isGudangAsal && $suratJalan->gudang_tujuan_is_custom && !$isManagerView)
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'MENUNGGU_DIKEMBALIKAN' && $isGudangAsal && $suratJalan->gudang_tujuan_is_custom && !$isManagerView && !$isDivisiView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Pengembalian</h3>
@@ -1016,7 +1023,7 @@
     </style>
 
     {{-- Modal Pengembalian Peminjaman --}}
-    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && !$peminjaman->surat_jalan_kembali_id)
+    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && !$peminjaman->surat_jalan_kembali_id && !$isDivisiView)
     <x-modal name="return-peminjaman-modal" focusable>
         <div class="p-6"
              x-data="{
