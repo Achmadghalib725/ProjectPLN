@@ -34,7 +34,7 @@ class SuratJalanController extends Controller
         $user = Auth::user();
         $isAdmin = $user?->role === 'admin';
         $isManager = $user?->role === 'manager';
-        $isDivisi = $user?->role === 'lainnya';
+        $isDivisi = $user?->role === 'penerima';
         $gudangId = $user?->gudang_id;
         $adminFinish = $isAdmin && $request->boolean('admin_finish');
         $activeGudangId = $gudangId;
@@ -816,7 +816,7 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak mengakses surat jalan gudang lain.');
         }
 
-        if ($user?->role === 'lainnya') {
+        if ($user?->role === 'penerima') {
             $divisi = trim((string) ($user->jabatan ?? ''));
             $picDivisi = $suratJalan->picTujuan?->jabatan;
             if ($suratJalan->gudang_tujuan_id !== $user->gudang_id
@@ -1408,7 +1408,7 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak menerima surat jalan ini.');
         }
 
-        if ($user?->role === 'lainnya') {
+        if ($user?->role === 'penerima') {
             $divisi = trim((string) ($user->jabatan ?? ''));
             $picDivisi = $suratJalan->picTujuan?->jabatan;
             if ($divisi === '' || !$picDivisi || strcasecmp($picDivisi, $divisi) !== 0) {
@@ -1735,7 +1735,7 @@ class SuratJalanController extends Controller
         }
 
         $user = Auth::user();
-        $isDivisi = $user?->role === 'lainnya';
+        $isDivisi = $user?->role === 'penerima';
         $gudangId = $gudangId ?? Auth::user()?->gudang_id;
         $tab = $filters['tab'] ?? 'keluar';
         if ($isDivisi && $tab !== 'masuk') {
@@ -1821,7 +1821,7 @@ class SuratJalanController extends Controller
 
     private function applyDivisiPicFilter($query, ?User $user)
     {
-        if (!$user || $user->role !== 'lainnya') {
+        if (!$user || $user->role !== 'penerima') {
             return $query;
         }
 
@@ -1843,7 +1843,7 @@ class SuratJalanController extends Controller
 
     private function countSuratKeluar(int $gudangId): array
     {
-        if (Auth::user()?->role === 'lainnya') {
+        if (Auth::user()?->role === 'penerima') {
             return ['total' => 0, 'draft' => 0];
         }
         $cacheKey = $this->buildSuratJalanCacheKey('count_keluar', $gudangId, []);
@@ -1861,7 +1861,7 @@ class SuratJalanController extends Controller
     {
         $user = Auth::user();
         $cacheFilters = [];
-        if ($user?->role === 'lainnya') {
+        if ($user?->role === 'penerima') {
             $cacheFilters['jabatan'] = strtolower(trim((string) ($user->jabatan ?? '')));
         }
         $cacheKey = $this->buildSuratJalanCacheKey('count_masuk', $gudangId, $cacheFilters);

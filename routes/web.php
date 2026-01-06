@@ -141,7 +141,7 @@ Route::get('/dashboard', function () {
         $data['managerRecent'] = $managerQuery->orderByDesc('tanggal')->limit(6)->get();
     }
 
-    if ($user->role === 'lainnya' && $gudangId && Schema::hasTable('surat_jalans') && Schema::hasTable('pics')) {
+    if ($user->role === 'penerima' && $gudangId && Schema::hasTable('surat_jalans') && Schema::hasTable('pics')) {
         $divisi = trim((string) ($user->jabatan ?? ''));
         if ($divisi !== '') {
             $divisiLower = strtolower($divisi);
@@ -202,7 +202,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/surat-jalan/export-excel', [SuratJalanController::class, 'exportExcel'])->name('surat-jalan.export-excel');
     });
 
-    Route::middleware('role:operator_gudang,lainnya')->prefix('gudang')->name('gudang.')->group(function () {
+    Route::middleware('role:operator_gudang,penerima')->prefix('gudang')->name('gudang.')->group(function () {
         Route::get('/surat-jalan/index', [SuratJalanController::class, 'index'])->name('surat-jalan.index');
         Route::get('/surat-jalan/{id}', [SuratJalanController::class, 'show'])->whereNumber('id')->name('surat-jalan.show');
         Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');

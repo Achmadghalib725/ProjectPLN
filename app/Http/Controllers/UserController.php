@@ -52,7 +52,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'in:admin,operator_gudang,security,manager,lainnya'],
+            'role' => ['required', 'in:admin,operator_gudang,security,manager,penerima'],
             'gudang_id' => ['nullable', 'exists:gudangs,id'],
             'gudang_ids' => [Rule::requiredIf($request->role === 'manager'), 'array', 'min:1'],
             'gudang_ids.*' => ['integer', 'exists:gudangs,id'],
@@ -91,7 +91,7 @@ class UserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:users,username,'.$user->id],
-            'role' => ['required', 'in:admin,operator_gudang,security,manager,lainnya'],
+            'role' => ['required', 'in:admin,operator_gudang,security,manager,penerima'],
             'gudang_id' => ['nullable', 'exists:gudangs,id'],
             'gudang_ids' => [Rule::requiredIf($request->role === 'manager'), 'array', 'min:1'],
             'gudang_ids.*' => ['integer', 'exists:gudangs,id'],

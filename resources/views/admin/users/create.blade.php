@@ -76,7 +76,7 @@
                                     <option value="operator_gudang" {{ old('role') == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
                                     <option value="manager" {{ old('role') == 'manager' ? 'selected' : '' }}>Manager</option>
                                     <option value="security" {{ old('role') == 'security' ? 'selected' : '' }}>Security</option>
-                                    <option value="lainnya" {{ old('role') == 'lainnya' ? 'selected' : '' }}>Divisi Lainnya</option>
+                                    <option value="penerima" {{ old('role') == 'penerima' ? 'selected' : '' }}>Penerima</option>
                                     <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Admin</option>
                                 </select>
                                 <x-input-error :messages="$errors->get('role')" />

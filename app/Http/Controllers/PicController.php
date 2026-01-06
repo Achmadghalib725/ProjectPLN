@@ -61,7 +61,7 @@ class PicController extends Controller
                 'username' => $username,
                 'email' => $username . '@egudang.local',
                 'password' => $request->password,
-                'role' => 'lainnya',
+                'role' => 'penerima',
                 'gudang_id' => $request->gudang_id,
                 'jabatan' => $userJabatan,
                 'no_hp' => $request->no_hp,

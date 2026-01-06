@@ -13,10 +13,10 @@ return new class extends Migration
         }
 
         if (DB::getDriverName() === 'mysql') {
-            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin','operator_gudang','security','manager','lainnya') DEFAULT 'operator_gudang'");
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin','operator_gudang','security','manager','penerima') DEFAULT 'operator_gudang'");
         } elseif (DB::getDriverName() === 'pgsql') {
             DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
-            DB::statement("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','operator_gudang','security','manager','lainnya'))");
+            DB::statement("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','operator_gudang','security','manager','penerima'))");
         }
     }
 

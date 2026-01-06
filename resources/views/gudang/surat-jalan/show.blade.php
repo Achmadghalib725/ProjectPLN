@@ -24,7 +24,7 @@
             @php
                 $isAdminView = $isAdmin ?? (Auth::user()?->role === 'admin');
                 $isManagerView = $isManager ?? (Auth::user()?->role === 'manager');
-                $isDivisiView = Auth::user()?->role === 'lainnya';
+                $isDivisiView = Auth::user()?->role === 'penerima';
                 $accessibleGudangIds = $accessibleGudangIds ?? (Auth::user()?->gudang_id ? [Auth::user()->gudang_id] : []);
                 $isGudangAsalView = !empty($accessibleGudangIds) && in_array($suratJalan->gudang_asal_id, $accessibleGudangIds, true);
                 $isGudangTujuanView = !empty($accessibleGudangIds) && in_array($suratJalan->gudang_tujuan_id, $accessibleGudangIds, true);

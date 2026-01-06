@@ -77,7 +77,7 @@
                     'security' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
                     ],
-                    'lainnya' => [
+                    'penerima' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
                         ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
                     ],

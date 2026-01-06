@@ -4,7 +4,7 @@
             @php
                 $isAdmin = Auth::user()->role === 'admin';
                 $isManager = Auth::user()->role === 'manager';
-                $isDivisi = Auth::user()->role === 'lainnya';
+                $isDivisi = Auth::user()->role === 'penerima';
                 $needsGudangSelection = ($selectionGudangs ?? collect())->count() > 0;
                 $hasGudangContext = !$needsGudangSelection || !empty($activeGudangId);
                 $displayGudangName = $activeGudangName ?? (Auth::user()->gudang?->nama ?? '');
