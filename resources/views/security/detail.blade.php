@@ -500,6 +500,43 @@
                                 {{ $statusLabel }}
                             </span>
                         </div>
+
+                        {{-- Linked Surat Jalan Section --}}
+                        @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman)
+                        <div class="col-span-2">
+                            <p class="text-xs sm:text-sm text-gray-500">Surat Pengembalian Terkait</p>
+                            @if($peminjaman->suratJalanKembali)
+                                <a href="{{ route('security.show', $peminjaman->suratJalanKembali->id) }}"
+                                   class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                    </svg>
+                                    <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
+                                    
+                                </a>
+                            @else
+                                <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>Belum ada surat pengembalian</span>
+                                </p>
+                            @endif
+                        </div>
+                        @elseif($suratJalan->tipe === 'PENGEMBALIAN' && $peminjaman && $peminjaman->suratJalanKirim)
+                        <div class="col-span-2">
+                            <p class="text-xs sm:text-sm text-gray-500">Surat Peminjaman Asal</p>
+                            <a href="{{ route('security.show', $peminjaman->suratJalanKirim->id) }}"
+                               class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                </svg>
+                                <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
+                                
+                            </a>
+                        </div>
+                        @endif
+
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Catatan</p>
                             <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->catatan ?? '-' }}</p>
@@ -513,6 +550,10 @@
                 <div class="p-4 sm:p-6 border-b border-gray-100">
                     <h3 class="text-base sm:text-lg font-bold text-gray-900">Daftar Item</h3>
                 </div>
+                @php
+                    $canCheckItems = in_array($suratJalan->status, ['DIKIRIM', 'DIKEMBALIKAN'], true);
+                    $hasSecurityCheck = $suratJalan->items->contains(fn ($row) => $row->checked_by_security !== null);
+                @endphp
 
                 {{-- Mobile Cards View --}}
                 <div class="sm:hidden divide-y divide-gray-100">
@@ -532,6 +573,28 @@
                             @if($item->keterangan)
                                 <p class="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg p-2">{{ $item->keterangan }}</p>
                             @endif
+                            @if($canCheckItems)
+                                <label class="mt-3 flex items-center gap-2 text-xs text-gray-600">
+                                        <input type="checkbox"
+                                               name="checked_items[]"
+                                               value="{{ $item->id }}"
+                                               form="security-approve-form"
+                                               data-security-check
+                                               data-security-check-group="mobile"
+                                               class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                    Barang sesuai
+                                </label>
+                            @elseif($hasSecurityCheck)
+                                <div class="mt-3 text-xs">
+                                    @if($item->checked_by_security === true)
+                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700 font-semibold">Sesuai</span>
+                                    @elseif($item->checked_by_security === false)
+                                        <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-red-700 font-semibold">Tidak Sesuai</span>
+                                    @else
+                                        <span class="text-gray-400 italic">Belum diperiksa</span>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     @empty
                         <div class="p-8 text-center text-gray-500 text-sm">
@@ -548,6 +611,11 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+                                @if($canCheckItems)
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Checklist</th>
+                                @elseif($hasSecurityCheck)
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemeriksaan</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -558,10 +626,34 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->jumlah }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->keterangan ?? '-' }}</td>
+                                    @if($canCheckItems)
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            <label class="inline-flex items-center gap-2">
+                                                <input type="checkbox"
+                                               name="checked_items[]"
+                                               value="{{ $item->id }}"
+                                               form="security-approve-form"
+                                               data-security-check
+                                               data-security-check-group="desktop"
+                                               class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                                <span class="text-xs">Sesuai</span>
+                                            </label>
+                                        </td>
+                                    @elseif($hasSecurityCheck)
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            @if($item->checked_by_security === true)
+                                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700 font-semibold">Sesuai</span>
+                                            @elseif($item->checked_by_security === false)
+                                                <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-red-700 font-semibold">Tidak Sesuai</span>
+                                            @else
+                                                <span class="text-gray-400 italic">Belum diperiksa</span>
+                                            @endif
+                                        </td>
+                                    @endif
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="px-6 py-8 text-center text-gray-500">
+                                    <td colspan="{{ $canCheckItems || $hasSecurityCheck ? 4 : 3 }}" class="px-6 py-8 text-center text-gray-500">
                                         Belum ada item.
                                     </td>
                                 </tr>
@@ -572,23 +664,44 @@
             </div>
 
             {{-- Action Buttons --}}
-            @if(in_array($suratJalan->status, ['DIKIRIM', 'DIKEMBALIKAN']))
-                @php
-                    $userGudangId = auth()->user()->gudang_id;
-                    $canApprove = $userGudangId === $suratJalan->gudang_tujuan_id;
-                @endphp
+            @php
+                $userGudangId = auth()->user()->gudang_id;
 
+                // Determine if this surat can be confirmed by security
+                // PEMINJAMAN with DIKIRIM → can be confirmed by gudang_tujuan (peminjam) security
+                // PEMINJAMAN with DIKEMBALIKAN → NO (action is on PENGEMBALIAN surat, not here)
+                // PENGEMBALIAN with DIKEMBALIKAN → can be confirmed by gudang_tujuan (pemilik) security
+                // TRANSFER with DIKIRIM → can be confirmed by gudang_tujuan security
+                $canShowConfirmation = false;
+                $expectedGudangId = null;
+
+                if ($suratJalan->status === 'DIKIRIM' && in_array($suratJalan->tipe, ['PEMINJAMAN', 'TRANSFER'])) {
+                    // For DIKIRIM status: security at gudang_tujuan can confirm
+                    $canShowConfirmation = true;
+                    $expectedGudangId = $suratJalan->gudang_tujuan_id;
+                } elseif ($suratJalan->status === 'DIKEMBALIKAN' && $suratJalan->tipe === 'PENGEMBALIAN') {
+                    // For PENGEMBALIAN with DIKEMBALIKAN: security at gudang_tujuan (gudang pemilik) can confirm
+                    $canShowConfirmation = true;
+                    $expectedGudangId = $suratJalan->gudang_tujuan_id;
+                }
+                // Note: PEMINJAMAN with DIKEMBALIKAN should NOT show confirmation button
+                // because the action should be done on the PENGEMBALIAN surat
+
+                $canApprove = $canShowConfirmation && $userGudangId === $expectedGudangId;
+            @endphp
+            @if($canShowConfirmation)
                 @if($canApprove)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-4">Konfirmasi Pemeriksaan</h3>
                         <div class="flex flex-col gap-3 sm:flex-row sm:gap-4">
                             {{-- Terima Button --}}
-                            <form action="{{ route('security.terima', $suratJalan->id) }}" method="POST" class="flex-1"
+                            <form id="security-approve-form" action="{{ route('security.terima', $suratJalan->id) }}" method="POST" class="flex-1"
                                   x-data="{ submitting: false }"
                                   @submit="submitting = true">
                                 @csrf
                                 <button type="submit"
+                                        id="security-approve-button"
                                         :disabled="submitting"
                                         class="w-full px-4 sm:px-6 py-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-bold text-base sm:text-lg rounded-xl shadow-sm transition duration-150 flex items-center justify-center gap-2 sm:gap-3 active:scale-[0.98]">
                                     <svg x-show="!submitting" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -669,18 +782,58 @@
                 </div>
                 @else
                 {{-- Security tidak bisa approve karena bukan gudang tujuannya --}}
-                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
-                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-yellow-100 text-yellow-800 rounded-xl">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6 mt-4 sm:mt-6">
+                    <div class="flex items-start sm:items-center gap-3 text-yellow-800">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5 sm:mt-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                         </svg>
-                        <span class="font-semibold text-sm sm:text-base text-center">
+                        <span class="font-semibold text-sm sm:text-base">
                             Anda tidak dapat mengkonfirmasi surat jalan ini karena gudang tujuan bukan gudang Anda.
-                            <br class="sm:hidden"><span class="text-yellow-600">(Gudang Tujuan: {{ $suratJalan->gudangTujuan->nama ?? '-' }})</span>
+                            <span class="text-yellow-600">(Gudang Tujuan: {{ $suratJalan->gudangTujuan->nama ?? '-' }})</span>
                         </span>
                     </div>
                 </div>
                 @endif
+            @elseif($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DIKEMBALIKAN' && $peminjaman && $peminjaman->suratJalanKembali)
+                {{-- PEMINJAMAN dengan status DIKEMBALIKAN - arahkan ke surat pengembalian --}}
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6 mt-4 sm:mt-6">
+                    <div class="flex items-start sm:items-center gap-3 text-blue-800">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5 sm:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="font-semibold text-sm sm:text-base">
+                            Barang sedang dalam proses pengembalian - Konfirmasi dilakukan pada
+                            <a href="{{ route('security.show', $peminjaman->suratJalanKembali->id) }}"
+                               class="underline hover:text-blue-900">Surat Pengembalian</a>
+                        </span>
+                    </div>
+                </div>
+            @endif
+
+            @if($canCheckItems && $suratJalan->items->count() > 0)
+                <script>
+                    document.addEventListener('DOMContentLoaded', () => {
+                        const checks = Array.from(document.querySelectorAll('[data-security-check]'));
+                        const button = document.getElementById('security-approve-button');
+                        if (!button || checks.length === 0) return;
+
+                        const updateButton = () => {
+                            const currentGroup = window.matchMedia('(min-width: 640px)').matches ? 'desktop' : 'mobile';
+                            const scopedChecks = checks.filter((input) => input.dataset.securityCheckGroup === currentGroup);
+                            const checkedCount = scopedChecks.filter((input) => input.checked).length;
+                            button.disabled = scopedChecks.length === 0 || checkedCount !== scopedChecks.length;
+                            if (button.disabled) {
+                                button.setAttribute('title', 'Semua item harus ditandai sesuai sebelum konfirmasi.');
+                            } else {
+                                button.removeAttribute('title');
+                            }
+                        };
+
+                        checks.forEach((input) => input.addEventListener('change', updateButton));
+                        window.addEventListener('resize', updateButton);
+                        updateButton();
+                    });
+                </script>
             @endif
         </div>
     </div>
@@ -698,7 +851,8 @@
                     return;
                 }
                 try {
-                    const url = new URL(window.location.href);
+                    // Always use GET route for refresh
+                    const url = new URL(`{{ route('security.show', $suratJalan->id) }}`);
                     url.searchParams.set('no_cache', '1');
                     const response = await fetch(url.toString(), {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },

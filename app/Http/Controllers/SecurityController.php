@@ -6,10 +6,12 @@ use App\Models\ItemStock;
 use App\Models\Peminjaman;
 use App\Models\StockMovement;
 use App\Models\SuratJalan;
+use App\Models\SuratJalanItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 
 class SecurityController extends Controller
 {
@@ -144,9 +146,26 @@ class SecurityController extends Controller
     {
         $suratJalan = SuratJalan::with(['items.item', 'gudangAsal'])->findOrFail($id);
 
+        $request->validate([
+            'checked_items' => ['array'],
+            'checked_items.*' => [
+                'integer',
+                Rule::exists('surat_jalan_items', 'id')->where(function ($query) use ($suratJalan) {
+                    $query->where('surat_jalan_id', $suratJalan->id);
+                }),
+            ],
+        ]);
+
         // Check if security's gudang matches the destination gudang
         $user = Auth::user();
-        if ($user->gudang_id !== $suratJalan->gudang_tujuan_id) {
+        $expectedGudangId = $suratJalan->gudang_tujuan_id;
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            if ($peminjaman?->gudang_pemilik_id) {
+                $expectedGudangId = $peminjaman->gudang_pemilik_id;
+            }
+        }
+        if ($user->gudang_id !== $expectedGudangId) {
             return back()->with('error', 'Anda tidak memiliki akses untuk mengkonfirmasi surat jalan ini. Surat jalan ini ditujukan ke gudang lain.');
         }
 
@@ -156,7 +175,30 @@ class SecurityController extends Controller
             return back()->with('error', 'Surat Jalan ini tidak dalam status yang dapat diperiksa. Status saat ini: ' . $suratJalan->status);
         }
 
-        DB::transaction(function () use ($suratJalan) {
+        $checkedIds = collect($request->input('checked_items', []))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $totalItems = $suratJalan->items->count();
+        if ($totalItems > 0 && count($checkedIds) !== $totalItems) {
+            return back()->with('error', 'Semua item harus ditandai sesuai sebelum konfirmasi pemeriksaan.');
+        }
+        $checkedLookup = array_flip($checkedIds);
+        $checkerId = Auth::id();
+        $checkedAt = now();
+
+        DB::transaction(function () use ($suratJalan, $checkedLookup, $checkerId, $checkedAt) {
+            SuratJalanItem::where('surat_jalan_id', $suratJalan->id)
+                ->get()
+                ->each(function ($item) use ($checkedLookup, $checkerId, $checkedAt) {
+                    $item->update([
+                        'checked_by_security' => array_key_exists($item->id, $checkedLookup),
+                        'checked_by_user_id' => $checkerId,
+                        'checked_at' => $checkedAt,
+                    ]);
+                });
+
             $suratJalan->update([
                 'status' => 'DIPERIKSA',
             ]);
@@ -210,7 +252,14 @@ class SecurityController extends Controller
 
         // Check if security's gudang matches the destination gudang
         $user = Auth::user();
-        if ($user->gudang_id !== $suratJalan->gudang_tujuan_id) {
+        $expectedGudangId = $suratJalan->gudang_tujuan_id;
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            if ($peminjaman?->gudang_pemilik_id) {
+                $expectedGudangId = $peminjaman->gudang_pemilik_id;
+            }
+        }
+        if ($user->gudang_id !== $expectedGudangId) {
             return back()->with('error', 'Anda tidak memiliki akses untuk menolak surat jalan ini. Surat jalan ini ditujukan ke gudang lain.');
         }
 

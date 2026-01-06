@@ -1,27 +1,49 @@
 <x-app-layout>
-    <div class="py-4 sm:py-8 lg:py-12"
+        <div class="py-4 sm:py-8 lg:py-12"
          x-data="{
             showModal: {{ $errors->any() ? 'true' : 'false' }},
+            showDetail: false,
             isEdit: {{ old('_method') === 'PUT' ? 'true' : 'false' }},
             actionUrl: '{{ old('_method') === 'PUT' ? (old('id') ? url('admin/items').'/'.old('id') : '') : route('admin.items.store') }}',
             form: {
                 id: @json(old('id')),
+                kode: @json(old('kode')),
                 nama: @json(old('nama')),
                 kategori: @json(old('kategori')),
                 satuan: @json(old('satuan')),
                 deskripsi: @json(old('deskripsi')),
             },
+            detail: {
+                kode: '',
+                nama: '',
+                kategori: '',
+                satuan: '',
+                deskripsi: '',
+            },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', nama: '', kategori: '', satuan: '', deskripsi: '' };
+                this.form = { id: '', kode: '', nama: '', kategori: '', satuan: '', deskripsi: '' };
                 this.actionUrl = '{{ route('admin.items.store') }}';
+                this.showDetail = false;
                 this.showModal = true;
             },
             openEdit(item) {
                 this.isEdit = true;
                 this.form = { ...item };
                 this.actionUrl = '{{ url('admin/items') }}/' + item.id;
+                this.showDetail = false;
                 this.showModal = true;
+            },
+            openDetail(item) {
+                this.detail = {
+                    kode: item.kode || '-',
+                    nama: item.nama || '-',
+                    kategori: item.kategori || '-',
+                    satuan: item.satuan || '-',
+                    deskripsi: item.deskripsi || '',
+                };
+                this.showModal = false;
+                this.showDetail = true;
             }
          }"
     >
@@ -171,19 +193,28 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <div class="flex items-center justify-center space-x-3 opacity-80 group-hover:opacity-100 transition-opacity">
+                                        <button @click='openDetail(@json($item))' class="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-full transition-all duration-200" title="Lihat Detail">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                            </svg>
+                                        </button>
                                         <button @click='openEdit(@json($item))' class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit Barang">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                         </button>
-                                        <form action="{{ route('admin.items.destroy', $item->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus barang {{ $item->nama }}?');">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-all duration-200" title="Hapus Barang">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                </svg>
-                                            </button>
-                                        </form>
+                                        <button type="button"
+                                            @click="$dispatch('open-delete-modal', {
+                                                title: 'Hapus Barang',
+                                                message: 'Apakah Anda yakin ingin menghapus barang {{ $item->nama }}? Data tidak dapat dikembalikan.',
+                                                action: '{{ route('admin.items.destroy', $item->id) }}'
+                                            })"
+                                            class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-all duration-200" title="Hapus Barang">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -246,6 +277,14 @@
                                 @error('nama') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
 
+                            {{-- Kode Item (Opsional) --}}
+                            <div x-show="!isEdit">
+                                <label class="block text-sm font-medium text-gray-700">Kode Item (Opsional)</label>
+                                <input type="text" name="kode" x-model="form.kode" :disabled="isEdit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Contoh: KBL-001">
+                                <p class="text-[10px] text-gray-400 italic mt-1">Jika tidak diisi, kode akan dibuat otomatis oleh sistem.</p>
+                                @error('kode') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
                             {{-- Kategori --}}
                             <div x-data="{
                                 open: false,
@@ -262,7 +301,7 @@
                                 }
                             }" @update-kategori.window="form.kategori = $event.detail">
                                 <label class="block text-sm font-medium text-gray-700">Kategori</label>
-                                <div class="relative">
+                                <div class="relative" @click.outside="open = false">
                                     <input type="text"
                                            name="kategori"
                                            x-model="search"
@@ -281,7 +320,6 @@
                                     </button>
                                     <div x-show="open && filtered.length > 0"
                                          x-transition
-                                         @click.outside="open = false"
                                          class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                         <template x-for="option in filtered" :key="option">
                                             <div @click="select(option)"
@@ -309,7 +347,7 @@
                                 }
                             }" @update-satuan.window="form.satuan = $event.detail">
                                 <label class="block text-sm font-medium text-gray-700">Satuan</label>
-                                <div class="relative">
+                                <div class="relative" @click.outside="open = false">
                                     <input type="text"
                                            name="satuan"
                                            x-model="search"
@@ -328,7 +366,6 @@
                                     </button>
                                     <div x-show="open && filtered.length > 0"
                                          x-transition
-                                         @click.outside="open = false"
                                          class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                         <template x-for="option in filtered" :key="option">
                                             <div @click="select(option)"
@@ -356,5 +393,67 @@
                 </div>
             </div>
         </div>
+
+        {{-- Modal Detail Item --}}
+        <div x-show="showDetail" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="detail-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                {{-- Backdrop --}}
+                <div x-show="showDetail"
+                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                     class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showDetail = false" aria-hidden="true"></div>
+
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                {{-- Modal Panel --}}
+                <div x-show="showDetail"
+                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="detail-title">Detail Barang</h3>
+                            <button type="button" class="text-gray-400 hover:text-gray-600" @click="showDetail = false">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-500">Kode Item</p>
+                                <p class="font-medium text-gray-900" x-text="detail.kode"></p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">Nama Item</p>
+                                <p class="font-medium text-gray-900" x-text="detail.nama"></p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">Kategori</p>
+                                <p class="font-medium text-gray-900" x-text="detail.kategori"></p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">Satuan</p>
+                                <p class="font-medium text-gray-900" x-text="detail.satuan"></p>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-4 border-t border-gray-200">
+                            <p class="text-gray-500 text-sm mb-1">Keterangan</p>
+                            <p class="text-gray-900 text-sm" x-text="detail.deskripsi || 'Belum ada keterangan.'"></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="button" @click="showDetail = false" class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:ml-3 sm:w-auto sm:text-sm">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    {{-- Delete Confirmation Modal --}}
+    <x-confirm-delete-modal />
 </x-app-layout>

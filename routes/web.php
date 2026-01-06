@@ -119,6 +119,12 @@ Route::get('/dashboard', function () {
         ],
         'managerRecent' => collect(),
         'managerGudangs' => $managerGudangs,
+        'divisiStats' => [
+            'total' => 0,
+            'menunggu' => 0,
+            'diterima' => 0,
+        ],
+        'divisiRecent' => collect(),
     ];
 
     if ($user->role === 'manager' && Schema::hasTable('surat_jalans') && !empty($managerGudangIds)) {
@@ -133,6 +139,27 @@ Route::get('/dashboard', function () {
             'selesai' => (clone $managerQuery)->where('status', 'SELESAI')->count(),
         ];
         $data['managerRecent'] = $managerQuery->orderByDesc('tanggal')->limit(6)->get();
+    }
+
+    if ($user->role === 'penerima' && $gudangId && Schema::hasTable('surat_jalans') && Schema::hasTable('pics')) {
+        $divisi = trim((string) ($user->jabatan ?? ''));
+        if ($divisi !== '') {
+            $divisiLower = strtolower($divisi);
+            $divisiQuery = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan'])
+                ->where('gudang_tujuan_id', $gudangId)
+                ->whereNotIn('status', ['DRAFT', 'SELESAI', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'])
+                ->whereNotNull('pic_tujuan_id')
+                ->whereHas('picTujuan', function ($query) use ($divisiLower) {
+                    $query->whereRaw('LOWER(jabatan) = ?', [$divisiLower]);
+                });
+
+            $data['divisiStats'] = [
+                'total' => (clone $divisiQuery)->count(),
+                'menunggu' => (clone $divisiQuery)->where('status', 'DIKIRIM')->count(),
+                'diterima' => (clone $divisiQuery)->where('status', 'DITERIMA')->count(),
+            ];
+            $data['divisiRecent'] = $divisiQuery->orderByDesc('tanggal')->limit(6)->get();
+        }
     }
 
     // Mengirim variabel $data ke view dashboard
@@ -160,24 +187,27 @@ Route::middleware('auth')->group(function () {
         Route::get('/riwayat', [StokController::class, 'riwayat'])->name('riwayat');
         Route::resource('stok', StokController::class);
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
-        Route::get('/surat-jalan/index', [SuratJalanController::class, 'index'])->name('surat-jalan.index');
         Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
         Route::post('/surat-jalan/pengembalian', [SuratJalanController::class, 'storeReturn'])->name('surat-jalan.return');
-        Route::get('/surat-jalan/{id}', [SuratJalanController::class, 'show'])->whereNumber('id')->name('surat-jalan.show');
         Route::get('/surat-jalan/{id}/edit', [SuratJalanController::class, 'edit'])->whereNumber('id')->name('surat-jalan.edit');
         Route::patch('/surat-jalan/{id}', [SuratJalanController::class, 'update'])->whereNumber('id')->name('surat-jalan.update');
         Route::post('/surat-jalan/{id}/request-approval', [SuratJalanController::class, 'requestApproval'])->whereNumber('id')->name('surat-jalan.request-approval');
         Route::post('/surat-jalan/{id}/approve', [SuratJalanController::class, 'approve'])->whereNumber('id')->name('surat-jalan.approve');
         Route::post('/surat-jalan/{id}/reject-approval', [SuratJalanController::class, 'rejectApproval'])->whereNumber('id')->name('surat-jalan.reject-approval');
         Route::delete('/surat-jalan/{id}', [SuratJalanController::class, 'destroy'])->whereNumber('id')->name('surat-jalan.destroy');
-        Route::get('/surat-jalan/{id}/pdf', [SuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
-        Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
         Route::post('/surat-jalan/preview', [SuratJalanController::class, 'previewDraft'])->name('surat-jalan.preview-draft');
-        Route::post('/surat-jalan/{id}/terima', [SuratJalanController::class, 'terima'])->whereNumber('id')->name('surat-jalan.terima');
         Route::post('/surat-jalan/{id}/confirm-return', [SuratJalanController::class, 'confirmReturnExternal'])->whereNumber('id')->name('surat-jalan.confirm-return');
         Route::post('/surat-jalan/{id}/finalize-rejected', [SuratJalanController::class, 'finalizeRejected'])->whereNumber('id')->name('surat-jalan.finalize-rejected');
         Route::delete('/surat-jalan/attachment/{id}', [SuratJalanController::class, 'deleteAttachment'])->whereNumber('id')->name('surat-jalan.delete-attachment');
         Route::get('/surat-jalan/export-excel', [SuratJalanController::class, 'exportExcel'])->name('surat-jalan.export-excel');
+    });
+
+    Route::middleware('role:operator_gudang,penerima')->prefix('gudang')->name('gudang.')->group(function () {
+        Route::get('/surat-jalan/index', [SuratJalanController::class, 'index'])->name('surat-jalan.index');
+        Route::get('/surat-jalan/{id}', [SuratJalanController::class, 'show'])->whereNumber('id')->name('surat-jalan.show');
+        Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
+        Route::get('/surat-jalan/{id}/pdf', [SuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
+        Route::post('/surat-jalan/{id}/terima', [SuratJalanController::class, 'terima'])->whereNumber('id')->name('surat-jalan.terima');
     });
 
     Route::middleware('role:manager')->prefix('manager')->name('manager.')->group(function () {

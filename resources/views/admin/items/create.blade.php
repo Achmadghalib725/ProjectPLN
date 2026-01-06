@@ -70,6 +70,14 @@
                                 <x-input-error :messages="$errors->get('nama')" />
                             </div>
 
+                            {{-- Kode Item (Opsional) --}}
+                            <div class="space-y-2">
+                                <x-input-label for="kode" :value="'Kode Item (Opsional)'" class="text-gray-700 font-semibold" />
+                                <x-text-input id="kode" name="kode" type="text" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl transition-all" :value="old('kode')" placeholder="Contoh: KBL-001" />
+                                <p class="text-[10px] text-gray-400 italic">Jika tidak diisi, kode akan dibuat otomatis oleh sistem sesuai kategori barang.</p>
+                                <x-input-error :messages="$errors->get('kode')" />
+                            </div>
+
                             {{-- Kategori (Combobox) --}}
                             <div class="space-y-2" x-data="{
                                 open: false,
@@ -85,7 +93,7 @@
                                 }
                             }">
                                 <x-input-label for="kategori" :value="'Kategori *'" class="text-gray-700 font-semibold" />
-                                <div class="relative">
+                                <div class="relative" @click.outside="open = false">
                                     <input type="text"
                                            id="kategori"
                                            name="kategori"
@@ -106,7 +114,6 @@
                                     </button>
                                     <div x-show="open && filtered.length > 0"
                                          x-transition
-                                         @click.outside="open = false"
                                          class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                                         <template x-for="option in filtered" :key="option">
                                             <div @click="select(option)"
@@ -134,7 +141,7 @@
                                 }
                             }">
                                 <x-input-label for="satuan" :value="'Satuan *'" class="text-gray-700 font-semibold" />
-                                <div class="relative">
+                                <div class="relative" @click.outside="open = false">
                                     <input type="text"
                                            id="satuan"
                                            name="satuan"
@@ -155,7 +162,6 @@
                                     </button>
                                     <div x-show="open && filtered.length > 0"
                                          x-transition
-                                         @click.outside="open = false"
                                          class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                                         <template x-for="option in filtered" :key="option">
                                             <div @click="select(option)"
