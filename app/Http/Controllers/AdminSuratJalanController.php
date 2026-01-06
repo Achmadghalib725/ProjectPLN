@@ -868,6 +868,12 @@ class AdminSuratJalanController extends Controller
                 ->with('error', 'Hanya surat jalan Draft atau Ditolak Persetujuan yang bisa diedit.');
         }
 
+        $pendingDeleteCount = collect($request->input('delete_attachments', []))
+            ->filter()
+            ->unique()
+            ->count();
+        $maxAttachments = max(0, 3 - $suratJalan->attachments()->count() + $pendingDeleteCount);
+
         if ($suratJalan->tipe === 'PENGEMBALIAN') {
             $validated = $request->validate([
                 'pic_tujuan_id' => [
@@ -880,6 +886,12 @@ class AdminSuratJalanController extends Controller
                 'nama_driver' => ['nullable', 'string', 'max:100'],
                 'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
                 'nomor_plat' => ['nullable', 'string', 'max:50'],
+                'delete_attachments' => ['nullable', 'array'],
+                'delete_attachments.*' => [
+                    'integer',
+                    Rule::exists('surat_jalan_attachments', 'id')
+                        ->where(fn ($query) => $query->where('surat_jalan_id', $suratJalan->id)),
+                ],
             ], [
                 'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
@@ -896,6 +908,8 @@ class AdminSuratJalanController extends Controller
                 'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
                 'nomor_plat' => $validated['nomor_plat'] ?? null,
             ]);
+
+            $this->deleteAttachmentsByIds($suratJalan, $request->input('delete_attachments', []));
 
             $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $oldTujuanId, $suratJalan->gudang_tujuan_id]);
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
@@ -984,7 +998,13 @@ class AdminSuratJalanController extends Controller
             'items.*.jumlah' => ['required', 'integer', 'min:1'],
             'items.*.keterangan' => ['nullable', 'string'],
             'tipe' => ['required', Rule::in(['TRANSFER', 'PEMINJAMAN'])],
-            'attachments' => ['nullable', 'array', 'max:' . (3 - $suratJalan->attachments()->count())],
+            'delete_attachments' => ['nullable', 'array'],
+            'delete_attachments.*' => [
+                'integer',
+                Rule::exists('surat_jalan_attachments', 'id')
+                    ->where(fn ($query) => $query->where('surat_jalan_id', $suratJalan->id)),
+            ],
+            'attachments' => ['nullable', 'array', 'max:' . $maxAttachments],
             'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], [
             'items.*.item_id.exists' => 'Item harus berasal dari stok gudang Anda.',
@@ -1067,6 +1087,8 @@ class AdminSuratJalanController extends Controller
                 }
             }
         });
+
+        $this->deleteAttachmentsByIds($suratJalan, $request->input('delete_attachments', []));
 
         // Handle attachment upload
         if ($request->hasFile('attachments')) {
@@ -2451,6 +2473,30 @@ class AdminSuratJalanController extends Controller
                 'file_path' => $newFileName,
                 'file_name' => $attachment->file_name,
             ]);
+        }
+    }
+
+    private function deleteAttachmentsByIds(SuratJalan $suratJalan, array $attachmentIds): void
+    {
+        $ids = collect($attachmentIds)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $attachments = SuratJalanAttachment::where('surat_jalan_id', $suratJalan->id)
+            ->whereIn('id', $ids)
+            ->get();
+
+        foreach ($attachments as $attachment) {
+            if (Storage::disk('public')->exists($attachment->file_path)) {
+                Storage::disk('public')->delete($attachment->file_path);
+            }
+            $attachment->delete();
         }
     }
 

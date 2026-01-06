@@ -1225,6 +1225,7 @@
                            name="attachments[]"
                            multiple
                            accept="image/jpeg,image/jpg,image/png"
+                           capture="environment"
                            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
                     <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG.</p>
                     <p class="text-xs text-amber-600 mt-1">

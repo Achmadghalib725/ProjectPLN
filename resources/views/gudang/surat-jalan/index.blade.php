@@ -1051,17 +1051,60 @@
                 </div>
 
                 {{-- Lampiran Gambar --}}
-                <div class="border rounded-lg p-4 bg-gray-50">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Lampiran Gambar @if($isAdmin)<span class="text-red-500">*</span>@endif <span class="text-gray-400 font-normal">(Maks 3 gambar, maks 10MB/gambar)</span>
-                    </label>
-                    <input type="file"
-                           name="attachments[]"
-                           multiple
-                           accept="image/jpeg,image/jpg,image/png"
-                           @if($isAdmin) required @endif
-                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG. @if($isAdmin)Lampiran gambar wajib diupload.@else Gambar wajib diupload sebelum mengirim surat jalan.@endif</p>
+                <div class="border rounded-xl p-4 bg-gray-50" data-camera-capture data-target-input="attachments-create-gudang" data-max-files="3">
+                    <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">
+                                Lampiran Gambar @if($isAdmin)<span class="text-red-500">*</span>@endif
+                            </p>
+                            <p class="text-xs text-gray-500">Maks 3 gambar, maks 10MB/gambar.</p>
+                        </div>
+                        <p class="text-xs text-gray-500" data-camera-status>Dipilih: 0/3</p>
+                    </div>
+                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                        <div class="space-y-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button"
+                                        data-camera-open
+                                        class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light">
+                                    Buka Kamera
+                                </button>
+                                <button type="button"
+                                        data-camera-capture-btn
+                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
+                                    Ambil Foto
+                                </button>
+                                <button type="button"
+                                        data-camera-close
+                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                    Tutup Kamera
+                                </button>
+                                <span class="text-xs text-gray-500">atau pilih dari galeri</span>
+                            </div>
+                            <div data-camera-panel class="hidden border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <video class="w-full h-48 sm:h-56 object-cover bg-black" playsinline muted></video>
+                                <canvas class="hidden"></canvas>
+                            </div>
+                            <input type="file"
+                                   id="attachments-create-gudang"
+                                   name="attachments[]"
+                                   multiple
+                                   accept="image/jpeg,image/jpg,image/png"
+                                   capture="environment"
+                                   @if($isAdmin) required @endif
+                                   class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                            <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                <span>Format: JPG, JPEG, PNG.</span>
+                                <span class="hidden sm:inline">|</span>
+                                <span>@if($isAdmin)Lampiran wajib diupload.@else Wajib sebelum mengirim surat jalan.@endif</span>
+                            </div>
+                            <p class="text-xs text-red-600 hidden" data-camera-error></p>
+                        </div>
+                        <div class="space-y-2">
+                            <p class="text-xs font-semibold text-gray-600">Preview</p>
+                            <div class="grid grid-cols-3 gap-2" data-camera-preview></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-end">
@@ -1282,17 +1325,54 @@
                 </div>
 
                 {{-- Lampiran Gambar --}}
-                <div class="border rounded-lg p-4 bg-gray-50">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Lampiran Gambar <span class="text-gray-400 font-normal">(Opsional, Maks 3 gambar, maks 10MB/gambar)</span>
-                    </label>
-                    <input type="file"
-                           name="attachments[]"
-                           multiple
-                           accept="image/jpeg,image/jpg,image/png"
-                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                    <p class="text-xs text-gray-500 mt-2">Format: JPG, JPEG, PNG.</p>
-                    <p class="text-xs text-amber-600 mt-1">
+                <div class="border rounded-xl p-4 bg-gray-50" data-camera-capture data-target-input="attachments-return-gudang" data-max-files="3">
+                    <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Lampiran Gambar</p>
+                            <p class="text-xs text-gray-500">Opsional, maks 3 gambar, maks 10MB/gambar.</p>
+                        </div>
+                        <p class="text-xs text-gray-500" data-camera-status>Dipilih: 0/3</p>
+                    </div>
+                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                        <div class="space-y-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button"
+                                        data-camera-open
+                                        class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light">
+                                    Buka Kamera
+                                </button>
+                                <button type="button"
+                                        data-camera-capture-btn
+                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
+                                    Ambil Foto
+                                </button>
+                                <button type="button"
+                                        data-camera-close
+                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                    Tutup Kamera
+                                </button>
+                                <span class="text-xs text-gray-500">atau pilih dari galeri</span>
+                            </div>
+                            <div data-camera-panel class="hidden border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <video class="w-full h-48 sm:h-56 object-cover bg-black" playsinline muted></video>
+                                <canvas class="hidden"></canvas>
+                            </div>
+                            <input type="file"
+                                   id="attachments-return-gudang"
+                                   name="attachments[]"
+                                   multiple
+                                   accept="image/jpeg,image/jpg,image/png"
+                                   capture="environment"
+                                   class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                            <p class="text-xs text-gray-500">Format: JPG, JPEG, PNG.</p>
+                            <p class="text-xs text-red-600 hidden" data-camera-error></p>
+                        </div>
+                        <div class="space-y-2">
+                            <p class="text-xs font-semibold text-gray-600">Preview</p>
+                            <div class="grid grid-cols-3 gap-2" data-camera-preview></div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-amber-600 mt-2">
                         <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
@@ -1447,7 +1527,239 @@
         </div>
     </x-modal>
     <script>
+        function setupCameraCapture(wrapper) {
+            const inputId = wrapper.dataset.targetInput;
+            const input = document.getElementById(inputId);
+            const maxFiles = Number(wrapper.dataset.maxFiles || 3);
+            const openBtn = wrapper.querySelector('[data-camera-open]');
+            const captureBtn = wrapper.querySelector('[data-camera-capture-btn]');
+            const closeBtn = wrapper.querySelector('[data-camera-close]');
+            const panel = wrapper.querySelector('[data-camera-panel]');
+            const video = wrapper.querySelector('video');
+            const canvas = wrapper.querySelector('canvas');
+            const error = wrapper.querySelector('[data-camera-error]');
+            const status = wrapper.querySelector('[data-camera-status]');
+            const preview = wrapper.querySelector('[data-camera-preview]');
+
+            const setError = (message) => {
+                if (!error) {
+                    return;
+                }
+                if (message) {
+                    error.textContent = message;
+                    error.classList.remove('hidden');
+                } else {
+                    error.textContent = '';
+                    error.classList.add('hidden');
+                }
+            };
+
+            const updateStatus = () => {
+                if (!status) {
+                    return;
+                }
+                const count = input?.files?.length || 0;
+                status.textContent = `Dipilih: ${count}/${maxFiles}`;
+            };
+
+            const clearPreview = () => {
+                if (wrapper._objectUrls) {
+                    wrapper._objectUrls.forEach((url) => URL.revokeObjectURL(url));
+                }
+                wrapper._objectUrls = [];
+                if (preview) {
+                    preview.innerHTML = '';
+                }
+            };
+
+            const removeFile = (index) => {
+                if (!input) {
+                    return;
+                }
+                const files = Array.from(input.files || []);
+                files.splice(index, 1);
+                const dataTransfer = new DataTransfer();
+                files.forEach((file) => dataTransfer.items.add(file));
+                input.files = dataTransfer.files;
+                renderPreview();
+            };
+
+            const renderPreview = () => {
+                updateStatus();
+                if (!preview) {
+                    return;
+                }
+                clearPreview();
+                const files = Array.from(input?.files || []);
+                if (files.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'col-span-3 text-xs text-gray-400';
+                    empty.textContent = 'Belum ada foto.';
+                    preview.appendChild(empty);
+                    return;
+                }
+                files.forEach((file, index) => {
+                    const url = URL.createObjectURL(file);
+                    wrapper._objectUrls.push(url);
+
+                    const item = document.createElement('div');
+                    item.className = 'relative';
+
+                    const img = document.createElement('img');
+                    img.className = 'w-full h-24 object-cover rounded border border-gray-200';
+                    img.src = url;
+                    img.alt = file.name;
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'absolute top-1 right-1 text-[10px] px-1.5 py-0.5 bg-black bg-opacity-60 text-white rounded';
+                    removeBtn.textContent = 'Hapus';
+                    removeBtn.addEventListener('click', () => removeFile(index));
+
+                    const name = document.createElement('p');
+                    name.className = 'mt-1 text-[10px] text-gray-500 truncate';
+                    name.textContent = file.name;
+
+                    item.appendChild(img);
+                    item.appendChild(removeBtn);
+                    item.appendChild(name);
+                    preview.appendChild(item);
+                });
+            };
+
+            const normalizeFiles = () => {
+                if (!input) {
+                    return;
+                }
+                setError('');
+                const files = Array.from(input.files || []);
+                if (files.length > maxFiles) {
+                    setError(`Maksimal ${maxFiles} gambar.`);
+                }
+                const limited = files.slice(0, maxFiles);
+                const dataTransfer = new DataTransfer();
+                limited.forEach((file) => dataTransfer.items.add(file));
+                input.files = dataTransfer.files;
+                renderPreview();
+            };
+
+            const stopCamera = () => {
+                if (wrapper._cameraStream) {
+                    wrapper._cameraStream.getTracks().forEach((track) => track.stop());
+                    wrapper._cameraStream = null;
+                }
+                if (video) {
+                    video.srcObject = null;
+                }
+                if (panel) {
+                    panel.classList.add('hidden');
+                }
+                if (openBtn) {
+                    openBtn.classList.remove('hidden');
+                }
+                if (captureBtn) {
+                    captureBtn.classList.add('hidden');
+                }
+                if (closeBtn) {
+                    closeBtn.classList.add('hidden');
+                }
+            };
+
+            const openCamera = async () => {
+                setError('');
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    setError('Browser tidak mendukung akses kamera.');
+                    return;
+                }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' },
+                        audio: false,
+                    });
+                    wrapper._cameraStream = stream;
+                    if (video) {
+                        video.srcObject = stream;
+                        await video.play();
+                    }
+                    if (panel) {
+                        panel.classList.remove('hidden');
+                    }
+                    if (openBtn) {
+                        openBtn.classList.add('hidden');
+                    }
+                    if (captureBtn) {
+                        captureBtn.classList.remove('hidden');
+                    }
+                    if (closeBtn) {
+                        closeBtn.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    setError('Tidak bisa mengakses kamera. Pastikan izin kamera diaktifkan.');
+                }
+            };
+
+            const capturePhoto = () => {
+                setError('');
+                if (!input) {
+                    setError('Input lampiran tidak ditemukan.');
+                    return;
+                }
+                if (!video || !canvas) {
+                    setError('Kamera belum siap.');
+                    return;
+                }
+                const existingCount = input.files?.length || 0;
+                if (existingCount >= maxFiles) {
+                    setError(`Maksimal ${maxFiles} gambar.`);
+                    return;
+                }
+                const width = video.videoWidth || 1280;
+                const height = video.videoHeight || 720;
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    setError('Gagal mengambil gambar.');
+                    return;
+                }
+                ctx.drawImage(video, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        setError('Gagal menyimpan gambar.');
+                        return;
+                    }
+                    const fileName = `camera-${Date.now()}.jpg`;
+                    const file = new File([blob], fileName, { type: 'image/jpeg' });
+                    const dataTransfer = new DataTransfer();
+                    Array.from(input.files || []).forEach((existing) => dataTransfer.items.add(existing));
+                    dataTransfer.items.add(file);
+                    input.files = dataTransfer.files;
+                    renderPreview();
+                }, 'image/jpeg', 0.9);
+            };
+
+            if (input) {
+                input.addEventListener('change', normalizeFiles);
+            }
+            if (openBtn) {
+                openBtn.addEventListener('click', openCamera);
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', stopCamera);
+            }
+            if (captureBtn) {
+                captureBtn.addEventListener('click', capturePhoto);
+            }
+            wrapper._stopCamera = stopCamera;
+            renderPreview();
+        }
+
+        function initCameraCaptures() {
+            document.querySelectorAll('[data-camera-capture]').forEach(setupCameraCapture);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            initCameraCaptures();
             if (!window.Echo) {
                 return;
             }
@@ -1523,6 +1835,14 @@
             gudangIds.forEach((gudangId) => {
                 window.Echo.channel(`surat-jalan.gudang.${gudangId}`)
                     .listen('.SuratJalanStatusUpdated', updateStatusBadges);
+            });
+        });
+
+        window.addEventListener('close-modal', () => {
+            document.querySelectorAll('[data-camera-capture]').forEach((wrapper) => {
+                if (wrapper._stopCamera) {
+                    wrapper._stopCamera();
+                }
             });
         });
     </script>

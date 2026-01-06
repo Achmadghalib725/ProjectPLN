@@ -396,35 +396,87 @@
                             @if($suratJalan->attachments->count() > 0)
                                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                                     @foreach($suratJalan->attachments as $attachment)
-                                        <div class="relative group">
-                                            <img src="{{ Storage::url($attachment->file_path) }}"
-                                                 alt="{{ $attachment->file_name }}"
-                                                 class="w-full h-32 object-cover rounded-lg border border-gray-200">
-                                            <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                        <div class="border border-gray-200 rounded-lg bg-white p-2" data-attachment-card data-attachment-id="{{ $attachment->id }}">
+                                            <div class="relative">
+                                                <img src="{{ Storage::url($attachment->file_path) }}"
+                                                     alt="{{ $attachment->file_name }}"
+                                                     class="w-full h-32 object-cover rounded-md border border-gray-100">
+                                                <span class="hidden absolute top-2 left-2 rounded bg-red-600/90 text-white text-[10px] px-2 py-0.5" data-attachment-badge>
+                                                    Akan dihapus
+                                                </span>
+                                            </div>
+                                            <div class="mt-2 flex items-center gap-2">
+                                                <p class="text-xs text-gray-500 truncate flex-1" title="{{ $attachment->file_name }}">{{ $attachment->file_name }}</p>
                                                 <button type="button"
-                                                        class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm font-medium"
-                                                        onclick="deleteAttachment({{ $attachment->id }}, '{{ $attachment->file_name }}')">
+                                                        class="text-xs font-semibold text-red-600 hover:text-red-700"
+                                                        data-attachment-delete>
                                                     Hapus
                                                 </button>
+                                                <button type="button"
+                                                        class="hidden text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                                                        data-attachment-undo>
+                                                    Urungkan
+                                                </button>
                                             </div>
-                                            <p class="text-xs text-gray-500 mt-1 truncate">{{ $attachment->file_name }}</p>
+                                            <p class="text-xs text-red-600 mt-1 hidden" data-attachment-status>Akan dihapus saat disimpan.</p>
                                         </div>
                                     @endforeach
                                 </div>
                             @endif
 
+                            <div data-delete-attachments></div>
+
                             {{-- Upload New --}}
                             @if($suratJalan->attachments->count() < 3)
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Tambah Lampiran <span class="text-gray-400 font-normal">(Sisa {{ 3 - $suratJalan->attachments->count() }} slot)</span>
-                                    </label>
-                                    <input type="file"
-                                           name="attachments[]"
-                                           multiple
-                                           accept="image/jpeg,image/jpg,image/png"
-                                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                                    <p class="text-xs text-gray-500 mt-1">Format: JPG, JPEG, PNG. Maksimal 10MB per file.</p>
+                                <div data-camera-capture data-target-input="attachments-edit-gudang" data-max-files="{{ 3 - $suratJalan->attachments->count() }}">
+                                    <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <p class="text-sm font-semibold text-gray-900">
+                                                Tambah Lampiran <span class="text-gray-400 font-normal">(Sisa {{ 3 - $suratJalan->attachments->count() }} slot)</span>
+                                            </p>
+                                            <p class="text-xs text-gray-500">Maksimal 10MB per file.</p>
+                                        </div>
+                                        <p class="text-xs text-gray-500" data-camera-status>Dipilih: 0/{{ 3 - $suratJalan->attachments->count() }}</p>
+                                    </div>
+                                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                                        <div class="space-y-3">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <button type="button"
+                                                        data-camera-open
+                                                        class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light">
+                                                    Buka Kamera
+                                                </button>
+                                                <button type="button"
+                                                        data-camera-capture-btn
+                                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
+                                                    Ambil Foto
+                                                </button>
+                                                <button type="button"
+                                                        data-camera-close
+                                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                                    Tutup Kamera
+                                                </button>
+                                                <span class="text-xs text-gray-500">atau pilih dari galeri</span>
+                                            </div>
+                                            <div data-camera-panel class="hidden border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                                <video class="w-full h-48 sm:h-56 object-cover bg-black" playsinline muted></video>
+                                                <canvas class="hidden"></canvas>
+                                            </div>
+                                            <input type="file"
+                                                   id="attachments-edit-gudang"
+                                                   name="attachments[]"
+                                                   multiple
+                                                   accept="image/jpeg,image/jpg,image/png"
+                                                   capture="environment"
+                                                   class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
+                                            <p class="text-xs text-gray-500">Format: JPG, JPEG, PNG.</p>
+                                            <p class="text-xs text-red-600 hidden" data-camera-error></p>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <p class="text-xs font-semibold text-gray-600">Preview</p>
+                                            <div class="grid grid-cols-3 gap-2" data-camera-preview></div>
+                                        </div>
+                                    </div>
                                 </div>
                             @else
                                 <p class="text-sm text-yellow-600">Slot lampiran sudah penuh (3/3). Hapus salah satu untuk menambah yang baru.</p>
@@ -447,19 +499,319 @@
         </div>
     </div>
 
-    {{-- Hidden forms for attachment deletion (outside main form) --}}
-    @foreach($suratJalan->attachments as $attachment)
-        <form id="delete-attachment-{{ $attachment->id }}" action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}" method="POST" class="hidden">
-            @csrf
-            @method('DELETE')
-        </form>
-    @endforeach
-
     <script>
-        function deleteAttachment(id, fileName) {
-            if (confirm('Hapus lampiran "' + fileName + '"?')) {
-                document.getElementById('delete-attachment-' + id).submit();
+        function setupAttachmentDeletion() {
+            const container = document.querySelector('[data-delete-attachments]');
+            if (!container) {
+                return;
             }
+
+            const ensureInput = (id) => {
+                if (container.querySelector(`input[value="${id}"]`)) {
+                    return;
+                }
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'delete_attachments[]';
+                input.value = id;
+                container.appendChild(input);
+            };
+
+            const removeInput = (id) => {
+                const input = container.querySelector(`input[value="${id}"]`);
+                if (input) {
+                    input.remove();
+                }
+            };
+
+            const setPending = (card, isPending) => {
+                card.classList.toggle('opacity-60', isPending);
+                card.classList.toggle('ring-2', isPending);
+                card.classList.toggle('ring-red-200', isPending);
+                const deleteBtn = card.querySelector('[data-attachment-delete]');
+                const undoBtn = card.querySelector('[data-attachment-undo]');
+                const status = card.querySelector('[data-attachment-status]');
+                const badge = card.querySelector('[data-attachment-badge]');
+
+                if (deleteBtn) {
+                    deleteBtn.classList.toggle('hidden', isPending);
+                }
+                if (undoBtn) {
+                    undoBtn.classList.toggle('hidden', !isPending);
+                }
+                if (status) {
+                    status.classList.toggle('hidden', !isPending);
+                }
+                if (badge) {
+                    badge.classList.toggle('hidden', !isPending);
+                }
+            };
+
+            document.addEventListener('click', (event) => {
+                const deleteBtn = event.target.closest('[data-attachment-delete]');
+                if (deleteBtn) {
+                    const card = deleteBtn.closest('[data-attachment-card]');
+                    if (!card) {
+                        return;
+                    }
+                    const attachmentId = card.dataset.attachmentId;
+                    if (!attachmentId) {
+                        return;
+                    }
+                    ensureInput(attachmentId);
+                    setPending(card, true);
+                }
+
+                const undoBtn = event.target.closest('[data-attachment-undo]');
+                if (undoBtn) {
+                    const card = undoBtn.closest('[data-attachment-card]');
+                    if (!card) {
+                        return;
+                    }
+                    const attachmentId = card.dataset.attachmentId;
+                    if (!attachmentId) {
+                        return;
+                    }
+                    removeInput(attachmentId);
+                    setPending(card, false);
+                }
+            });
         }
+
+        function setupCameraCapture(wrapper) {
+            const inputId = wrapper.dataset.targetInput;
+            const input = document.getElementById(inputId);
+            const maxFiles = Number(wrapper.dataset.maxFiles || 3);
+            const openBtn = wrapper.querySelector('[data-camera-open]');
+            const captureBtn = wrapper.querySelector('[data-camera-capture-btn]');
+            const closeBtn = wrapper.querySelector('[data-camera-close]');
+            const panel = wrapper.querySelector('[data-camera-panel]');
+            const video = wrapper.querySelector('video');
+            const canvas = wrapper.querySelector('canvas');
+            const error = wrapper.querySelector('[data-camera-error]');
+            const status = wrapper.querySelector('[data-camera-status]');
+            const preview = wrapper.querySelector('[data-camera-preview]');
+
+            const setError = (message) => {
+                if (!error) {
+                    return;
+                }
+                if (message) {
+                    error.textContent = message;
+                    error.classList.remove('hidden');
+                } else {
+                    error.textContent = '';
+                    error.classList.add('hidden');
+                }
+            };
+
+            const updateStatus = () => {
+                if (!status) {
+                    return;
+                }
+                const count = input?.files?.length || 0;
+                status.textContent = `Dipilih: ${count}/${maxFiles}`;
+            };
+
+            const clearPreview = () => {
+                if (wrapper._objectUrls) {
+                    wrapper._objectUrls.forEach((url) => URL.revokeObjectURL(url));
+                }
+                wrapper._objectUrls = [];
+                if (preview) {
+                    preview.innerHTML = '';
+                }
+            };
+
+            const removeFile = (index) => {
+                if (!input) {
+                    return;
+                }
+                const files = Array.from(input.files || []);
+                files.splice(index, 1);
+                const dataTransfer = new DataTransfer();
+                files.forEach((file) => dataTransfer.items.add(file));
+                input.files = dataTransfer.files;
+                renderPreview();
+            };
+
+            const renderPreview = () => {
+                updateStatus();
+                if (!preview) {
+                    return;
+                }
+                clearPreview();
+                const files = Array.from(input?.files || []);
+                if (files.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'col-span-3 text-xs text-gray-400';
+                    empty.textContent = 'Belum ada foto.';
+                    preview.appendChild(empty);
+                    return;
+                }
+                files.forEach((file, index) => {
+                    const url = URL.createObjectURL(file);
+                    wrapper._objectUrls.push(url);
+
+                    const item = document.createElement('div');
+                    item.className = 'relative';
+
+                    const img = document.createElement('img');
+                    img.className = 'w-full h-24 object-cover rounded border border-gray-200';
+                    img.src = url;
+                    img.alt = file.name;
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'absolute top-1 right-1 text-[10px] px-1.5 py-0.5 bg-black bg-opacity-60 text-white rounded';
+                    removeBtn.textContent = 'Hapus';
+                    removeBtn.addEventListener('click', () => removeFile(index));
+
+                    const name = document.createElement('p');
+                    name.className = 'mt-1 text-[10px] text-gray-500 truncate';
+                    name.textContent = file.name;
+
+                    item.appendChild(img);
+                    item.appendChild(removeBtn);
+                    item.appendChild(name);
+                    preview.appendChild(item);
+                });
+            };
+
+            const normalizeFiles = () => {
+                if (!input) {
+                    return;
+                }
+                setError('');
+                const files = Array.from(input.files || []);
+                if (files.length > maxFiles) {
+                    setError(`Maksimal ${maxFiles} gambar.`);
+                }
+                const limited = files.slice(0, maxFiles);
+                const dataTransfer = new DataTransfer();
+                limited.forEach((file) => dataTransfer.items.add(file));
+                input.files = dataTransfer.files;
+                renderPreview();
+            };
+
+            const stopCamera = () => {
+                if (wrapper._cameraStream) {
+                    wrapper._cameraStream.getTracks().forEach((track) => track.stop());
+                    wrapper._cameraStream = null;
+                }
+                if (video) {
+                    video.srcObject = null;
+                }
+                if (panel) {
+                    panel.classList.add('hidden');
+                }
+                if (openBtn) {
+                    openBtn.classList.remove('hidden');
+                }
+                if (captureBtn) {
+                    captureBtn.classList.add('hidden');
+                }
+                if (closeBtn) {
+                    closeBtn.classList.add('hidden');
+                }
+            };
+
+            const openCamera = async () => {
+                setError('');
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    setError('Browser tidak mendukung akses kamera.');
+                    return;
+                }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' },
+                        audio: false,
+                    });
+                    wrapper._cameraStream = stream;
+                    if (video) {
+                        video.srcObject = stream;
+                        await video.play();
+                    }
+                    if (panel) {
+                        panel.classList.remove('hidden');
+                    }
+                    if (openBtn) {
+                        openBtn.classList.add('hidden');
+                    }
+                    if (captureBtn) {
+                        captureBtn.classList.remove('hidden');
+                    }
+                    if (closeBtn) {
+                        closeBtn.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    setError('Tidak bisa mengakses kamera. Pastikan izin kamera diaktifkan.');
+                }
+            };
+
+            const capturePhoto = () => {
+                setError('');
+                if (!input) {
+                    setError('Input lampiran tidak ditemukan.');
+                    return;
+                }
+                if (!video || !canvas) {
+                    setError('Kamera belum siap.');
+                    return;
+                }
+                const existingCount = input.files?.length || 0;
+                if (existingCount >= maxFiles) {
+                    setError(`Maksimal ${maxFiles} gambar.`);
+                    return;
+                }
+                const width = video.videoWidth || 1280;
+                const height = video.videoHeight || 720;
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    setError('Gagal mengambil gambar.');
+                    return;
+                }
+                ctx.drawImage(video, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        setError('Gagal menyimpan gambar.');
+                        return;
+                    }
+                    const fileName = `camera-${Date.now()}.jpg`;
+                    const file = new File([blob], fileName, { type: 'image/jpeg' });
+                    const dataTransfer = new DataTransfer();
+                    Array.from(input.files || []).forEach((existing) => dataTransfer.items.add(existing));
+                    dataTransfer.items.add(file);
+                    input.files = dataTransfer.files;
+                    renderPreview();
+                }, 'image/jpeg', 0.9);
+            };
+
+            if (input) {
+                input.addEventListener('change', normalizeFiles);
+            }
+            if (openBtn) {
+                openBtn.addEventListener('click', openCamera);
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', stopCamera);
+            }
+            if (captureBtn) {
+                captureBtn.addEventListener('click', capturePhoto);
+            }
+            wrapper._stopCamera = stopCamera;
+            renderPreview();
+        }
+
+        function initCameraCaptures() {
+            document.querySelectorAll('[data-camera-capture]').forEach(setupCameraCapture);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCameraCaptures();
+            setupAttachmentDeletion();
+        });
     </script>
 </x-app-layout>
