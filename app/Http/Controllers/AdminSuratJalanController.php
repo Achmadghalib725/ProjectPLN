@@ -1024,7 +1024,7 @@ class AdminSuratJalanController extends Controller
             $picTujuanId = null;
         }
 
-        DB::transaction(function () use ($suratJalan, $validated, $gudangId, $gudangTujuanId, $isCustomGudang, $customGudangData, $picTujuanId) {
+        DB::transaction(function () use ($suratJalan, $validated, $gudangId, $gudangTujuanId, $isCustomGudang, $customGudangData, $picTujuanId, $picCustomData) {
             $suratJalan->update([
                 'gudang_tujuan_id' => $gudangTujuanId,
                 'gudang_tujuan_is_custom' => $isCustomGudang,
