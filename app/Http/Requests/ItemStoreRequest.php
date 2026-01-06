@@ -23,6 +23,7 @@ class ItemStoreRequest extends FormRequest
     {
         return [
             // kode tidak perlu diinput, akan di-generate otomatis
+            'kode' => ['nullable', 'string', 'max:255', 'unique:items,kode'],
             'nama' => ['required', 'string', 'max:255'],
             'satuan' => ['required', 'string', 'max:50'],
             'kategori' => ['required', 'string', 'max:100'],
@@ -38,6 +39,8 @@ class ItemStoreRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'kode.unique' => 'Kode item sudah digunakan',
+            'kode.max' => 'Kode item maksimal 255 karakter',
             'nama.required' => 'Nama item harus diisi',
             'nama.max' => 'Nama item maksimal 255 karakter',
             'satuan.required' => 'Satuan harus diisi',

@@ -5,15 +5,16 @@
             isEdit: {{ old('_method') === 'PUT' ? 'true' : 'false' }},
             actionUrl: '{{ old('_method') === 'PUT' ? (old('id') ? url('admin/pics').'/'.old('id') : '') : route('admin.pics.store') }}',
             form: {
-                id: @json(old('id')),
-                nama: @json(old('nama')),
-                jabatan: @json(old('jabatan')),
-                no_hp: @json(old('no_hp')),
-                gudang_id: @json(old('gudang_id')),
+                id: @js(old('id')),
+                nama: @js(old('nama')),
+                username: @js(old('username')),
+                jabatan: @js(old('jabatan')),
+                no_hp: @js(old('no_hp')),
+                gudang_id: @js(old('gudang_id')),
             },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', nama: '', jabatan: '', no_hp: '', gudang_id: '' };
+                this.form = { id: '', nama: '', username: '', jabatan: '', no_hp: '', gudang_id: '' };
                 this.actionUrl = '{{ route('admin.pics.store') }}';
                 this.showModal = true;
             },
@@ -166,21 +167,23 @@
                                 {{-- Kolom Aksi --}}
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <div class="flex items-center justify-center space-x-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <button @click='openEdit(@json($pic))' class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit PIC">
+                                        <button @click="openEdit(@js($pic))" class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit PIC">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                         </button>
 
-                                        <form action="{{ route('admin.pics.destroy', $pic->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus PIC {{ $pic->nama }}? Data tidak dapat dikembalikan.');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-all duration-200" title="Hapus PIC">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                </svg>
-                                            </button>
-                                        </form>
+                                        <button type="button"
+                                            @click="$dispatch('open-delete-modal', {
+                                                title: 'Hapus PIC',
+                                                message: 'Apakah Anda yakin ingin menghapus PIC {{ $pic->nama }}? Data tidak dapat dikembalikan.',
+                                                action: '{{ route('admin.pics.destroy', $pic->id) }}'
+                                            })"
+                                            class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-all duration-200" title="Hapus PIC">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -229,7 +232,13 @@
                             <span x-text="isEdit ? 'Edit PIC' : 'Tambah PIC Baru'"></span>
                         </h3>
 
-                        <form :action="actionUrl" method="POST" class="mt-4 space-y-4">
+                        @if($errors->any())
+                            <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                {{ $errors->first() }}
+                            </div>
+                        @endif
+
+                        <form :action="actionUrl" method="POST" class="mt-4 space-y-4" autocomplete="off">
                             @csrf
                             {{-- Method Spoofing for PUT (only when editing) --}}
                             <template x-if="isEdit">
@@ -249,6 +258,30 @@
                                 <input type="text" name="jabatan" x-model="form.jabatan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Contoh: Supervisor, Manager, dll">
                                 @error('jabatan') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
+
+                            {{-- Akun Login --}}
+                            <template x-if="!isEdit">
+                                <div class="space-y-4">
+                                    <div class="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
+                                        Bagian ini dipakai untuk membuat akun login PIC.
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Username</label>
+                                        <input type="text" name="username" x-model="form.username" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="contoh: pic_k3" autocomplete="off">
+                                        @error('username') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Password</label>
+                                        <input type="password" name="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Masukkan password" autocomplete="new-password">
+                                        @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
+                                        <input type="password" name="password_confirmation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Ulangi password" autocomplete="new-password">
+                                        @error('password_confirmation') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+                            </template>
 
                             {{-- No HP --}}
                             <div>
@@ -279,4 +312,7 @@
             </div>
         </div>
     </div>
+
+    {{-- Delete Confirmation Modal --}}
+    <x-confirm-delete-modal />
 </x-app-layout>

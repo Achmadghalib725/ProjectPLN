@@ -500,6 +500,43 @@
                                 {{ $statusLabel }}
                             </span>
                         </div>
+
+                        {{-- Linked Surat Jalan Section --}}
+                        @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman)
+                        <div class="col-span-2">
+                            <p class="text-xs sm:text-sm text-gray-500">Surat Pengembalian Terkait</p>
+                            @if($peminjaman->suratJalanKembali)
+                                <a href="{{ route('security.show', $peminjaman->suratJalanKembali->id) }}"
+                                   class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                    </svg>
+                                    <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
+                                    
+                                </a>
+                            @else
+                                <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>Belum ada surat pengembalian</span>
+                                </p>
+                            @endif
+                        </div>
+                        @elseif($suratJalan->tipe === 'PENGEMBALIAN' && $peminjaman && $peminjaman->suratJalanKirim)
+                        <div class="col-span-2">
+                            <p class="text-xs sm:text-sm text-gray-500">Surat Peminjaman Asal</p>
+                            <a href="{{ route('security.show', $peminjaman->suratJalanKirim->id) }}"
+                               class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                </svg>
+                                <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
+                                
+                            </a>
+                        </div>
+                        @endif
+
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Catatan</p>
                             <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->catatan ?? '-' }}</p>
@@ -627,12 +664,32 @@
             </div>
 
             {{-- Action Buttons --}}
-            @if(in_array($suratJalan->status, ['DIKIRIM', 'DIKEMBALIKAN']))
-                @php
-                    $userGudangId = auth()->user()->gudang_id;
-                    $canApprove = $userGudangId === $suratJalan->gudang_tujuan_id;
-                @endphp
+            @php
+                $userGudangId = auth()->user()->gudang_id;
 
+                // Determine if this surat can be confirmed by security
+                // PEMINJAMAN with DIKIRIM → can be confirmed by gudang_tujuan (peminjam) security
+                // PEMINJAMAN with DIKEMBALIKAN → NO (action is on PENGEMBALIAN surat, not here)
+                // PENGEMBALIAN with DIKEMBALIKAN → can be confirmed by gudang_tujuan (pemilik) security
+                // TRANSFER with DIKIRIM → can be confirmed by gudang_tujuan security
+                $canShowConfirmation = false;
+                $expectedGudangId = null;
+
+                if ($suratJalan->status === 'DIKIRIM' && in_array($suratJalan->tipe, ['PEMINJAMAN', 'TRANSFER'])) {
+                    // For DIKIRIM status: security at gudang_tujuan can confirm
+                    $canShowConfirmation = true;
+                    $expectedGudangId = $suratJalan->gudang_tujuan_id;
+                } elseif ($suratJalan->status === 'DIKEMBALIKAN' && $suratJalan->tipe === 'PENGEMBALIAN') {
+                    // For PENGEMBALIAN with DIKEMBALIKAN: security at gudang_tujuan (gudang pemilik) can confirm
+                    $canShowConfirmation = true;
+                    $expectedGudangId = $suratJalan->gudang_tujuan_id;
+                }
+                // Note: PEMINJAMAN with DIKEMBALIKAN should NOT show confirmation button
+                // because the action should be done on the PENGEMBALIAN surat
+
+                $canApprove = $canShowConfirmation && $userGudangId === $expectedGudangId;
+            @endphp
+            @if($canShowConfirmation)
                 @if($canApprove)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
@@ -725,18 +782,32 @@
                 </div>
                 @else
                 {{-- Security tidak bisa approve karena bukan gudang tujuannya --}}
-                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
-                    <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-yellow-100 text-yellow-800 rounded-xl">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6 mt-4 sm:mt-6">
+                    <div class="flex items-start sm:items-center gap-3 text-yellow-800">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5 sm:mt-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                         </svg>
-                        <span class="font-semibold text-sm sm:text-base text-center">
+                        <span class="font-semibold text-sm sm:text-base">
                             Anda tidak dapat mengkonfirmasi surat jalan ini karena gudang tujuan bukan gudang Anda.
-                            <br class="sm:hidden"><span class="text-yellow-600">(Gudang Tujuan: {{ $suratJalan->gudangTujuan->nama ?? '-' }})</span>
+                            <span class="text-yellow-600">(Gudang Tujuan: {{ $suratJalan->gudangTujuan->nama ?? '-' }})</span>
                         </span>
                     </div>
                 </div>
                 @endif
+            @elseif($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DIKEMBALIKAN' && $peminjaman && $peminjaman->suratJalanKembali)
+                {{-- PEMINJAMAN dengan status DIKEMBALIKAN - arahkan ke surat pengembalian --}}
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6 mt-4 sm:mt-6">
+                    <div class="flex items-start sm:items-center gap-3 text-blue-800">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5 sm:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="font-semibold text-sm sm:text-base">
+                            Barang sedang dalam proses pengembalian - Konfirmasi dilakukan pada
+                            <a href="{{ route('security.show', $peminjaman->suratJalanKembali->id) }}"
+                               class="underline hover:text-blue-900">Surat Pengembalian</a>
+                        </span>
+                    </div>
+                </div>
             @endif
 
             @if($canCheckItems && $suratJalan->items->count() > 0)
@@ -780,7 +851,8 @@
                     return;
                 }
                 try {
-                    const url = new URL(window.location.href);
+                    // Always use GET route for refresh
+                    const url = new URL(`{{ route('security.show', $suratJalan->id) }}`);
                     url.searchParams.set('no_cache', '1');
                     const response = await fetch(url.toString(), {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },

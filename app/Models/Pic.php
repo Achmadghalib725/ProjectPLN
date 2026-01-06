@@ -15,5 +15,9 @@ class Pic extends Model
     {
         return $this->belongsTo(Gudang::class);
     }
-}
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+}

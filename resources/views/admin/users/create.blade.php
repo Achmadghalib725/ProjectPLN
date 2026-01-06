@@ -75,7 +75,8 @@
                                     class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer">
                                     <option value="operator_gudang" {{ old('role') == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
                                     <option value="manager" {{ old('role') == 'manager' ? 'selected' : '' }}>Manager</option>
-                                    <option value="security" {{ old('role') == 'security' ? 'selected' : '' }}>SecurityPEMIL</option>
+                                    <option value="security" {{ old('role') == 'security' ? 'selected' : '' }}>Security</option>
+                                    <option value="penerima" {{ old('role') == 'penerima' ? 'selected' : '' }}>Penerima</option>
                                     <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Admin</option>
                                 </select>
                                 <x-input-error :messages="$errors->get('role')" />
