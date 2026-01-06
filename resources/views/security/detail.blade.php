@@ -513,6 +513,10 @@
                 <div class="p-4 sm:p-6 border-b border-gray-100">
                     <h3 class="text-base sm:text-lg font-bold text-gray-900">Daftar Item</h3>
                 </div>
+                @php
+                    $canCheckItems = in_array($suratJalan->status, ['DIKIRIM', 'DIKEMBALIKAN'], true);
+                    $hasSecurityCheck = $suratJalan->items->contains(fn ($row) => $row->checked_by_security !== null);
+                @endphp
 
                 {{-- Mobile Cards View --}}
                 <div class="sm:hidden divide-y divide-gray-100">
@@ -532,6 +536,28 @@
                             @if($item->keterangan)
                                 <p class="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg p-2">{{ $item->keterangan }}</p>
                             @endif
+                            @if($canCheckItems)
+                                <label class="mt-3 flex items-center gap-2 text-xs text-gray-600">
+                                        <input type="checkbox"
+                                               name="checked_items[]"
+                                               value="{{ $item->id }}"
+                                               form="security-approve-form"
+                                               data-security-check
+                                               data-security-check-group="mobile"
+                                               class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                    Barang sesuai
+                                </label>
+                            @elseif($hasSecurityCheck)
+                                <div class="mt-3 text-xs">
+                                    @if($item->checked_by_security === true)
+                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700 font-semibold">Sesuai</span>
+                                    @elseif($item->checked_by_security === false)
+                                        <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-red-700 font-semibold">Tidak Sesuai</span>
+                                    @else
+                                        <span class="text-gray-400 italic">Belum diperiksa</span>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     @empty
                         <div class="p-8 text-center text-gray-500 text-sm">
@@ -548,6 +574,11 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+                                @if($canCheckItems)
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Checklist</th>
+                                @elseif($hasSecurityCheck)
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemeriksaan</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -558,10 +589,34 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->jumlah }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->keterangan ?? '-' }}</td>
+                                    @if($canCheckItems)
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            <label class="inline-flex items-center gap-2">
+                                                <input type="checkbox"
+                                               name="checked_items[]"
+                                               value="{{ $item->id }}"
+                                               form="security-approve-form"
+                                               data-security-check
+                                               data-security-check-group="desktop"
+                                               class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                                <span class="text-xs">Sesuai</span>
+                                            </label>
+                                        </td>
+                                    @elseif($hasSecurityCheck)
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            @if($item->checked_by_security === true)
+                                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700 font-semibold">Sesuai</span>
+                                            @elseif($item->checked_by_security === false)
+                                                <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-red-700 font-semibold">Tidak Sesuai</span>
+                                            @else
+                                                <span class="text-gray-400 italic">Belum diperiksa</span>
+                                            @endif
+                                        </td>
+                                    @endif
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="px-6 py-8 text-center text-gray-500">
+                                    <td colspan="{{ $canCheckItems || $hasSecurityCheck ? 4 : 3 }}" class="px-6 py-8 text-center text-gray-500">
                                         Belum ada item.
                                     </td>
                                 </tr>
@@ -584,11 +639,12 @@
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-4">Konfirmasi Pemeriksaan</h3>
                         <div class="flex flex-col gap-3 sm:flex-row sm:gap-4">
                             {{-- Terima Button --}}
-                            <form action="{{ route('security.terima', $suratJalan->id) }}" method="POST" class="flex-1"
+                            <form id="security-approve-form" action="{{ route('security.terima', $suratJalan->id) }}" method="POST" class="flex-1"
                                   x-data="{ submitting: false }"
                                   @submit="submitting = true">
                                 @csrf
                                 <button type="submit"
+                                        id="security-approve-button"
                                         :disabled="submitting"
                                         class="w-full px-4 sm:px-6 py-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-bold text-base sm:text-lg rounded-xl shadow-sm transition duration-150 flex items-center justify-center gap-2 sm:gap-3 active:scale-[0.98]">
                                     <svg x-show="!submitting" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -681,6 +737,32 @@
                     </div>
                 </div>
                 @endif
+            @endif
+
+            @if($canCheckItems && $suratJalan->items->count() > 0)
+                <script>
+                    document.addEventListener('DOMContentLoaded', () => {
+                        const checks = Array.from(document.querySelectorAll('[data-security-check]'));
+                        const button = document.getElementById('security-approve-button');
+                        if (!button || checks.length === 0) return;
+
+                        const updateButton = () => {
+                            const currentGroup = window.matchMedia('(min-width: 640px)').matches ? 'desktop' : 'mobile';
+                            const scopedChecks = checks.filter((input) => input.dataset.securityCheckGroup === currentGroup);
+                            const checkedCount = scopedChecks.filter((input) => input.checked).length;
+                            button.disabled = scopedChecks.length === 0 || checkedCount !== scopedChecks.length;
+                            if (button.disabled) {
+                                button.setAttribute('title', 'Semua item harus ditandai sesuai sebelum konfirmasi.');
+                            } else {
+                                button.removeAttribute('title');
+                            }
+                        };
+
+                        checks.forEach((input) => input.addEventListener('change', updateButton));
+                        window.addEventListener('resize', updateButton);
+                        updateButton();
+                    });
+                </script>
             @endif
         </div>
     </div>

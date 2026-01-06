@@ -718,6 +718,10 @@
                     <h3 class="text-base sm:text-lg font-bold text-gray-900">Item Surat Jalan</h3>
                 </div>
 
+                @php
+                    $showSecurityCheck = $suratJalan->items->contains(fn ($row) => $row->checked_by_security !== null);
+                @endphp
+
                 {{-- Mobile Cards View --}}
                 <div class="sm:hidden divide-y divide-gray-100">
                     @forelse($suratJalan->items as $item)
@@ -733,6 +737,18 @@
                                     </span>
                                 </div>
                             </div>
+                            @if($showSecurityCheck)
+                                <div class="mt-2">
+                                    <p class="text-xs text-gray-500">Pemeriksaan Security</p>
+                                    @if($item->checked_by_security === true)
+                                        <span class="inline-flex items-center mt-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Sesuai</span>
+                                    @elseif($item->checked_by_security === false)
+                                        <span class="inline-flex items-center mt-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">Tidak Sesuai</span>
+                                    @else
+                                        <span class="inline-flex items-center mt-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Belum diperiksa</span>
+                                    @endif
+                                </div>
+                            @endif
                             @if($item->keterangan)
                                 <p class="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg p-2">{{ $item->keterangan }}</p>
                             @endif
@@ -752,6 +768,9 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+                                @if($showSecurityCheck)
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemeriksaan Security</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -762,10 +781,21 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->jumlah }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->keterangan ?? '-' }}</td>
+                                    @if($showSecurityCheck)
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            @if($item->checked_by_security === true)
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Sesuai</span>
+                                            @elseif($item->checked_by_security === false)
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">Tidak Sesuai</span>
+                                            @else
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Belum diperiksa</span>
+                                            @endif
+                                        </td>
+                                    @endif
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="px-6 py-8 text-center text-gray-500">
+                                    <td colspan="{{ $showSecurityCheck ? 4 : 3 }}" class="px-6 py-8 text-center text-gray-500">
                                         Belum ada item.
                                     </td>
                                 </tr>
