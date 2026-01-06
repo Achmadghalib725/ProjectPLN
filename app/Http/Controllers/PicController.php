@@ -7,6 +7,7 @@ use App\Models\Gudang;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rules;
 
 class PicController extends Controller
 {
@@ -46,7 +47,7 @@ class PicController extends Controller
         $request->validate([
             'nama' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
             'gudang_id' => ['nullable', 'exists:gudangs,id'],

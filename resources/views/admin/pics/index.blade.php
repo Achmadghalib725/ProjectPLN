@@ -5,12 +5,12 @@
             isEdit: {{ old('_method') === 'PUT' ? 'true' : 'false' }},
             actionUrl: '{{ old('_method') === 'PUT' ? (old('id') ? url('admin/pics').'/'.old('id') : '') : route('admin.pics.store') }}',
             form: {
-                id: @json(old('id')),
-                nama: @json(old('nama')),
-                username: @json(old('username')),
-                jabatan: @json(old('jabatan')),
-                no_hp: @json(old('no_hp')),
-                gudang_id: @json(old('gudang_id')),
+                id: @js(old('id')),
+                nama: @js(old('nama')),
+                username: @js(old('username')),
+                jabatan: @js(old('jabatan')),
+                no_hp: @js(old('no_hp')),
+                gudang_id: @js(old('gudang_id')),
             },
             openCreate() {
                 this.isEdit = false;
@@ -167,7 +167,7 @@
                                 {{-- Kolom Aksi --}}
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <div class="flex items-center justify-center space-x-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <button @click='openEdit(@json($pic))' class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit PIC">
+                                        <button @click="openEdit(@js($pic))" class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit PIC">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
@@ -232,6 +232,12 @@
                             <span x-text="isEdit ? 'Edit PIC' : 'Tambah PIC Baru'"></span>
                         </h3>
 
+                        @if($errors->any())
+                            <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                {{ $errors->first() }}
+                            </div>
+                        @endif
+
                         <form :action="actionUrl" method="POST" class="mt-4 space-y-4" autocomplete="off">
                             @csrf
                             {{-- Method Spoofing for PUT (only when editing) --}}
@@ -272,6 +278,7 @@
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
                                         <input type="password" name="password_confirmation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm" placeholder="Ulangi password" autocomplete="new-password">
+                                        @error('password_confirmation') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
                             </template>

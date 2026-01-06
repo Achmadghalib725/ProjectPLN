@@ -5,17 +5,17 @@
             isEdit: {{ old('_method') === 'PUT' ? 'true' : 'false' }},
             actionUrl: '{{ old('_method') === 'PUT' ? (old('id') ? url('admin/users').'/'.old('id') : '') : route('admin.users.store') }}',
             form: {
-                id: @json(old('id')),
-                name: @json(old('name')),
-                username: @json(old('username')),
-                no_hp: @json(old('no_hp')),
-                role: @json(old('role')),
-                jabatan: @json(old('jabatan')),
-                gudang_id: @json(old('gudang_id')),
-                gudang_ids: @json(old('gudang_ids', [])),
+                id: @js(old('id')),
+                name: @js(old('name')),
+                username: @js(old('username')),
+                no_hp: @js(old('no_hp')),
+                role: @js(old('role')),
+                jabatan: @js(old('jabatan')),
+                gudang_id: @js(old('gudang_id')),
+                gudang_ids: @js(old('gudang_ids', [])),
                 password: '',
                 password_confirmation: '',
-                is_active: @json(old('is_active', 1)),
+                is_active: @js(old('is_active', 1)),
             },
             openCreate() {
                 this.isEdit = false;
@@ -203,7 +203,7 @@
 
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <div class="flex items-center justify-center space-x-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <button @click='openEdit(@json($user))' class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit User">
+                                        <button @click="openEdit(@js($user))" class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit User">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
@@ -261,7 +261,13 @@
                         <h3 class="text-lg leading-6 font-medium text-gray-900">
                             <span x-text="isEdit ? 'Edit User' : 'Tambah User Baru'"></span>
                         </h3>
-                        
+
+                        @if($errors->any())
+                            <div class="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                {{ $errors->first() }}
+                            </div>
+                        @endif
+
                         <form :action="actionUrl" method="POST" class="mt-4 space-y-4">
                             @csrf
                             <template x-if="isEdit">
