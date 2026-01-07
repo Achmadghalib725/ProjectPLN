@@ -1617,39 +1617,9 @@ class AdminSuratJalanController extends Controller
                 ->with('error', 'Surat Jalan ini belum berstatus Ditolak.');
         }
 
-        DB::transaction(function () use ($suratJalan) {
-            $suratJalan->update([
-                'status' => 'SELESAI',
-            ]);
-
-            if ($suratJalan->tipe === 'PEMINJAMAN') {
-                $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
-            } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-                $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
-            } else {
-                $peminjaman = null;
-            }
-
-            if ($peminjaman) {
-                $peminjaman->update([
-                    'status' => 'SELESAI',
-                    'waktu_selesai' => now(),
-                ]);
-
-                // Also update the original surat jalan kirim status to SELESAI
-                if ($suratJalan->tipe === 'PENGEMBALIAN' && $peminjaman->surat_jalan_kirim_id) {
-                    SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                        ->update(['status' => 'SELESAI']);
-                }
-            }
-        });
-
-        $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
-        $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
-
         return redirect()
             ->route('admin.surat-jalan.show', $suratJalan->id)
-            ->with('success', 'Surat Jalan yang ditolak telah diselesaikan.');
+            ->with('error', 'Surat Jalan ditolak. Status tetap DITOLAK.');
     }
 
     public function destroy($id)
