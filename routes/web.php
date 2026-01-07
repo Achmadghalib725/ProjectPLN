@@ -11,6 +11,7 @@ use App\Http\Controllers\PublicSuratJalanController;
 use App\Http\Controllers\RekapController;
 use App\Http\Controllers\ManagerSuratJalanController;
 use App\Http\Controllers\AdminSuratJalanController;
+use App\Http\Controllers\GudangItemController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -186,6 +187,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:operator_gudang')->prefix('gudang')->name('gudang.')->group(function () {
         Route::get('/riwayat', [StokController::class, 'riwayat'])->name('riwayat');
         Route::resource('stok', StokController::class);
+        Route::post('/items', [GudangItemController::class, 'store'])->name('items.store');
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
         Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
         Route::post('/surat-jalan/pengembalian', [SuratJalanController::class, 'storeReturn'])->name('surat-jalan.return');

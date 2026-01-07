@@ -39,11 +39,15 @@ class ItemController extends Controller
         // Mengambil satuan unik untuk dropdown
         $satuans = Item::distinct()->pluck('satuan')->filter();
 
+        $allItems = Item::select('id', 'nama', 'kode', 'kategori', 'satuan', 'deskripsi')
+            ->orderBy('nama')
+            ->get();
+
         // Statistik untuk Dashboard Master Barang
         $totalItems = Item::count();
         $totalCategories = Item::distinct('kategori')->count('kategori');
 
-        return view('admin.items.index', compact('items', 'categories', 'satuans', 'totalItems', 'totalCategories'));
+        return view('admin.items.index', compact('items', 'categories', 'satuans', 'allItems', 'totalItems', 'totalCategories'));
     }
 
     /**
@@ -52,9 +56,7 @@ class ItemController extends Controller
      */
     public function create()
     {
-        // Solusi: Mengambil semua data item agar variabel $items tersedia di view create
-        $items = Item::all();
-        return view('admin.items.create', compact('items'));
+        return redirect()->route('admin.items.index');
     }
 
     /**
@@ -63,6 +65,27 @@ class ItemController extends Controller
     public function store(ItemStoreRequest $request)
     {
         try {
+            $searchTerm = trim((string) $request->input('search_term', ''));
+            if ($searchTerm === '') {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->withErrors(['search_term' => 'Wajib melakukan pencarian terlebih dahulu sebelum menambahkan item baru.']);
+            }
+
+            $searchLower = strtolower($searchTerm);
+            $hasMatch = Item::query()
+                ->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"])
+                ->exists();
+
+            if ($hasMatch) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->withErrors(['search_term' => 'Item serupa sudah ditemukan. Gunakan item yang sudah ada.']);
+            }
+
             $data = $request->validated();
 
             // Normalisasi kategori dan satuan ke lowercase untuk konsistensi

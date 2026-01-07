@@ -13,6 +13,8 @@
                 satuan: @json(old('satuan')),
                 deskripsi: @json(old('deskripsi')),
             },
+            searchTerm: @json(old('search_term')),
+            allItems: @js($allItems),
             detail: {
                 kode: '',
                 nama: '',
@@ -20,9 +22,28 @@
                 satuan: '',
                 deskripsi: '',
             },
+            get normalizedSearch() {
+                return (this.searchTerm || '').trim().toLowerCase();
+            },
+            get hasSearch() {
+                return this.normalizedSearch.length > 0;
+            },
+            get searchResults() {
+                const term = this.normalizedSearch;
+                if (!term) return [];
+                return this.allItems.filter(item => {
+                    const name = (item.nama || '').toLowerCase();
+                    const code = (item.kode || '').toLowerCase();
+                    return name.includes(term) || code.includes(term);
+                }).slice(0, 15);
+            },
+            get allowCreate() {
+                return this.hasSearch && this.searchResults.length === 0;
+            },
             openCreate() {
                 this.isEdit = false;
                 this.form = { id: '', kode: '', nama: '', kategori: '', satuan: '', deskripsi: '' };
+                this.searchTerm = '';
                 this.actionUrl = '{{ route('admin.items.store') }}';
                 this.showDetail = false;
                 this.showModal = true;
@@ -30,6 +51,7 @@
             openEdit(item) {
                 this.isEdit = true;
                 this.form = { ...item };
+                this.searchTerm = '';
                 this.actionUrl = '{{ url('admin/items') }}/' + item.id;
                 this.showDetail = false;
                 this.showModal = true;
@@ -44,6 +66,9 @@
                 };
                 this.showModal = false;
                 this.showDetail = true;
+            },
+            selectExisting(item) {
+                this.openEdit(item);
             }
          }"
     >
@@ -263,11 +288,56 @@
                             <span x-text="isEdit ? 'Edit Barang' : 'Tambah Barang Baru'"></span>
                         </h3>
 
-                        <form :action="actionUrl" method="POST" class="mt-4 space-y-4">
+                        <div x-show="!isEdit" class="space-y-4">
+                            <div class="border border-gray-200 p-3 rounded-lg">
+                                <p class="text-sm text-gray-700">
+                                    Cari item terlebih dahulu untuk menghindari duplikasi. Jika belum ada, form tambah item akan muncul.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Cari Item *</label>
+                                <input type="text" x-model="searchTerm"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+                                    placeholder="Nama atau kode item">
+                                @error('search_term') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div x-show="hasSearch && searchResults.length > 0" class="border border-gray-200 rounded-lg divide-y">
+                                <div class="px-4 py-2 text-xs text-gray-600 font-medium">
+                                    Item dengan nama/kode mirip sudah ada. Klik item untuk membuka data.
+                                </div>
+                                <template x-for="item in searchResults" :key="item.id">
+                                    <button type="button"
+                                            @click="selectExisting(item)"
+                                            class="px-4 py-3 text-left text-sm text-gray-700 transition hover:bg-gray-50">
+                                        <div class="font-semibold" x-text="item.nama"></div>
+                                        <div class="text-xs text-gray-500" x-text="`${item.kode || '-'} • ${item.kategori || '-'} • ${item.satuan || '-'}`"></div>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <div x-show="hasSearch && searchResults.length === 0" class="border border-gray-200 p-3 rounded-lg">
+                                <p class="text-sm text-gray-700 font-medium">
+                                    Tidak ada hasil yang cocok. Anda bisa menambah item baru.
+                                </p>
+                            </div>
+
+                            <div x-show="!hasSearch" class="border border-gray-200 p-3 rounded-lg">
+                                <p class="text-sm text-gray-600">
+                                    Mulai ketik nama atau kode untuk melihat item yang sudah ada.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form :action="actionUrl" method="POST" class="mt-4 space-y-4" x-show="isEdit || allowCreate" x-cloak>
                             @csrf
                             {{-- Method Spoofing for PUT (only when editing) --}}
                             <template x-if="isEdit">
                                 <input type="hidden" name="_method" value="PUT">
+                            </template>
+                            <template x-if="!isEdit">
+                                <input type="hidden" name="search_term" x-bind:value="searchTerm">
                             </template>
 
                             {{-- Nama Item --}}

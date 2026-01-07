@@ -33,6 +33,7 @@ class StokController extends Controller
         $totalItems = ItemStock::where('gudang_id', $gudangId)->count();
         $totalUnits = ItemStock::where('gudang_id', $gudangId)->sum('jumlah');
         $categories = Item::distinct()->pluck('kategori')->filter();
+        $allItems = Item::select('id', 'nama', 'kode', 'kategori', 'satuan')->orderBy('nama')->get();
 
         // Get items NOT yet in this warehouse (for create modal)
         $existingItemIds = ItemStock::where('gudang_id', $gudangId)->pluck('item_id');
@@ -61,7 +62,7 @@ class StokController extends Controller
 
             return view('gudang.stok.index', compact(
                 'tab', 'peminjamans', 'totalAktif', 'totalOverdue',
-                'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+                'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems', 'allItems',
                 'countDipinjamkan', 'countPinjaman'
             ));
         } elseif ($tab === 'pinjaman') {
@@ -78,7 +79,7 @@ class StokController extends Controller
 
             return view('gudang.stok.index', compact(
                 'tab', 'peminjamans', 'totalAktif', 'totalOverdue',
-                'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+                'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems', 'allItems',
                 'countDipinjamkan', 'countPinjaman'
             ));
         }
@@ -126,7 +127,7 @@ class StokController extends Controller
         });
 
         return view('gudang.stok.index', compact(
-            'tab', 'stocks', 'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+            'tab', 'stocks', 'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems', 'allItems',
             'countDipinjamkan', 'countPinjaman'
         ));
     }
