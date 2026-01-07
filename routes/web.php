@@ -245,6 +245,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {
         Route::post('/search', [SecurityController::class, 'search'])->name('search');
         Route::get('/surat-jalan/{id}/qr/{token}', [SecurityController::class, 'showByToken'])->whereNumber('id')->name('qr');
+        Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
+        Route::get('/surat-jalan/{id}/pdf', [SuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
         Route::get('/surat-jalan/{id}', [SecurityController::class, 'show'])->whereNumber('id')->name('show');
         Route::post('/surat-jalan/{id}/terima', [SecurityController::class, 'terima'])->whereNumber('id')->name('terima');
         Route::post('/surat-jalan/{id}/tolak', [SecurityController::class, 'tolak'])->whereNumber('id')->name('tolak');

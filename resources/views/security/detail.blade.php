@@ -23,14 +23,33 @@
             {{-- Header Card --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="p-4 sm:p-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                         <div class="text-center sm:text-left">
                             <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Detail Surat Jalan</h2>
                             <p class="text-sm text-gray-500 mt-1">{{ $suratJalan->nomor }}</p>
                         </div>
-                        <div class="flex justify-center sm:justify-end">
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <div class="flex gap-2">
+                                <a href="{{ route('security.surat-jalan.preview', $suratJalan->id) }}"
+                                   target="_blank"
+                                   class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 flex items-center justify-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    <span class="hidden sm:inline">Preview PDF</span>
+                                    <span class="sm:hidden">Preview</span>
+                                </a>
+                                <a href="{{ route('security.surat-jalan.pdf', $suratJalan->id) }}"
+                                   class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 flex items-center justify-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    </svg>
+                                    <span>Download</span>
+                                </a>
+                            </div>
                             <a href="{{ route('dashboard') }}"
-                               class="inline-flex items-center gap-2 bg-gray-200 hover:bg-gray-300 active:scale-95 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition duration-150 text-sm sm:text-base">
+                               class="inline-flex items-center justify-center gap-2 bg-gray-200 hover:bg-gray-300 active:scale-95 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition duration-150 text-sm sm:text-base">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                                 </svg>
