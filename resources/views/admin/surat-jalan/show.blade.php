@@ -443,15 +443,16 @@
                     <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                         @php
                             $totalSteps = count($steps);
+                            $progressStep = $isRejected ? $currentStep + 1 : $currentStep;
                             // Calculate progress bar width to reach center of last completed step
                             // Each step container is (100/totalSteps)% wide, circles are centered
                             // For currentStep = C, last completed = C-1, center position = (C-0.5)/totalSteps * 100
-                            if ($currentStep <= 0) {
+                            if ($progressStep <= 0) {
                                 $progressWidth = 0;
-                            } elseif ($currentStep >= $totalSteps) {
+                            } elseif ($progressStep >= $totalSteps) {
                                 $progressWidth = 100;
                             } else {
-                                $progressWidth = (($currentStep - 0.5) / $totalSteps) * 100;
+                                $progressWidth = (($progressStep - 0.5) / $totalSteps) * 100;
                             }
                         @endphp
                         <div class="relative min-w-[500px] sm:min-w-0">
@@ -465,8 +466,17 @@
                                         $isCompleted = $currentStep > $index;
                                         $isActive = $currentStep === $index;
                                         $isPending = $currentStep < $index;
+                                        $useRejectedStyle = $isRejected && ($isCompleted || $isActive);
 
-                                        if ($isCompleted) {
+                                        if ($useRejectedStyle) {
+                                            if ($isActive) {
+                                                $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
+                                                $labelClass = 'text-red-700 font-bold';
+                                            } else {
+                                                $circleClass = 'bg-red-500 text-white border-red-500';
+                                                $labelClass = 'text-red-700 font-semibold';
+                                            }
+                                        } elseif ($isCompleted) {
                                             $circleClass = 'bg-green-500 text-white border-green-500';
                                             $labelClass = 'text-green-700 font-semibold';
                                         } elseif ($isActive) {
@@ -475,11 +485,6 @@
                                         } else {
                                             $circleClass = 'bg-white text-gray-400 border-gray-300';
                                             $labelClass = 'text-gray-400';
-                                        }
-
-                                        if ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) {
-                                            $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
-                                            $labelClass = 'text-red-700 font-bold';
                                         }
                                     @endphp
                                     <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
@@ -515,23 +520,37 @@
                                     $isCompleted = $currentStep > $index;
                                     $isActive = $currentStep === $index;
                                     $hasDetail = !empty($step['detail']) || !empty($step['time']);
+                                    $useRejectedStyle = $isRejected && ($isCompleted || $isActive);
+                                    $circleClass = $useRejectedStyle
+                                        ? ($isActive ? 'bg-red-600 ring-4 ring-red-300/30' : 'bg-red-500')
+                                        : ($isCompleted ? 'bg-green-500' : ($isActive ? 'bg-pln-primary ring-4 ring-pln-primary/20' : 'bg-gray-300'));
+                                    $lineClass = $isCompleted
+                                        ? ($isRejected ? 'bg-red-500' : 'bg-green-500')
+                                        : 'bg-gray-200';
+                                    $labelClass = $useRejectedStyle
+                                        ? 'text-red-700'
+                                        : ($isCompleted ? 'text-green-700' : ($isActive ? 'text-pln-primary' : 'text-gray-500'));
+                                    $badgeClass = $useRejectedStyle
+                                        ? 'bg-red-100 text-red-700'
+                                        : ($isCompleted ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
+                                    $badgeText = $useRejectedStyle && $isActive ? 'Ditolak' : ($isCompleted ? 'Selesai' : 'Proses');
                                 @endphp
                                 <div class="flex gap-3 sm:gap-4 {{ !$isCompleted && !$isActive ? 'opacity-40' : '' }}">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-pln-primary ring-4 ring-pln-primary/20' : 'bg-gray-300') }}"></div>
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $circleClass }}"></div>
                                         @if($index < count($steps) - 1)
-                                            <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $isCompleted ? 'bg-green-500' : 'bg-gray-200' }}"></div>
+                                            <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $lineClass }}"></div>
                                         @endif
                                     </div>
                                     <div class="flex-1 pb-3 sm:pb-4">
                                         <div class="flex flex-wrap items-center gap-1 sm:gap-2">
-                                            <span class="font-semibold text-sm sm:text-base {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-pln-primary' : 'text-gray-500') }}">
-                                                {{ $step['label'] }}
+                                            <span class="font-semibold text-sm sm:text-base {{ $labelClass }}">
+                                                {{ ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) ? 'Ditolak' : $step['label'] }}
                                             </span>
                                             @if($isCompleted)
-                                                <span class="text-[10px] sm:text-xs bg-green-100 text-green-700 px-1.5 sm:px-2 py-0.5 rounded-full">Selesai</span>
+                                                <span class="text-[10px] sm:text-xs {{ $badgeClass }} px-1.5 sm:px-2 py-0.5 rounded-full">{{ $badgeText }}</span>
                                             @elseif($isActive)
-                                                <span class="text-[10px] sm:text-xs bg-blue-100 text-blue-700 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">Proses</span>
+                                                <span class="text-[10px] sm:text-xs {{ $badgeClass }} px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">{{ $badgeText }}</span>
                                             @endif
                                         </div>
                                         <p class="text-xs sm:text-sm text-gray-500">{{ $step['desc'] }}</p>
@@ -929,34 +948,6 @@
                             </svg>
                             Buat Surat Pengembalian
                         </button>
-                    </div>
-                </div>
-            @endif
-
-            @if($suratJalan->status === 'DITOLAK' && $isGudangAsal && !$isManagerView)
-                <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
-                    <div class="p-4 sm:p-6">
-                        <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Penyelesaian Surat Ditolak</h3>
-                        <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
-                            Surat jalan ini ditolak oleh security. Klik tombol di bawah untuk menandai proses sebagai selesai.
-                        </p>
-                        <form method="POST" action="{{ route('admin.surat-jalan.finalize-rejected', $suratJalan->id) }}"
-                              x-data="{ submitting: false }"
-                              @submit="submitting = true">
-                            @csrf
-                            <button type="submit"
-                                    :disabled="submitting"
-                                    class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-gray-700 hover:bg-gray-800 disabled:bg-gray-500 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
-                                <svg x-show="!submitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                <svg x-show="submitting" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span x-text="submitting ? 'Memproses...' : 'Selesaikan'"></span>
-                            </button>
-                        </form>
                     </div>
                 </div>
             @endif
