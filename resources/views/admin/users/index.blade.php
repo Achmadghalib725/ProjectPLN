@@ -106,7 +106,16 @@
                                 <option value="penerima" {{ request('role') == 'penerima' ? 'selected' : '' }}>Penerima</option>
                             </select>
 
-                            @if(request('search') || request('role'))
+                            <select name="gudang_id" onchange="this.form.submit()" class="border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-[#035b71] focus:border-[#035b71] block w-full md:w-52 p-2.5 cursor-pointer hover:bg-gray-50 transition-colors">
+                                <option value="">Semua Gudang</option>
+                                @foreach($gudangs as $gudang)
+                                    <option value="{{ $gudang->id }}" {{ request('gudang_id') == $gudang->id ? 'selected' : '' }}>
+                                        {{ $gudang->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+
+                            @if(request('search') || request('role') || request('gudang_id'))
                                 <a href="{{ route('admin.users.index') }}" class="text-sm text-red-500 hover:text-red-700 font-medium whitespace-nowrap px-3 py-2 bg-red-50 hover:bg-red-100 rounded-md transition-colors">
                                     Reset
                                 </a>
@@ -119,92 +128,55 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Profile</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role & Jabatan</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi Gudang</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">User Profile</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Role & Jabatan</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Lokasi Gudang</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-4 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($users as $user)
-                            <tr class="bg-white hover:bg-cyan-50/30 transition-colors duration-200 group">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10">
-                                            <div class="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg shadow-sm group-hover:scale-110 transition-transform duration-200">
-                                                {{ substr($user->name, 0, 1) }}
-                                            </div>
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-bold text-gray-900 group-hover:text-cyan-700 transition-colors">{{ $user->name }}</div>
-                                            <div class="text-xs text-gray-500">{{ $user->jabatan ?? '-' }}</div>
-                                            @if($user->no_hp)
-                                                <div class="flex items-center mt-1 text-[10px] text-gray-400">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                                                    {{ $user->no_hp }}
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
+                            <tr class="bg-white hover:bg-gray-50 transition-colors duration-200 group">
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    <div class="text-sm font-semibold text-gray-900">{{ $user->name }}</div>
+                                    @php
+                                        $metaParts = array_filter([$user->username ?? null, $user->no_hp ?? null]);
+                                    @endphp
+                                    <div class="text-xs text-gray-500">{{ $metaParts ? implode(' | ', $metaParts) : '-' }}</div>
                                 </td>
 
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex flex-col items-start gap-1">
-                                        @php
-                                            $roleColors = [
-                                                'admin' => 'bg-purple-100 text-purple-700 border-purple-200',
-                                                'operator_gudang' => 'bg-blue-100 text-blue-700 border-blue-200',
-                                                'manager' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
-                                                'security' => 'bg-amber-100 text-amber-700 border-amber-200',
-                                                'penerima' => 'bg-teal-100 text-teal-700 border-teal-200',
-                                            ];
-                                            $colorClass = $roleColors[$user->role] ?? 'bg-gray-100 text-gray-700';
-                                        @endphp
-                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold border {{ $colorClass }}">
-                                            {{ ucfirst(str_replace('_', ' ', $user->role)) }}
-                                        </span>
-                                        <span class="text-xs text-gray-500 font-medium">
-                                            {{ $user->jabatan ?? '-' }}
-                                        </span>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    <div class="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                                        {{ ucfirst(str_replace('_', ' ', $user->role)) }}
                                     </div>
+                                    <div class="text-xs text-gray-500">{{ $user->jabatan ?? '-' }}</div>
                                 </td>
 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
                                     @if($user->role === 'manager' && $user->managedGudangs->count() > 0)
-                                        <div class="flex flex-wrap gap-2">
-                                            @foreach($user->managedGudangs as $managedGudang)
-                                                <span class="inline-flex items-center text-gray-700 bg-gray-50 px-3 py-1 rounded-md border border-gray-100 text-xs font-medium">
-                                                    {{ $managedGudang->nama }}
-                                                </span>
-                                            @endforeach
+                                        <div class="text-gray-700">
+                                            {{ implode(', ', $user->managedGudangs->pluck('nama')->all()) }}
                                         </div>
                                     @elseif($user->gudang)
-                                        <div class="flex items-center text-gray-700 bg-gray-50 px-3 py-1 rounded-md border border-gray-100 inline-block">
-                                            <svg class="w-4 h-4 mr-2 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                                            <span class="font-medium">{{ $user->gudang->nama }}</span>
-                                        </div>
+                                        <span class="text-gray-700">{{ $user->gudang->nama }}</span>
                                     @else
                                         <span class="text-gray-400 italic text-xs">Tidak ada gudang</span>
                                     @endif
                                 </td>
 
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        @if($user->is_active)
-                                            <div class="h-2.5 w-2.5 rounded-full bg-green-500 mr-2 animate-pulse"></div>
-                                            <span class="text-green-700 text-xs font-bold bg-green-100 px-2 py-0.5 rounded-md">Aktif</span>
-                                        @else
-                                            <div class="h-2.5 w-2.5 rounded-full bg-red-500 mr-2"></div>
-                                            <span class="text-red-700 text-xs font-bold bg-red-100 px-2 py-0.5 rounded-md">Non-Aktif</span>
-                                        @endif
-                                    </div>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    @if($user->is_active)
+                                        <span class="text-green-700 text-xs font-semibold">Aktif</span>
+                                    @else
+                                        <span class="text-red-700 text-xs font-semibold">Non-Aktif</span>
+                                    @endif
                                 </td>
 
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                    <div class="flex items-center justify-center space-x-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <button @click="openEdit(@js($user))" class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit User">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <td class="px-4 py-2 whitespace-nowrap text-center text-sm font-medium">
+                                    <div class="flex items-center justify-center space-x-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                        <button @click="openEdit(@js($user))" class="text-yellow-600 hover:text-yellow-900 p-1.5 rounded-md transition-all duration-200" title="Edit User">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                         </button>
@@ -216,8 +188,8 @@
                                                 message: 'Apakah Anda yakin ingin menghapus user {{ $user->name }}? Data tidak dapat dikembalikan.',
                                                 action: '{{ route('admin.users.destroy', $user->id) }}'
                                             })"
-                                            class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-all duration-200" title="Hapus User">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="text-red-500 hover:text-red-700 p-1.5 rounded-md transition-all duration-200" title="Hapus User">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
                                         </button>

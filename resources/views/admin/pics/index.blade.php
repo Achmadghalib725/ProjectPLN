@@ -113,62 +113,54 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama PIC</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jabatan</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No HP</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi Gudang</th>
-                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Nama PIC</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Jabatan</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">No HP</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Lokasi Gudang</th>
+                                <th scope="col" class="px-4 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($pics as $pic)
-                            <tr class="bg-white hover:bg-cyan-50/30 transition-colors duration-200 group">
+                            <tr class="bg-white hover:bg-gray-50 transition-colors duration-200 group">
 
                                 {{-- Kolom Nama --}}
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-bold text-gray-900 group-hover:text-cyan-700 transition-colors">{{ $pic->nama }}</div>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    <div class="text-sm font-semibold text-gray-900">{{ $pic->nama }}</div>
                                 </td>
 
                                 {{-- Kolom Jabatan --}}
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
                                     @if($pic->jabatan)
-                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                                            {{ $pic->jabatan }}
-                                        </span>
+                                        <span class="text-gray-700">{{ $pic->jabatan }}</span>
                                     @else
-                                        <span class="text-gray-400 italic text-xs">Tidak ada jabatan</span>
+                                        <span class="text-gray-400 italic">Tidak ada jabatan</span>
                                     @endif
                                 </td>
 
                                 {{-- Kolom No HP --}}
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
                                     @if($pic->no_hp)
-                                        <div class="flex items-center text-gray-700">
-                                            <svg class="w-4 h-4 mr-2 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                                            <span class="font-medium">{{ $pic->no_hp }}</span>
-                                        </div>
+                                        <span class="text-gray-700">{{ $pic->no_hp }}</span>
                                     @else
-                                        <span class="text-gray-400 italic text-xs">-</span>
+                                        <span class="text-gray-400 italic">-</span>
                                     @endif
                                 </td>
 
                                 {{-- Kolom Gudang --}}
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
                                     @if($pic->gudang)
-                                        <div class="flex items-center text-gray-700 bg-gray-50 px-3 py-1 rounded-md border border-gray-100 inline-block">
-                                            <svg class="w-4 h-4 mr-2 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                                            <span class="font-medium">{{ $pic->gudang->nama }}</span>
-                                        </div>
+                                        <span class="text-gray-700">{{ $pic->gudang->nama }}</span>
                                     @else
-                                        <span class="text-gray-400 italic text-xs">Tidak ada gudang</span>
+                                        <span class="text-gray-400 italic">Tidak ada gudang</span>
                                     @endif
                                 </td>
 
                                 {{-- Kolom Aksi --}}
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                    <div class="flex items-center justify-center space-x-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <button @click="openEdit(@js($pic))" class="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded-full transition-all duration-200" title="Edit PIC">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <td class="px-4 py-2 whitespace-nowrap text-center text-sm font-medium">
+                                    <div class="flex items-center justify-center space-x-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                        <button @click="openEdit(@js($pic))" class="text-yellow-600 hover:text-yellow-900 p-1.5 rounded-md transition-all duration-200" title="Edit PIC">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                         </button>
@@ -179,8 +171,8 @@
                                                 message: 'Apakah Anda yakin ingin menghapus PIC {{ $pic->nama }}? Data tidak dapat dikembalikan.',
                                                 action: '{{ route('admin.pics.destroy', $pic->id) }}'
                                             })"
-                                            class="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-all duration-200" title="Hapus PIC">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="text-red-500 hover:text-red-700 p-1.5 rounded-md transition-all duration-200" title="Hapus PIC">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
                                         </button>

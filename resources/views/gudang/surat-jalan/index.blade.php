@@ -491,7 +491,7 @@
                                 default => 'bg-gray-100 text-gray-700',
                             };
                         @endphp
-                        <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}" class="block p-4 hover:bg-gray-50 active:bg-gray-100 transition" data-surat-jalan-id="{{ $sj->id }}">
+                        <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}" class="block p-4 transition-colors hover:bg-[#e6f7fb] active:bg-[#cfeff7]" data-surat-jalan-id="{{ $sj->id }}">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <p class="font-semibold text-gray-900 text-sm truncate">{{ $sj->nomor ?? '-' }}</p>
@@ -597,8 +597,9 @@
                                         'SELESAI' => 'bg-green-100 text-green-800',
                                         default => 'bg-gray-100 text-gray-800',
                                     };
+                                    $rowLink = !empty($sj->id) ? route('gudang.surat-jalan.show', $sj->id) : null;
                                 @endphp
-                                <tr data-surat-jalan-id="{{ $sj->id }}">
+                                <tr data-surat-jalan-id="{{ $sj->id }}" @if($rowLink) data-row-link="{{ $rowLink }}" class="cursor-pointer transition-colors hover:bg-[#e6f7fb]" @endif>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $suratJalans->firstItem() + $index }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                         {{ $sj->nomor ?? '-' }}
@@ -668,14 +669,6 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex items-center gap-2">
                                             @if(!empty($sj->id))
-                                                <a href="{{ route('gudang.surat-jalan.show', $sj->id) }}"
-                                                   class="text-pln-primary hover:text-pln-light"
-                                                   title="Lihat Detail">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                                    </svg>
-                                                </a>
                                                 <a href="{{ route('gudang.surat-jalan.pdf', $sj->id) }}"
                                                    class="text-green-600 hover:text-green-800"
                                                    title="Download PDF">
@@ -684,12 +677,7 @@
                                                     </svg>
                                                 </a>
                                             @else
-                                                <span class="text-gray-300" title="Belum tersedia">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                                    </svg>
-                                                </span>
+                                                <span class="text-gray-400">-</span>
                                             @endif
                                         </div>
                                     </td>
@@ -764,6 +752,16 @@
                 // Error handling
                 errors: @js($errors->toArray()),
                 submitting: false,
+                get hasErrors() {
+                    return Object.keys(this.errors || {}).length > 0;
+                },
+                getError(field) {
+                    const error = this.errors?.[field];
+                    if (!error) {
+                        return '';
+                    }
+                    return Array.isArray(error) ? (error[0] ?? '') : error;
+                },
 
                 addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },

@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  [data-row-link] > td {
+    transition: background-color 150ms ease;
+  }
+
+  [data-row-link]:hover > td {
+    background-color: #e6f7fb;
+  }
+
+  [data-row-link]:active > td {
+    background-color: #cfeff7;
+  }
+}

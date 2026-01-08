@@ -30,6 +30,17 @@ class UserController extends Controller
             $query->where('role', $request->role);
         }
 
+        // 3. Logika Filter Gudang (user gudang langsung atau manager gudang)
+        if ($request->filled('gudang_id')) {
+            $gudangId = $request->gudang_id;
+            $query->where(function ($q) use ($gudangId) {
+                $q->where('gudang_id', $gudangId)
+                    ->orWhereHas('managedGudangs', function ($managedQuery) use ($gudangId) {
+                        $managedQuery->where('gudangs.id', $gudangId);
+                    });
+            });
+        }
+
         // Eksekusi query dengan pagination
         // ->appends($request->all()) berguna agar saat pindah halaman (page 2, 3), filter tidak hilang
         $users = $query->latest()->paginate(10)->appends($request->all());
