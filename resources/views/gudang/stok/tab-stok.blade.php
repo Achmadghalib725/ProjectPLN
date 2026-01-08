@@ -125,7 +125,8 @@
     {{-- Mobile Card View --}}
     <div class="sm:hidden">
         @forelse($stocks as $index => $stock)
-            <div class="p-4 border-b border-gray-200 {{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-l-red-500' : '' }}">
+            <div class="p-4 border-b border-gray-200 cursor-pointer transition-colors {{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-l-red-500 hover:bg-red-100 active:bg-red-200' : 'hover:bg-[#e6f7fb] active:bg-[#cfeff7]' }}"
+                 data-row-link="{{ route('gudang.stok.show', $stock->id) }}">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex-1">
                         <h3 class="font-semibold text-gray-900 text-sm">{{ $stock->item->nama }}</h3>
@@ -165,14 +166,6 @@
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-                    <a href="{{ route('gudang.stok.show', $stock->id) }}"
-                       class="inline-flex items-center gap-1 text-xs text-[#035b71] hover:text-[#00aff0] font-medium">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                        Detail
-                    </a>
                     <button type="button"
                         x-data
                         @click="$dispatch('set-edit-stock', {
@@ -239,7 +232,8 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($stocks as $index => $stock)
-                    <tr class="{{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-red-500' : '' }}">
+                    <tr class="cursor-pointer {{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-red-500' : '' }}"
+                        data-row-link="{{ route('gudang.stok.show', $stock->id) }}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ $stocks->firstItem() + $index }}
                         </td>
@@ -280,14 +274,6 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center gap-2">
-                                <a href="{{ route('gudang.stok.show', $stock->id) }}"
-                                   class="text-[#035b71] hover:text-[#00aff0]"
-                                   title="Lihat Detail">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                    </svg>
-                                </a>
                                 <button type="button"
                                     x-data
                                     @click="$dispatch('set-edit-stock', {

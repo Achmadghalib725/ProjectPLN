@@ -169,7 +169,6 @@
                                 <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Tanggal</th>
                                 <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
                                 <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Item</th>
-                                <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-slate-200">
@@ -181,8 +180,9 @@
                                     $gudangTujuanNama = $sj->gudang_tujuan_is_custom
                                         ? ($sj->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
                                         : ($sj->gudangTujuan->nama ?? '-');
+                                    $rowLink = !empty($sj->id) ? route('manager.surat-jalan.show', $sj->id) : null;
                                 @endphp
-                                <tr data-surat-jalan-id="{{ $sj->id }}">
+                                <tr data-surat-jalan-id="{{ $sj->id }}" @if($rowLink) data-row-link="{{ $rowLink }}" class="cursor-pointer transition-colors hover:bg-[#e6f7fb]" @endif>
                                     <td class="px-5 py-3 text-sm font-semibold text-slate-900">{{ $sj->nomor }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-700">{{ $tipeText }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-600">
@@ -199,16 +199,10 @@
                                         <div>{{ $sj->items_count ?? 0 }} jenis</div>
                                         <div class="text-xs text-slate-400">{{ (int) ($sj->items_sum_jumlah ?? 0) }} unit</div>
                                     </td>
-                                    <td class="px-5 py-3 text-sm">
-                                        <a href="{{ route('manager.surat-jalan.show', $sj->id) }}"
-                                           class="text-pln-primary hover:text-pln-light font-semibold">
-                                            Detail
-                                        </a>
-                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-5 py-6 text-center text-sm text-slate-500">
+                                    <td colspan="6" class="px-5 py-6 text-center text-sm text-slate-500">
                                         Belum ada surat jalan untuk gudang Anda.
                                     </td>
                                 </tr>

@@ -170,6 +170,22 @@
                 });
             }
 
+            function initRowLinks() {
+                document.addEventListener('click', function(e) {
+                    const row = e.target.closest('[data-row-link]');
+                    if (!row) return;
+
+                    if (e.target.closest('a, button, input, textarea, select, label, [role="button"], [data-row-ignore]')) {
+                        return;
+                    }
+
+                    const href = row.getAttribute('data-row-link');
+                    if (!href) return;
+
+                    window.location.href = href;
+                });
+            }
+
             // Handle browser back/forward
             window.addEventListener('popstate', function() {
                 window.location.reload();
@@ -179,6 +195,7 @@
             initAjaxPagination();
             initAjaxTabs();
             initAjaxForms();
+            initRowLinks();
 
             // Re-init after Turbo navigation
             document.addEventListener('turbo:load', function() {
