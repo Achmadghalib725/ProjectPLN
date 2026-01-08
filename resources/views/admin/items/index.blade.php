@@ -179,7 +179,7 @@
                         <div class="flex items-center space-x-3 w-full md:w-auto">
                             <select name="kategori" onchange="this.form.submit()" class="border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-[#035b71] focus:border-[#035b71] block w-full md:w-48 p-2.5 cursor-pointer hover:bg-gray-50 transition-colors">
                                 <option value="">Semua Kategori</option>
-                                @foreach($items->pluck('kategori')->unique()->filter() as $cat)
+                                @foreach($categories as $cat)
                                     <option value="{{ $cat }}" {{ request('kategori') == $cat ? 'selected' : '' }}>{{ $cat }}</option>
                                 @endforeach
                             </select>
