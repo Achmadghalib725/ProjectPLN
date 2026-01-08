@@ -72,11 +72,11 @@
             </div>
 
             {{-- Main Content Card --}}
-            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-gray-200">
+            <div id="pics-table" class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-gray-200" data-ajax-container>
 
                 {{-- Toolbar (Filter & Search) --}}
                 <div class="p-4 sm:p-6 border-b border-gray-200">
-                    <form method="GET" action="{{ route('admin.pics.index') }}" class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <form method="GET" action="{{ route('admin.pics.index') }}" class="flex flex-col md:flex-row md:items-center justify-between gap-4" data-ajax-form data-ajax-target="#pics-table">
 
                         {{-- Search --}}
                         <div class="relative w-full md:w-96 group">
@@ -195,7 +195,7 @@
                 </div>
 
                 {{-- Pagination Footer --}}
-                <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
+                <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6" data-ajax-pagination>
                     {{ $pics->links() }}
                 </div>
             </div>

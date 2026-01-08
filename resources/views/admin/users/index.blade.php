@@ -82,9 +82,9 @@
                 </div>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-gray-200">
+            <div id="users-table" class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg border border-gray-200" data-ajax-container>
                 <div class="p-4 sm:p-6 border-b border-gray-200">
-                    <form method="GET" action="{{ route('admin.users.index') }}" class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <form method="GET" action="{{ route('admin.users.index') }}" class="flex flex-col md:flex-row md:items-center justify-between gap-4" data-ajax-form data-ajax-target="#users-table">
                         <div class="relative w-full md:w-96 group">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                 <svg class="w-5 h-5 text-gray-400 group-focus-within:text-[#035b71] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,7 +215,7 @@
                     </table>
                 </div>
 
-                <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
+                <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6" data-ajax-pagination>
                     {{ $users->links() }}
                 </div>
             </div>
@@ -325,9 +325,9 @@
                                 </div>
                             </template>
 
-                            <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
+                            <div class="mt-5 sm:mt-6 flex flex-col-reverse sm:flex-row sm:gap-3">
+                                <button type="button" @click="showModal = false" class="mt-3 sm:mt-0 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-gray-700 font-medium hover:bg-gray-50 transition">Batal</button>
                                 <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#035b71] text-white font-medium hover:bg-[#00aff0] transition">Simpan</button>
-                                <button type="button" @click="showModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 transition">Batal</button>
                             </div>
                         </form>
                     </div>
