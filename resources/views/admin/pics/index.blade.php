@@ -7,6 +7,7 @@
             form: {
                 id: @js(old('id')),
                 nama: @js(old('nama')),
+                role: @js(old('role', 'penerima')),
                 username: @js(old('username')),
                 jabatan: @js(old('jabatan')),
                 no_hp: @js(old('no_hp')),
@@ -14,7 +15,7 @@
             },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', nama: '', username: '', jabatan: '', no_hp: '', gudang_id: '' };
+                this.form = { id: '', nama: '', role: 'penerima', username: '', jabatan: '', no_hp: '', gudang_id: '' };
                 this.actionUrl = '{{ route('admin.pics.store') }}';
                 this.showModal = true;
             },
@@ -256,6 +257,15 @@
                                 <div class="space-y-4">
                                     <div class="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
                                         Bagian ini dipakai untuk membuat akun login PIC.
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Role Akun</label>
+                                        <select name="role" x-model="form.role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
+                                            <option value="">-- Pilih Role --</option>
+                                            <option value="penerima">Penerima</option>
+                                            <option value="operator_gudang">Operator Gudang</option>
+                                        </select>
+                                        @error('role') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">Username</label>
