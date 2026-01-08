@@ -764,6 +764,16 @@
                 // Error handling
                 errors: @js($errors->toArray()),
                 submitting: false,
+                get hasErrors() {
+                    return Object.keys(this.errors || {}).length > 0;
+                },
+                getError(field) {
+                    const error = this.errors?.[field];
+                    if (!error) {
+                        return '';
+                    }
+                    return Array.isArray(error) ? (error[0] ?? '') : error;
+                },
 
                 addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
