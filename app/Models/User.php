@@ -43,4 +43,14 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Gudang::class, 'gudang_user');
     }
+
+    public function appNotifications()
+    {
+        return $this->hasMany(AppNotification::class)->latest();
+    }
+
+    public function unreadNotifications()
+    {
+        return $this->appNotifications()->unread();
+    }
 }

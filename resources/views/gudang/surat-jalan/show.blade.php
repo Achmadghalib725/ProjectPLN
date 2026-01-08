@@ -485,7 +485,7 @@
                                         }
                                     @endphp
                                     <div class="flex flex-col items-center" style="width: {{ 100 / $totalSteps }}%">
-                                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold {{ $circleClass }} z-10">
+                                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold {{ $circleClass }}">
                                             @if($isCompleted)
                                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
@@ -627,7 +627,7 @@
                         <div class="relative flex justify-between">
                             @foreach($steps as $index => $step)
                                 <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
-                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold bg-white text-gray-400 border-gray-300 z-10">
+                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold bg-white text-gray-400 border-gray-300">
                                         {{ $index + 1 }}
                                     </div>
                                     <span class="mt-2 text-[10px] sm:text-xs text-center text-gray-400 leading-tight">

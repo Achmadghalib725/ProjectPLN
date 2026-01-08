@@ -12,6 +12,7 @@ use App\Http\Controllers\RekapController;
 use App\Http\Controllers\ManagerSuratJalanController;
 use App\Http\Controllers\AdminSuratJalanController;
 use App\Http\Controllers\GudangItemController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -169,8 +170,17 @@ Route::get('/dashboard', function () {
 
 // GROUPING BERDASARKAN ROLE
 Route::middleware('auth')->group(function () {
-    // ... (sisa kode route lainnya tetap sama)
-    
+
+    // Notification Routes
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [NotificationController::class, 'clearAll'])->name('clear-all');
+    });
+
     // 1. AREA ADMIN
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', UserController::class);
