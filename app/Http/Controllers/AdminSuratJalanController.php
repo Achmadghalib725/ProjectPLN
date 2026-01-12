@@ -27,6 +27,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class AdminSuratJalanController extends Controller
 {
+    private const COMPANY_CODE = 'F2206040';
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -40,7 +42,17 @@ class AdminSuratJalanController extends Controller
             : [];
 
         if ($isAdmin && !$gudangId) {
-            $activeGudangId = $request->input('gudang_id') ? (int) $request->input('gudang_id') : null;
+            if ($request->has('gudang_id')) {
+                $activeGudangId = $request->input('gudang_id') ? (int) $request->input('gudang_id') : null;
+                if ($activeGudangId) {
+                    $request->session()->put('admin_surat_jalan_gudang_id', $activeGudangId);
+                } else {
+                    $request->session()->forget('admin_surat_jalan_gudang_id');
+                }
+            } else {
+                $sessionGudangId = $request->session()->get('admin_surat_jalan_gudang_id');
+                $activeGudangId = $sessionGudangId ? (int) $sessionGudangId : null;
+            }
         }
 
         if ($isManager) {
@@ -185,6 +197,17 @@ class AdminSuratJalanController extends Controller
         $gudangId = $user?->gudang_id;
         $adminFinish = $isAdmin && $request->boolean('admin_finish');
         $selectedGudangId = $gudangId ?: ($isAdmin ? (int) $request->input('gudang_asal_id') : null);
+        $redirectParams = ['tab' => $request->input('tab', 'keluar')];
+        if ($isAdmin && !$gudangId && $selectedGudangId) {
+            $redirectParams['gudang_id'] = $selectedGudangId;
+        }
+
+        if ($isAdmin && !$adminFinish) {
+            return redirect()
+                ->back()
+                ->with('error', 'Admin wajib menyelesaikan surat jalan saat membuat.')
+                ->withInput();
+        }
 
         if (!$selectedGudangId && !$isAdmin) {
             abort(403, 'User tidak memiliki gudang yang ditugaskan');
@@ -406,7 +429,7 @@ class AdminSuratJalanController extends Controller
             $managerSignerId = $this->resolveManagerSignerId($gudangId);
             if (!$managerSignerId) {
                 return redirect()
-                    ->route('admin.surat-jalan.index')
+                    ->route('admin.surat-jalan.index', $redirectParams)
                     ->with('error', 'Manager pengirim belum ditetapkan untuk gudang ini.');
             }
             $ttdPembuatId = $managerSignerId;
@@ -534,7 +557,7 @@ class AdminSuratJalanController extends Controller
         $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
 
         $redirect = redirect()
-            ->route('admin.surat-jalan.index')
+            ->route('admin.surat-jalan.index', $redirectParams)
             ->with('success', 'Draft Surat Jalan berhasil dibuat.');
 
         return $redirect;
@@ -1835,23 +1858,7 @@ class AdminSuratJalanController extends Controller
             }
         }
 
-        $includeAdminReturnSelesai = Auth::user()?->role === 'admin' && $tab === 'keluar';
-
-        // Exclude SELESAI status by default (moved to riwayat page),
-        // but allow admin to see pengembalian yang langsung SELESAI.
-        if (empty($filters['status']) || $filters['status'] !== 'SELESAI') {
-            if ($includeAdminReturnSelesai) {
-                $query->where(function ($subQuery) {
-                    $subQuery->where('status', '!=', 'SELESAI')
-                        ->orWhere(function ($innerQuery) {
-                            $innerQuery->where('status', 'SELESAI')
-                                ->where('tipe', 'PENGEMBALIAN');
-                        });
-                });
-            } else {
-                $query->where('status', '!=', 'SELESAI');
-            }
-        }
+        $isAdmin = Auth::user()?->role === 'admin';
 
         if (!empty($filters['search'])) {
             $searchLower = strtolower($filters['search']);
@@ -1862,8 +1869,10 @@ class AdminSuratJalanController extends Controller
             $query->where('tipe', $filters['tipe']);
         }
 
-        if (!empty($filters['status']) && $filters['status'] !== 'SELESAI') {
+        if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
+        } elseif (!$isAdmin) {
+            $query->where('status', '!=', 'SELESAI');
         }
 
         if (!empty($filters['tanggal_mulai'])) {
@@ -2410,9 +2419,8 @@ class AdminSuratJalanController extends Controller
     {
         do {
             $prefix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
-            $tanggalKode = $tanggal->format('ymd');
             $tahun = $tanggal->format('Y');
-            $nomor = $prefix . '/SJ' . $tanggalKode . '/' . $tahun;
+            $nomor = $prefix . '/' . self::COMPANY_CODE . '/' . $tahun;
         } while (SuratJalan::where('nomor', $nomor)->exists());
 
         return $nomor;
@@ -2422,9 +2430,8 @@ class AdminSuratJalanController extends Controller
     {
         do {
             $prefix = str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
-            $tanggalKode = $tanggal->format('ymd');
             $tahun = $tanggal->format('Y');
-            $kode = $prefix . '/SJ' . $tanggalKode . '/' . $tahun;
+            $kode = $prefix . '/' . self::COMPANY_CODE . '/' . $tahun;
         } while (Peminjaman::where('kode', $kode)->exists());
 
         return $kode;

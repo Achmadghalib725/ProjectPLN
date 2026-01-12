@@ -129,7 +129,7 @@
                 </div>
                 {{-- Tabs --}}
                 <nav class="flex" aria-label="Tabs" data-ajax-tabs>
-                    <a href="{{ route('admin.surat-jalan.index', ['tab' => 'keluar']) }}"
+                    <a href="{{ route('admin.surat-jalan.index', array_merge(request()->query(), ['tab' => 'keluar'])) }}"
                        data-ajax-tab
                        data-ajax-target="#surat-jalan-content"
                        class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
@@ -140,7 +140,7 @@
                             <span>Surat Keluar</span>
                         </div>
                     </a>
-                    <a href="{{ route('admin.surat-jalan.index', ['tab' => 'masuk']) }}"
+                    <a href="{{ route('admin.surat-jalan.index', array_merge(request()->query(), ['tab' => 'masuk'])) }}"
                        data-ajax-tab
                        data-ajax-target="#surat-jalan-content"
                        class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
@@ -842,6 +842,7 @@
 
               <form method="POST" action="{{ route('admin.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
                   @csrf
+                  <input type="hidden" name="tab" value="{{ $tab }}">
                   @if($isAdmin && $needsGudangSelection)
                       <input type="hidden" name="gudang_asal_id" value="{{ $activeGudangId }}">
                   @endif
@@ -1120,10 +1121,6 @@
                             Simpan dan Selesaikan (Admin)
                         </button>
                     @endif
-                    <button type="submit"
-                            class="px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light flex items-center gap-2">
-                        Simpan Draft
-                    </button>
                 </div>
             </form>
         </div>
@@ -1198,6 +1195,7 @@
             <form method="POST" action="{{ route('admin.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="admin_finish" value="1">
+                <input type="hidden" name="tab" value="{{ $tab }}">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>
