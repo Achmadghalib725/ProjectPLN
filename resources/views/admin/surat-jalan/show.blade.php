@@ -946,6 +946,26 @@
                 </div>
             @endif
 
+            {{-- Tombol Buat Ulang Pengembalian jika surat pengembalian ditolak --}}
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->suratJalanKembali?->status === 'DITOLAK' && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView)
+                <div class="bg-red-50 border border-red-200 rounded-xl mt-4 sm:mt-6">
+                    <div class="p-4 sm:p-6">
+                        <h3 class="text-base sm:text-lg font-bold text-red-900 mb-3 sm:mb-4">Pengembalian Ditolak</h3>
+                        <p class="text-xs sm:text-sm text-red-700 mb-3 sm:mb-4">
+                            Surat pengembalian sebelumnya ditolak oleh security. Silakan buat ulang surat pengembalian.
+                        </p>
+                        <button type="button"
+                                @click="$dispatch('open-modal', 'return-peminjaman-modal')"
+                                class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                            </svg>
+                            Buat Ulang Surat Pengembalian
+                        </button>
+                    </div>
+                </div>
+            @endif
+
             {{-- Konfirmasi Pengembalian Manual untuk Gudang Eksternal --}}
             @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'MENUNGGU_DIKEMBALIKAN' && $isGudangAsal && $suratJalan->gudang_tujuan_is_custom && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
@@ -1050,7 +1070,7 @@
     </style>
 
     {{-- Modal Pengembalian Peminjaman --}}
-    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && !$peminjaman->surat_jalan_kembali_id)
+    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && (!$peminjaman->surat_jalan_kembali_id || $peminjaman->suratJalanKembali?->status === 'DITOLAK'))
     <x-modal name="return-peminjaman-modal" focusable>
         <div class="p-6"
              x-data="{

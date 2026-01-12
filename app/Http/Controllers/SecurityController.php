@@ -315,12 +315,16 @@ class SecurityController extends Controller
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
                 if ($peminjaman) {
-                    $peminjaman->update(['status' => 'DITOLAK']);
+                    $peminjaman->update([
+                        'status' => 'DITERIMA',
+                        'waktu_pengembalian' => null,
+                    ]);
 
                     // Sync status surat jalan peminjaman (kirim)
                     if ($peminjaman->surat_jalan_kirim_id) {
                         SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                            ->update(['status' => 'DITOLAK']);
+                            ->where('status', 'DIKEMBALIKAN')
+                            ->update(['status' => 'DITERIMA']);
                     }
                 }
             }

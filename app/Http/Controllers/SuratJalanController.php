@@ -586,7 +586,15 @@ class SuratJalanController extends Controller
                     }
 
                     $query->where('status', 'DITERIMA')
-                        ->whereNull('surat_jalan_kembali_id');
+                        ->where(function ($subQuery) {
+                            $subQuery->whereNull('surat_jalan_kembali_id')
+                                ->orWhereIn('surat_jalan_kembali_id', function ($inner) {
+                                    $inner->select('id')
+                                        ->from('surat_jalans')
+                                        ->where('status', 'DITOLAK')
+                                        ->where('tipe', 'PENGEMBALIAN');
+                                });
+                        });
                 }),
             ],
             'pic_tujuan_id' => [
