@@ -51,7 +51,9 @@ class PicController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
-            'gudang_id' => ['nullable', 'exists:gudangs,id'],
+            'gudang_id' => ['required', 'exists:gudangs,id'],
+        ], [
+            'gudang_id.required' => 'Lokasi gudang wajib dipilih.',
         ]);
 
         $userJabatan = $request->jabatan;
@@ -97,7 +99,9 @@ class PicController extends Controller
             'nama' => ['required', 'string', 'max:255'],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
-            'gudang_id' => ['nullable', 'exists:gudangs,id'],
+            'gudang_id' => ['required', 'exists:gudangs,id'],
+        ], [
+            'gudang_id.required' => 'Lokasi gudang wajib dipilih.',
         ]);
 
         $pic->update([

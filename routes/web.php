@@ -13,6 +13,7 @@ use App\Http\Controllers\ManagerSuratJalanController;
 use App\Http\Controllers\AdminSuratJalanController;
 use App\Http\Controllers\GudangItemController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ItemMetaController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -186,6 +187,14 @@ Route::middleware('auth')->group(function () {
         Route::resource('users', UserController::class);
         Route::resource('items', ItemController::class);
         Route::resource('pics', PicController::class);
+
+        // Kelola Kategori & Satuan
+        Route::get('/item-categories', [ItemMetaController::class, 'categories'])->name('item-categories.index');
+        Route::post('/item-categories', [ItemMetaController::class, 'storeCategory'])->name('item-categories.store');
+        Route::delete('/item-categories/{category}', [ItemMetaController::class, 'destroyCategory'])->name('item-categories.destroy');
+        Route::get('/item-units', [ItemMetaController::class, 'units'])->name('item-units.index');
+        Route::post('/item-units', [ItemMetaController::class, 'storeUnit'])->name('item-units.store');
+        Route::delete('/item-units/{unit}', [ItemMetaController::class, 'destroyUnit'])->name('item-units.destroy');
 
         // Rekap Surat Jalan
         Route::get('/rekap', [RekapController::class, 'index'])->name('rekap.index');
