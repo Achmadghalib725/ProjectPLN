@@ -109,13 +109,7 @@
                             </button>
                         </form>
                         <button type="button"
-                                @click="$dispatch('open-delete-modal', {
-                                    title: 'Tolak Persetujuan',
-                                    message: 'Apakah Anda yakin ingin menolak persetujuan surat jalan ini?',
-                                    action: '{{ route('manager.surat-jalan.reject', $suratJalan->id) }}',
-                                    method: 'POST',
-                                    confirmText: 'Tolak'
-                                })"
+                                @click="$dispatch('open-reject-approval', { action: '{{ route('manager.surat-jalan.reject', $suratJalan->id) }}' })"
                                 class="w-full sm:flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">
                             Tolak Persetujuan
                         </button>
@@ -372,5 +366,46 @@
                 });
         });
     </script>
+    <x-modal name="reject-approval" focusable>
+        <div class="p-6"
+             x-data="{ formAction: '' }"
+             x-on:open-reject-approval.window="formAction = $event.detail.action; $dispatch('open-modal', 'reject-approval')">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Tolak Persetujuan</h2>
+                    <p class="text-sm text-slate-600">Masukkan alasan penolakan untuk surat jalan ini.</p>
+                </div>
+            </div>
+            <form method="POST" x-bind:action="formAction" class="mt-4 space-y-4">
+                @csrf
+                <div>
+                    <label for="reject_reason_manager" class="block text-sm font-medium text-slate-700 mb-1">Alasan Penolakan</label>
+                    <textarea id="reject_reason_manager"
+                              name="alasan"
+                              rows="3"
+                              required
+                              class="w-full rounded-lg border-slate-300 focus:border-red-500 focus:ring focus:ring-red-200"
+                              placeholder="Tuliskan alasan penolakan..."></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button"
+                            class="inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
+                            x-on:click="$dispatch('close-modal', 'reject-approval')">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">
+                        Tolak
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+
     <x-confirm-delete-modal />
 </x-app-layout>

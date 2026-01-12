@@ -86,9 +86,9 @@ Route::get('/dashboard', function () {
                     $query->where('gudang_asal_id', $gudangId)
                         ->orWhere('gudang_tujuan_id', $gudangId);
                 })
-                ->where('status', '!=', 'SELESAI')
+                ->whereNotIn('status', ['DRAFT', 'SELESAI'])
                 ->orderByDesc('tanggal')
-                ->limit(6)
+                ->limit(5)
                 ->get()
             : collect(),
         'recentActivities' => $gudangId && Schema::hasTable('stock_movements')

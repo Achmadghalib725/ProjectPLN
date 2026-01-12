@@ -97,15 +97,19 @@
                         <!-- Actions -->
                         <div class="flex items-center gap-3 mt-3">
                             @if($notification->url)
-                                <a href="{{ route('notifications.read', $notification->id) }}"
-                                   class="text-sm text-pln-primary hover:underline font-medium">
-                                    Lihat Detail
-                                </a>
+                                <form action="{{ route('notifications.read', $notification->id) }}" method="POST" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="redirect" value="1">
+                                    <button type="submit" class="text-sm text-pln-primary hover:underline font-medium">
+                                        Lihat Detail
+                                    </button>
+                                </form>
                             @endif
 
                             @if(!$notification->read_at)
                                 <form action="{{ route('notifications.read', $notification->id) }}" method="POST" class="inline">
                                     @csrf
+                                    <input type="hidden" name="redirect" value="0">
                                     <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">
                                         Tandai Dibaca
                                     </button>

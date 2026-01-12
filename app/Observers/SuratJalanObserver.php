@@ -101,6 +101,19 @@ class SuratJalanObserver
                         );
                     }
                     break;
+                case 'DITOLAK_PERSETUJUAN':
+                    // Notify operator gudang asal: persetujuan ditolak
+                    if ($suratJalan->gudang_asal_id) {
+                        AppNotification::notifyGudangOperators(
+                            $suratJalan->gudang_asal_id,
+                            AppNotification::TYPE_SURAT_DITOLAK,
+                            'Surat Jalan Ditolak',
+                            "Persetujuan surat jalan {$nomor} ditolak. Silakan perbaiki dan ajukan ulang.",
+                            $suratJalan->id,
+                            route('gudang.surat-jalan.show', $suratJalan->id)
+                        );
+                    }
+                    break;
             }
         } catch (\Exception $e) {
             Log::warning('Failed to create notification for SuratJalan: ' . $e->getMessage());
