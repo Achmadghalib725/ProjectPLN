@@ -25,15 +25,15 @@
                 </div>
             @endif
 
-            @if($errors->any())
-                <div class="mb-4 sm:mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl text-sm">
-                    <p class="font-semibold">Periksa input:</p>
-                    <ul class="list-disc list-inside mt-1 space-y-1">
-                        @foreach($errors->all() as $message)
-                            <li>{{ $message }}</li>
-                        @endforeach
-                    </ul>
-                </div>
+            {{-- Auto open modal jika ada error untuk create-stock --}}
+            @if($errors->has('item_id') || $errors->has('jumlah') || $errors->has('stok_minimum'))
+                <script>
+                    document.addEventListener('alpine:init', () => {
+                        setTimeout(() => {
+                            window.dispatchEvent(new CustomEvent('open-modal', { detail: 'create-stock' }));
+                        }, 100);
+                    });
+                </script>
             @endif
 
             {{-- Header Section --}}
@@ -182,11 +182,10 @@
                     return;
                 }
 
-                const select = document.getElementById('item_id');
-                if (select) {
-                    select.value = item.id;
-                    select.dispatchEvent(new Event('change'));
-                }
+                // Set selected item untuk create-stock modal via custom event
+                window.dispatchEvent(new CustomEvent('preset-stock-item', {
+                    detail: { id: item.id, nama: item.nama, kategori: item.kategori }
+                }));
 
                 this.$dispatch('close-modal', 'create-item');
                 this.$dispatch('open-modal', 'create-stock');
@@ -397,7 +396,38 @@
 
     {{-- Create Stock Modal --}}
     <x-modal name="create-stock" focusable>
-        <div class="p-6">
+        <div class="p-6" x-data="{
+            open: false,
+            search: '',
+            selectedId: '',
+            selectedName: '',
+            items: @js($availableItems->map(fn($i) => ['id' => $i->id, 'nama' => $i->nama, 'kategori' => $i->kategori, 'kode' => $i->kode])),
+            get filtered() {
+                if (!this.search) return this.items;
+                const term = this.search.toLowerCase();
+                return this.items.filter(item =>
+                    (item.nama || '').toLowerCase().includes(term) ||
+                    (item.kode || '').toLowerCase().includes(term) ||
+                    (item.kategori || '').toLowerCase().includes(term)
+                );
+            },
+            select(item) {
+                this.selectedId = item.id;
+                this.selectedName = item.nama + ' (' + (item.kategori || '-') + ')';
+                this.search = this.selectedName;
+                this.open = false;
+            },
+            clear() {
+                this.selectedId = '';
+                this.selectedName = '';
+                this.search = '';
+            },
+            preset(detail) {
+                this.selectedId = detail.id;
+                this.selectedName = detail.nama + ' (' + (detail.kategori || '-') + ')';
+                this.search = this.selectedName;
+            }
+        }" @preset-stock-item.window="preset($event.detail)">
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Tambah Item Baru ke Gudang</h2>
@@ -411,24 +441,67 @@
                 </button>
             </div>
 
-            <div class="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 rounded-r">
-                <p class="text-sm text-blue-700">
-                    Item yang ditambahkan akan langsung masuk ke inventaris gudang dengan jumlah stok yang diisi.
-                </p>
-            </div>
+            @if($errors->hasBag('createStock') || $errors->has('item_id') || $errors->has('jumlah') || $errors->has('stok_minimum'))
+                <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="text-sm">
+                            <p class="font-medium">Gagal menambahkan item:</p>
+                            <ul class="list-disc list-inside mt-1">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <form method="POST" action="{{ route('gudang.stok.store') }}" class="space-y-4">
                 @csrf
+                <input type="hidden" name="item_id" x-model="selectedId" required>
 
                 <div>
-                    <label for="item_id" class="block text-sm font-medium text-gray-700">Pilih Item *</label>
-                    <select name="item_id" id="item_id" required
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50">
-                        <option value="">-- Pilih Item --</option>
-                        @foreach($availableItems as $item)
-                            <option value="{{ $item->id }}">{{ $item->nama }} ({{ ucfirst($item->kategori) }})</option>
-                        @endforeach
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700">Cari dan Pilih Item *</label>
+                    <div class="relative mt-1" @click.outside="open = false">
+                        <div class="relative">
+                            <input type="text"
+                                   x-model="search"
+                                   @focus="open = true"
+                                   @click="open = true"
+                                   @input="open = true; if(search !== selectedName) { selectedId = ''; }"
+                                   autocomplete="off"
+                                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50 pr-10"
+                                   placeholder="Ketik nama atau kode item...">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                <button type="button" x-show="search" @click="clear()" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                                <svg x-show="!search" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div x-show="open && filtered.length > 0"
+                             x-transition
+                             class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            <template x-for="item in filtered" :key="item.id">
+                                <div @click="select(item)"
+                                     class="px-4 py-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                    <div class="font-medium text-gray-900" x-text="item.nama"></div>
+                                    <div class="text-xs text-gray-500" x-text="(item.kode || '-') + ' • ' + (item.kategori || '-')"></div>
+                                </div>
+                            </template>
+                        </div>
+                        <div x-show="open && search && filtered.length === 0"
+                             class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-sm text-gray-500">
+                            Tidak ada item yang cocok
+                        </div>
+                    </div>
                     @if($availableItems->isEmpty())
                         <p class="mt-2 text-sm text-yellow-600">Semua item sudah ada di gudang Anda.</p>
                     @endif

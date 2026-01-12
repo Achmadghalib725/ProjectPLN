@@ -1,12 +1,3 @@
-@php
-    $statusClasses = [
-        'DRAFT' => 'bg-slate-100 text-slate-700',
-        'DIKIRIM' => 'bg-blue-100 text-blue-700',
-        'DITERIMA' => 'bg-emerald-100 text-emerald-700',
-        'SELESAI' => 'bg-slate-100 text-slate-600',
-    ];
-@endphp
-
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
     <a href="{{ route('gudang.stok.index') }}" class="bg-white p-5 rounded-xl shadow border border-slate-200 hover:border-[#00aff0] transition">
         <div class="flex items-start justify-between">
@@ -58,32 +49,72 @@
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-    <div class="xl:col-span-2 bg-white p-6 rounded-xl shadow border border-slate-200">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-[#035b71] text-lg">Surat Jalan Aktif</h3>
-            <a href="{{ route('gudang.surat-jalan.index') }}" class="text-xs font-semibold text-[#00aff0] hover:text-[#035b71]">Lihat semua</a>
+    <div class="xl:col-span-2 bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+        {{-- Header --}}
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-gray-900">Surat Jalan Aktif</h3>
+                <p class="text-xs text-gray-500">{{ $activeSuratJalans->count() }} surat dalam proses</p>
+            </div>
+            <a href="{{ route('gudang.surat-jalan.index') }}" class="text-xs font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1">
+                Lihat semua
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
         </div>
-        <div class="space-y-4">
+
+        {{-- Content --}}
+        <div class="divide-y divide-slate-100">
             @forelse($activeSuratJalans as $suratJalan)
-                <a href="{{ route('gudang.surat-jalan.show', $suratJalan->id) }}" class="flex flex-col md:flex-row md:items-center md:justify-between p-4 rounded-lg border border-slate-100 hover:border-[#00aff0] hover:bg-slate-50 transition">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-800">{{ $suratJalan->nomor }}</p>
-                        <p class="text-xs text-slate-500 mt-1">
-                            Asal: {{ $suratJalan->gudangAsal?->nama ?? 'Gudang Asal' }} •
-                            Tujuan: {{ $suratJalan->gudangTujuan?->nama ?? 'Gudang Tujuan' }} •
-                            {{ $suratJalan->tanggal?->format('d M Y') ?? '-' }}
-                        </p>
+                @php
+                    $isIncoming = $suratJalan->gudang_tujuan_id === Auth::user()->gudang_id;
+                    $statusLabel = match($suratJalan->status) {
+                        'MENUNGGU_PERSETUJUAN' => 'Menunggu',
+                        'DIKIRIM' => 'Dikirim',
+                        'DIPERIKSA' => 'Diperiksa',
+                        'DITERIMA' => 'Diterima',
+                        'DITOLAK' => 'Ditolak',
+                        default => $suratJalan->status
+                    };
+                    $tipeLabel = match($suratJalan->tipe) {
+                        'PEMINJAMAN' => 'Peminjaman',
+                        'PENGEMBALIAN' => 'Pengembalian',
+                        default => 'Transfer'
+                    };
+                    $arah = $isIncoming ? 'masuk dari' : 'keluar ke';
+                    $gudang = $isIncoming ? ($suratJalan->gudangAsal?->nama ?? '-') : ($suratJalan->gudangTujuan?->nama ?? '-');
+                @endphp
+                <a href="{{ route('gudang.surat-jalan.show', $suratJalan->id) }}"
+                   class="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition group">
+                    {{-- Info --}}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ $suratJalan->nomor }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ $tipeLabel }} {{ $arah }} {{ $gudang }}</p>
                     </div>
-                    <div class="mt-3 md:mt-0 flex items-center gap-3">
-                        <span class="text-xs font-medium text-slate-500">{{ $suratJalan->tipe }}</span>
-                        <span class="text-xs font-semibold px-2 py-1 rounded-full {{ $statusClasses[$suratJalan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                            {{ $suratJalan->status }}
+
+                    {{-- Right Side --}}
+                    <div class="text-right flex-shrink-0">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                            {{ $statusLabel }}
                         </span>
+                        <p class="text-[11px] text-gray-400 mt-1">{{ $suratJalan->tanggal?->format('d M Y') ?? '-' }}</p>
                     </div>
+
+                    {{-- Arrow --}}
+                    <svg class="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
                 </a>
             @empty
-                <div class="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-lg p-4">
-                    Belum ada surat jalan aktif dari gudang ini.
+                <div class="px-6 py-12 text-center">
+                    <p class="text-sm text-gray-500">Tidak ada surat jalan aktif</p>
+                    <a href="{{ route('gudang.surat-jalan.index') }}" class="inline-flex items-center mt-3 text-sm font-medium text-gray-700 hover:text-gray-900">
+                        Buat Surat Jalan Baru
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </a>
                 </div>
             @endforelse
         </div>
