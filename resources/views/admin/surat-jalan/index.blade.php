@@ -735,6 +735,12 @@
                   // Data Pendukung
                   itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
                   itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
+                  itemsCatalog: @js(($availableStocks ?? collect())->map(fn($s) => [
+                      'id' => $s->item_id,
+                      'nama' => $s->item->nama,
+                      'kode' => $s->item->kode ?? '',
+                      'stok' => (int) ($s->jumlah ?? 0),
+                  ])),
                   asalGudangId: @js($activeGudangId),
 
                 // Error handling
@@ -751,8 +757,51 @@
                     return Array.isArray(error) ? (error[0] ?? '') : error;
                 },
 
-                addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
+                newItemRow(data = {}) {
+                    const itemId = data.item_id ?? '';
+                    return {
+                        item_id: itemId,
+                        jumlah: data.jumlah ?? 1,
+                        keterangan: data.keterangan ?? '',
+                        search: this.itemLabel(itemId),
+                        open: false,
+                    };
+                },
+                addRow() { this.items.push(this.newItemRow()); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
+                itemLabel(id) {
+                    if (!id) return '';
+                    const item = this.itemsCatalog.find(i => String(i.id) === String(id));
+                    if (!item) return '';
+                    return item.kode ? `${item.nama} (${item.kode})` : item.nama;
+                },
+                filteredItems(term) {
+                    const q = (term ?? '').toLowerCase().trim();
+                    if (!q) return this.itemsCatalog;
+                    return this.itemsCatalog.filter(item =>
+                        item.nama.toLowerCase().includes(q) ||
+                        (item.kode || '').toLowerCase().includes(q)
+                    );
+                },
+                selectItem(row, item) {
+                    row.item_id = item.id;
+                    row.search = this.itemLabel(item.id);
+                    row.open = false;
+                },
+                hasSearch(row) {
+                    return (row.search ?? '').trim() !== '';
+                },
+                itemErrorMessage(row) {
+                    if (row.item_id || !this.hasSearch(row)) {
+                        return '';
+                    }
+                    return this.filteredItems(row.search).length === 0
+                        ? 'Barang tidak ditemukan.'
+                        : 'Pilih barang dari daftar.';
+                },
+                get hasInvalidItems() {
+                    return this.items.some(row => !row.item_id);
+                },
 
                 get filteredGudangs() {
                     return this.allGudangs.filter(g =>
@@ -779,6 +828,7 @@
                 unitFor(id) { return this.itemUnits[id] ?? ''; },
                 stockFor(id) { return this.itemStocks[id] ?? 0; },
                 init() {
+                    this.items = this.items.map(row => this.newItemRow(row));
                     if (this.gudangMode === 'custom') {
                         this.labelGudang = 'Lainnya';
                     } else if (this.selectedGudang !== '') {
@@ -1015,34 +1065,62 @@
                 </div>
 
                 {{-- Table Items --}}
-                <div class="border rounded-lg overflow-hidden">
-                    <table class="min-w-full divide-y divide-gray-200">
+                <div class="border rounded-lg overflow-visible">
+                    <table class="min-w-full table-fixed divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Barang</th>
-                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-24">Jumlah</th>
-                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Keterangan</th>
-                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16"></th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[45%] sm:w-auto">Barang</th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[20%] sm:w-24">Jumlah</th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[30%] sm:w-auto">Keterangan</th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[5%] sm:w-16"></th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <template x-for="(row, idx) in items" :key="idx">
                                 <tr>
-                                    <td class="px-4 py-2">
-                                        <select x-model="row.item_id" :name="`items[${idx}][item_id]`" required class="w-full text-sm rounded-md border-gray-300">
-                                            <option value="">Pilih Item Stok...</option>
-                                            @foreach($availableStocks as $stock)
-                                                <option value="{{ $stock->item_id }}">{{ $stock->item->nama }} (Sisa: {{ $stock->jumlah }})</option>
-                                            @endforeach
-                                        </select>
+                                    <td class="px-2 sm:px-4 py-2 w-[45%] sm:w-auto">
+                                        <div class="relative" @click.away="row.open = false">
+                                            <input type="text"
+                                                   x-model="row.search"
+                                                   @input="row.open = true; row.item_id = ''"
+                                                   @focus="row.open = true"
+                                                   placeholder="Cari barang..."
+                                                   class="w-full text-sm rounded-md border-gray-300">
+                                            <select x-model="row.item_id" :name="`items[${idx}][item_id]`" required class="hidden">
+                                                <option value="">Pilih Item Stok...</option>
+                                                @foreach($availableStocks as $stock)
+                                                    <option value="{{ $stock->item_id }}">{{ $stock->item->nama }} (Sisa: {{ $stock->jumlah }})</option>
+                                                @endforeach
+                                            </select>
+                                            <div x-show="row.open"
+                                                 x-cloak
+                                                 @wheel.stop
+                                                 @touchmove.stop
+                                                 class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto overscroll-contain">
+                                                <template x-for="item in filteredItems(row.search)" :key="item.id">
+                                                    <button type="button"
+                                                            @click="selectItem(row, item)"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-pln-primary hover:text-white transition">
+                                                        <div class="font-medium" x-text="item.nama"></div>
+                                                        <div class="text-[10px] opacity-70" x-text="(item.kode ? item.kode + ' • ' : '') + 'Sisa: ' + item.stok"></div>
+                                                    </button>
+                                                </template>
+                                                <div x-show="filteredItems(row.search).length === 0" class="px-3 py-2 text-xs text-gray-500">
+                                                    Item tidak ditemukan.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <template x-if="itemErrorMessage(row)">
+                                            <p class="mt-1 text-xs text-red-500" x-text="itemErrorMessage(row)"></p>
+                                        </template>
                                     </td>
-                                    <td class="px-4 py-2">
+                                    <td class="px-2 sm:px-4 py-2 w-[20%] sm:w-24">
                                         <input type="number" x-model="row.jumlah" :name="`items[${idx}][jumlah]`" min="1" class="w-full text-sm rounded-md border-gray-300">
                                     </td>
-                                    <td class="px-4 py-2">
+                                    <td class="px-2 sm:px-4 py-2 w-[30%] sm:w-auto">
                                         <input type="text" x-model="row.keterangan" :name="`items[${idx}][keterangan]`" placeholder="Opsional..." class="w-full text-sm rounded-md border-gray-300">
                                     </td>
-                                    <td class="px-4 py-2 text-right">
+                                    <td class="px-2 sm:px-4 py-2 text-right w-[5%] sm:w-16">
                                         <button type="button" @click="removeRow(idx)" class="text-red-500 hover:text-red-700">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                         </button>
@@ -1117,7 +1195,8 @@
                         <button type="submit"
                                 name="admin_finish"
                                 value="1"
-                                class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 flex items-center gap-2">
+                                :disabled="hasInvalidItems"
+                                class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                             Simpan dan Selesaikan (Admin)
                         </button>
                     @endif
