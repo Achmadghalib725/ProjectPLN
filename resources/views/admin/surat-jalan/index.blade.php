@@ -57,9 +57,10 @@
                 </div>
             @endif
 
-            {{-- Header --}}
+            {{-- Header + Tabs Navigation --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
-                <div class="p-4 sm:p-6">
+                {{-- Header --}}
+                <div class="p-4 sm:p-6 border-b border-gray-100">
                     @if(count($headerNotices) > 0)
                         <div class="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-lg text-xs sm:text-sm">
                             <div class="flex flex-col gap-1">
@@ -126,36 +127,31 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {{-- Tabs Navigation --}}
-            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex" aria-label="Tabs" data-ajax-tabs>
-                        <a href="{{ route('admin.surat-jalan.index', ['tab' => 'keluar']) }}"
-                           data-ajax-tab
-                           data-ajax-target="#surat-jalan-content"
-                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
-                            <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                                </svg>
-                                <span>Surat Keluar</span>
-                            </div>
-                        </a>
-                        <a href="{{ route('admin.surat-jalan.index', ['tab' => 'masuk']) }}"
-                           data-ajax-tab
-                           data-ajax-target="#surat-jalan-content"
-                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
-                            <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                                </svg>
-                                <span>Surat Masuk</span>
-                            </div>
-                        </a>
-                    </nav>
-                </div>
+                {{-- Tabs --}}
+                <nav class="flex" aria-label="Tabs" data-ajax-tabs>
+                    <a href="{{ route('admin.surat-jalan.index', ['tab' => 'keluar']) }}"
+                       data-ajax-tab
+                       data-ajax-target="#surat-jalan-content"
+                       class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                        <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                            <span>Surat Keluar</span>
+                        </div>
+                    </a>
+                    <a href="{{ route('admin.surat-jalan.index', ['tab' => 'masuk']) }}"
+                       data-ajax-tab
+                       data-ajax-target="#surat-jalan-content"
+                       class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                        <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                            </svg>
+                            <span>Surat Masuk</span>
+                        </div>
+                    </a>
+                </nav>
             </div>
 
             {{-- AJAX Content Container --}}
