@@ -289,14 +289,27 @@
                                 </select>
                             </div>
 
-                            <div x-show="form.role === 'manager'">
+                            <div x-show="form.role === 'manager'" x-cloak>
                                 <label class="block text-sm font-medium text-gray-700">Gudang yang Dikelola</label>
-                                <select name="gudang_ids[]" x-model="form.gudang_ids" multiple class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
-                                    @foreach($gudangs as $gudang)
-                                        <option value="{{ $gudang->id }}">{{ $gudang->nama }}</option>
-                                    @endforeach
-                                </select>
-                                <p class="text-xs text-gray-500 mt-1">Pilih satu atau lebih gudang.</p>
+                                <div class="mt-1 border border-gray-200 rounded-lg overflow-hidden">
+                                    <div class="max-h-48 overflow-y-auto divide-y divide-gray-200">
+                                        @foreach($gudangs as $gudang)
+                                            <label class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                                                <span class="text-sm text-gray-900">{{ $gudang->nama }}</span>
+                                                <input type="checkbox"
+                                                       name="gudang_ids[]"
+                                                       value="{{ $gudang->id }}"
+                                                       :checked="form.gudang_ids.includes({{ $gudang->id }})"
+                                                       @change="form.gudang_ids.includes({{ $gudang->id }}) ? form.gudang_ids = form.gudang_ids.filter(id => id !== {{ $gudang->id }}) : form.gudang_ids.push({{ $gudang->id }})"
+                                                       class="h-4 w-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500">
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">
+                                    <span x-show="form.gudang_ids.length === 0">Belum ada gudang dipilih</span>
+                                    <span x-show="form.gudang_ids.length > 0" x-text="form.gudang_ids.length + ' gudang dipilih'"></span>
+                                </p>
                             </div>
 
                             <div>

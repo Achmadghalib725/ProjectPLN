@@ -61,16 +61,21 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        // Gudang wajib untuk semua role kecuali admin dan manager
+        $gudangRequired = !in_array($request->role, ['admin', 'manager']);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'in:admin,operator_gudang,security,manager,penerima'],
-            'gudang_id' => ['nullable', 'exists:gudangs,id'],
+            'gudang_id' => [$gudangRequired ? 'required' : 'nullable', 'exists:gudangs,id'],
             'gudang_ids' => [Rule::requiredIf($request->role === 'manager'), 'array', 'min:1'],
             'gudang_ids.*' => ['integer', 'exists:gudangs,id'],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
+        ], [
+            'gudang_id.required' => 'Lokasi gudang wajib dipilih untuk role ini.',
         ]);
 
         $user = DB::transaction(function () use ($validated) {
@@ -119,16 +124,21 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        // Gudang wajib untuk semua role kecuali admin dan manager
+        $gudangRequired = !in_array($request->role, ['admin', 'manager']);
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:users,username,'.$user->id],
             'role' => ['required', 'in:admin,operator_gudang,security,manager,penerima'],
-            'gudang_id' => ['nullable', 'exists:gudangs,id'],
+            'gudang_id' => [$gudangRequired ? 'required' : 'nullable', 'exists:gudangs,id'],
             'gudang_ids' => [Rule::requiredIf($request->role === 'manager'), 'array', 'min:1'],
             'gudang_ids.*' => ['integer', 'exists:gudangs,id'],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
             'is_active' => ['boolean'],
+        ], [
+            'gudang_id.required' => 'Lokasi gudang wajib dipilih untuk role ini.',
         ]);
 
         $data = $request->except(['password', 'gudang_ids']);

@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust ngrok proxy
         $middleware->trustProxies(at: '*');
 
+        // Tambahkan middleware untuk cek user aktif pada setiap request web
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckUserActive::class,
+        ]);
+
         // Daftarkan Alias Middleware Anda di sini
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,

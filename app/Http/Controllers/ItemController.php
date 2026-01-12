@@ -6,6 +6,8 @@ use App\Http\Requests\ItemStoreRequest;
 use App\Http\Requests\ItemUpdateRequest;
 use App\Models\Item;
 use App\Models\ItemStock;
+use App\Models\ItemCategory;
+use App\Models\ItemUnit;
 use Illuminate\Http\Request;
 
 class ItemController extends Controller
@@ -33,11 +35,11 @@ class ItemController extends Controller
             ->paginate(15)->onEachSide(1)
             ->withQueryString();
 
-        // Mengambil kategori unik untuk keperluan filter di halaman index
-        $categories = Item::distinct()->pluck('kategori')->filter();
+        // Mengambil kategori dari tabel item_categories untuk filter
+        $categories = ItemCategory::orderBy('nama')->pluck('nama');
 
-        // Mengambil satuan unik untuk dropdown
-        $satuans = Item::distinct()->pluck('satuan')->filter();
+        // Mengambil satuan dari tabel item_units untuk dropdown
+        $satuans = ItemUnit::orderBy('nama')->pluck('nama');
 
         $allItems = Item::select('id', 'nama', 'kode', 'kategori', 'satuan', 'deskripsi')
             ->orderBy('nama')
@@ -45,7 +47,7 @@ class ItemController extends Controller
 
         // Statistik untuk Dashboard Master Barang
         $totalItems = Item::count();
-        $totalCategories = Item::distinct('kategori')->count('kategori');
+        $totalCategories = ItemCategory::count();
 
         return view('admin.items.index', compact('items', 'categories', 'satuans', 'allItems', 'totalItems', 'totalCategories'));
     }
@@ -119,17 +121,11 @@ class ItemController extends Controller
     }
 
     /**
-     * Menampilkan form edit item.
-     * Mengambil data $items agar dropdown kategori & satuan bisa muncul.
+     * Redirect ke halaman index (edit menggunakan modal).
      */
     public function edit(string $id)
     {
-        $item = Item::findOrFail($id);
-        
-        // Solusi: Mengambil semua data item agar variabel $items tersedia di view edit
-        $items = Item::all();
-        
-        return view('admin.items.edit', compact('item', 'items'));
+        return redirect()->route('admin.items.index');
     }
 
     /**
