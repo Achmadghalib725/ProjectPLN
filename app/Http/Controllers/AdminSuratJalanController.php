@@ -833,7 +833,12 @@ class AdminSuratJalanController extends Controller
         }
 
         $pics = collect();
-        if ($peminjaman && $peminjaman->status === 'DITERIMA' && !$peminjaman->surat_jalan_kembali_id) {
+        // Load PICs jika: (1) belum ada surat kembali, atau (2) surat kembali ditolak (buat ulang)
+        $shouldLoadPics = $peminjaman && $peminjaman->status === 'DITERIMA' && (
+            !$peminjaman->surat_jalan_kembali_id ||
+            $peminjaman->suratJalanKembali?->status === 'DITOLAK'
+        );
+        if ($shouldLoadPics) {
             $pics = Schema::hasTable('pics')
                 ? Pic::query()->where('gudang_id', $peminjaman->gudang_pemilik_id)->orderBy('nama')->get()
                 : collect();
@@ -1204,9 +1209,13 @@ class AdminSuratJalanController extends Controller
                 ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
         }
 
-        $suratJalan->update([
-            'status' => 'MENUNGGU_PERSETUJUAN',
-        ]);
+        // Hapus catatan penolakan sebelumnya jika diajukan ulang dari status DITOLAK_PERSETUJUAN
+        $updateData = ['status' => 'MENUNGGU_PERSETUJUAN'];
+        if ($suratJalan->status === 'DITOLAK_PERSETUJUAN') {
+            $updateData['catatan'] = null;
+        }
+
+        $suratJalan->update($updateData);
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);

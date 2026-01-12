@@ -1,58 +1,56 @@
 {{-- Statistics Cards --}}
-<div class="grid grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-6">
-    {{-- Total Items --}}
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg">
-        <div class="p-3 sm:p-6">
+<div class="grid grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
+    {{-- Total Jenis Barang --}}
+    <div class="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200">
+        <div class="p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row items-center sm:items-center">
                 <div class="flex-shrink-0 bg-[#035b71] rounded-md p-2 sm:p-3 mb-2 sm:mb-0">
-                    <svg class="h-4 w-4 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                     </svg>
                 </div>
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
-                        <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Item</dt>
-                        <dd class="text-base sm:text-lg font-bold text-gray-900">{{ $totalItems }}</dd>
+                        <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Jenis Barang</dt>
+                        <dd class="text-lg sm:text-xl font-bold text-[#035b71]">{{ $totalItems }}</dd>
                     </dl>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Total Stock Units --}}
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg">
-        <div class="p-3 sm:p-6">
+    {{-- Sedang Dipinjam --}}
+    <div class="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200">
+        <div class="p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row items-center sm:items-center">
                 <div class="flex-shrink-0 bg-[#00aff0] rounded-md p-2 sm:p-3 mb-2 sm:mb-0">
-                    <svg class="h-4 w-4 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
                     </svg>
                 </div>
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
-                        <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Unit Stok</dt>
-                        <dd class="text-base sm:text-lg font-bold text-gray-900">{{ number_format($totalUnits) }}</dd>
+                        <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Sedang Dipinjam</dt>
+                        <dd class="text-lg sm:text-xl font-bold text-gray-900">{{ number_format($totalBorrowed) }}</dd>
                     </dl>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Low Stock Alerts --}}
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg">
-        <div class="p-3 sm:p-6">
+    {{-- Stok Rendah --}}
+    <div class="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200">
+        <div class="p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row items-center sm:items-center">
-                <div class="flex-shrink-0 {{ $lowStockCount > 0 ? 'bg-red-500' : 'bg-green-500' }} rounded-md p-2 sm:p-3 mb-2 sm:mb-0">
-                    <svg class="h-4 w-4 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex-shrink-0 bg-amber-500 rounded-md p-2 sm:p-3 mb-2 sm:mb-0">
+                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
                         <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Stok Rendah</dt>
-                        <dd class="text-base sm:text-lg font-bold {{ $lowStockCount > 0 ? 'text-red-600' : 'text-green-600' }}">
-                            {{ $lowStockCount }}
-                        </dd>
+                        <dd class="text-lg sm:text-xl font-bold text-gray-900">{{ $lowStockCount }}</dd>
                     </dl>
                 </div>
             </div>
