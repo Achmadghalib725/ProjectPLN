@@ -395,11 +395,23 @@ class SuratJalanController extends Controller
             $picTujuanId = null;
         }
 
+        $excludeBorrowed = in_array(($validated['mode'] ?? null), ['peminjaman', 'transfer'], true);
         $warningItems = $this->buildStockWarnings(
             $gudangId,
             $validated['items'],
-            ($validated['mode'] ?? null) === 'peminjaman'
+            $excludeBorrowed
         );
+        if (!empty($warningItems)) {
+            $errorMessage = $this->buildStockErrorMessage(
+                $gudangId,
+                $validated['items'],
+                $excludeBorrowed
+            );
+            return redirect()
+                ->back()
+                ->withErrors(['items' => $errorMessage])
+                ->withInput();
+        }
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
         $tanggalKembali = !empty($validated['tanggal_kembali']) ? Carbon::parse($validated['tanggal_kembali'])->startOfDay() : null;
         $adminFinish = Auth::user()?->role === 'admin' && $request->boolean('admin_finish');
@@ -1060,11 +1072,23 @@ class SuratJalanController extends Controller
             'attachments.max' => 'Maksimal 3 lampiran gambar per surat jalan.',
         ]);
 
+        $excludeBorrowed = in_array(($validated['tipe'] ?? null), ['PEMINJAMAN', 'TRANSFER'], true);
         $warningItems = $this->buildStockWarnings(
             $gudangId,
             $validated['items'],
-            ($validated['tipe'] ?? null) === 'PEMINJAMAN'
+            $excludeBorrowed
         );
+        if (!empty($warningItems)) {
+            $errorMessage = $this->buildStockErrorMessage(
+                $gudangId,
+                $validated['items'],
+                $excludeBorrowed
+            );
+            return redirect()
+                ->back()
+                ->withErrors(['items' => $errorMessage])
+                ->withInput();
+        }
 
         $isCustomGudang = $validated['gudang_tujuan_mode'] === 'custom';
         $customGudangData = [
@@ -1154,7 +1178,7 @@ class SuratJalanController extends Controller
 
     public function requestApproval($id)
     {
-        $suratJalan = SuratJalan::with('attachments')->findOrFail($id);
+        $suratJalan = SuratJalan::with(['attachments', 'items'])->findOrFail($id);
         $user = Auth::user();
         $isAdmin = $user?->role === 'admin';
 
@@ -1171,6 +1195,27 @@ class SuratJalanController extends Controller
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini tidak dapat diajukan untuk persetujuan.');
+        }
+
+        $excludeBorrowed = in_array($suratJalan->tipe, ['PEMINJAMAN', 'TRANSFER'], true);
+        $warningItems = $this->buildStockWarnings(
+            $suratJalan->gudang_asal_id,
+            $suratJalan->items
+                ->map(fn ($item) => ['item_id' => $item->item_id, 'jumlah' => $item->jumlah])
+                ->all(),
+            $excludeBorrowed
+        );
+        if (!empty($warningItems)) {
+            $errorMessage = $this->buildStockErrorMessage(
+                $suratJalan->gudang_asal_id,
+                $suratJalan->items
+                    ->map(fn ($item) => ['item_id' => $item->item_id, 'jumlah' => $item->jumlah])
+                    ->all(),
+                $excludeBorrowed
+            );
+            return redirect()
+                ->route('gudang.surat-jalan.show', $suratJalan->id)
+                ->with('error', $errorMessage);
         }
 
         if ($suratJalan->attachments()->count() === 0) {
@@ -2027,6 +2072,42 @@ class SuratJalanController extends Controller
         return $warnings;
     }
 
+    private function buildStockErrorMessage(int $gudangId, array $items, bool $excludeBorrowed = false): string
+    {
+        $requested = collect($items)
+            ->filter(fn ($row) => !empty($row['item_id']) && !empty($row['jumlah']))
+            ->groupBy('item_id')
+            ->map(fn ($rows) => $rows->sum(fn ($row) => (int) $row['jumlah']));
+
+        if ($requested->isEmpty()) {
+            return 'Stok barang tidak mencukupi.';
+        }
+
+        $stocks = ItemStock::where('gudang_id', $gudangId)
+            ->whereIn('item_id', $requested->keys())
+            ->pluck('jumlah', 'item_id');
+
+        $itemNames = Item::whereIn('id', $requested->keys())->pluck('nama', 'id');
+        $borrowedTotals = $this->getBorrowedItemTotals($gudangId, $requested->keys());
+
+        $details = [];
+        foreach ($requested as $itemId => $qty) {
+            $stock = (int) ($stocks[$itemId] ?? 0);
+            $borrowed = (int) ($borrowedTotals[$itemId] ?? 0);
+            $available = max(0, $stock - $borrowed);
+            if ($qty > $available) {
+                $name = $itemNames[$itemId] ?? 'Item';
+                $details[] = "{$name} (diminta {$qty}, tersedia {$available})";
+            }
+        }
+
+        if (empty($details)) {
+            return 'Stok barang tidak mencukupi.';
+        }
+
+        return 'Stok barang tidak mencukupi: ' . implode(', ', $details) . '.';
+    }
+
     private function buildItemTotals(array $items)
     {
         return collect($items)
@@ -2178,7 +2259,7 @@ class SuratJalanController extends Controller
             $this->assertStockAvailable(
                 $gudangId,
                 $itemTotals,
-                ($validated['mode'] ?? null) === 'peminjaman'
+                in_array(($validated['mode'] ?? null), ['peminjaman', 'transfer'], true)
             );
 
             if ($validated['mode'] === 'transfer') {
