@@ -118,6 +118,7 @@
                         <p class="text-sm text-blue-700 mt-1">
                             File Excel akan berisi 20 kolom data lengkap meliputi: Nomor Surat Jalan, Tanggal, Tipe, Status,
                             Gudang Asal & Tujuan, Info Driver & Kendaraan, PIC Tujuan, Pembuat, Waktu TTD, Lama Peminjaman, Catatan, dan Total Item/Jumlah.
+                            Waktu rekap dicantumkan di baris pertama file Excel.
                         </p>
                     </div>
                 </div>
