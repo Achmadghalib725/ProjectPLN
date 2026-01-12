@@ -127,7 +127,9 @@
 
     {{-- Delete Confirmation Modal --}}
     <x-modal name="confirm-delete" focusable>
-        <div class="p-6" x-data>
+        <div class="p-6"
+             x-data="{ deleteStockUrl: '' }"
+             x-on:open-delete-stock.window="deleteStockUrl = $event.detail; $dispatch('open-modal', 'confirm-delete')">
             <h2 class="text-lg font-bold text-gray-900">Hapus Item dari Inventaris?</h2>
             <p class="mt-2 text-sm text-gray-600">
                 Item ini akan dihapus dari inventaris gudang Anda. Tindakan ini tidak dapat dibatalkan.
@@ -138,7 +140,7 @@
                         x-on:click="$dispatch('close-modal', 'confirm-delete')">
                     Batal
                 </button>
-                <form x-bind:action="window.deleteStockUrl" method="POST" class="inline">
+                <form x-bind:action="deleteStockUrl" method="POST" class="inline">
                     @csrf
                     @method('DELETE')
                     <button type="submit"

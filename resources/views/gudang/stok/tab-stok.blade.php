@@ -187,7 +187,7 @@
                     @if($stock->jumlah == 0)
                         <button type="button"
                             x-data
-                            @click="$dispatch('open-modal', 'confirm-delete'); window.deleteStockUrl = '{{ route('gudang.stok.destroy', $stock->id) }}'"
+                            @click="$dispatch('open-delete-stock', '{{ route('gudang.stok.destroy', $stock->id) }}')"
                             class="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-900 font-medium">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -295,7 +295,7 @@
                                 @if($stock->jumlah == 0)
                                     <button type="button"
                                         x-data
-                                        @click="$dispatch('open-modal', 'confirm-delete'); window.deleteStockUrl = '{{ route('gudang.stok.destroy', $stock->id) }}'"
+                                        @click="$dispatch('open-delete-stock', '{{ route('gudang.stok.destroy', $stock->id) }}')"
                                         class="text-red-600 hover:text-red-900"
                                         title="Hapus">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

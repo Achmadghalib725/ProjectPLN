@@ -46,6 +46,7 @@ class PicController extends Controller
     {
         $request->validate([
             'nama' => ['required', 'string', 'max:255'],
+            'role' => ['required', 'in:operator_gudang,penerima'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'jabatan' => ['nullable', 'string', 'max:255'],
@@ -55,14 +56,15 @@ class PicController extends Controller
 
         $userJabatan = $request->jabatan;
         $username = trim((string) $request->username);
+        $role = $request->input('role');
 
-        DB::transaction(function () use ($request, $userJabatan, $username) {
+        DB::transaction(function () use ($request, $userJabatan, $username, $role) {
             $user = User::create([
                 'name' => $request->nama,
                 'username' => $username,
                 'email' => $username . '@egudang.local',
                 'password' => $request->password,
-                'role' => 'penerima',
+                'role' => $role,
                 'gudang_id' => $request->gudang_id,
                 'jabatan' => $userJabatan,
                 'no_hp' => $request->no_hp,

@@ -1191,7 +1191,7 @@ class SuratJalanController extends Controller
             ->with('success', 'Surat Jalan berhasil diajukan untuk persetujuan.');
     }
 
-    public function rejectApproval($id)
+    public function rejectApproval(Request $request, $id)
     {
         $suratJalan = SuratJalan::findOrFail($id);
         $user = Auth::user();
@@ -1217,8 +1217,17 @@ class SuratJalanController extends Controller
                 ->with('error', 'Surat Jalan ini tidak dalam status menunggu persetujuan.');
         }
 
+        $validated = $request->validate([
+            'alasan' => ['required', 'string', 'max:500'],
+        ], [
+            'alasan.required' => 'Alasan penolakan wajib diisi.',
+            'alasan.max' => 'Alasan penolakan maksimal 500 karakter.',
+        ]);
+
+        $alasan = trim((string) $validated['alasan']);
         $suratJalan->update([
             'status' => 'DITOLAK_PERSETUJUAN',
+            'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[DITOLAK PERSETUJUAN: {$alasan}]",
         ]);
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);

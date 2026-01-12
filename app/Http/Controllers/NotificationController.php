@@ -56,8 +56,10 @@ class NotificationController extends Controller
             return response()->json(['success' => true]);
         }
 
-        // Redirect to notification URL if exists
-        if ($notification->url) {
+        $shouldRedirect = $request->boolean('redirect', false);
+
+        // Redirect to notification URL only when requested
+        if ($shouldRedirect && $notification->url) {
             return redirect($notification->url);
         }
 

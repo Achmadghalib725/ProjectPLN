@@ -109,13 +109,7 @@
                                         </button>
                                     </form>
                                     <button type="button"
-                                        @click="$dispatch('open-delete-modal', {
-                                            title: 'Tolak Persetujuan',
-                                            message: 'Apakah Anda yakin ingin menolak persetujuan surat jalan ini?',
-                                            action: '{{ route('gudang.surat-jalan.reject-approval', $suratJalan->id) }}',
-                                            method: 'POST',
-                                            confirmText: 'Tolak'
-                                        })"
+                                        @click="$dispatch('open-reject-approval', { action: '{{ route('gudang.surat-jalan.reject-approval', $suratJalan->id) }}' })"
                                         class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
                                         Tolak Persetujuan
                                     </button>
@@ -410,7 +404,7 @@
 
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($isPeminjaman && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
+            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -1629,5 +1623,46 @@
             initCameraCaptures();
         });
     </script>
+    <x-modal name="reject-approval" focusable>
+        <div class="p-6"
+             x-data="{ formAction: '' }"
+             x-on:open-reject-approval.window="formAction = $event.detail.action; $dispatch('open-modal', 'reject-approval')">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Tolak Persetujuan</h2>
+                    <p class="text-sm text-gray-600">Masukkan alasan penolakan untuk surat jalan ini.</p>
+                </div>
+            </div>
+            <form method="POST" x-bind:action="formAction" class="mt-4 space-y-4">
+                @csrf
+                <div>
+                    <label for="reject_reason_gudang" class="block text-sm font-medium text-gray-700 mb-1">Alasan Penolakan</label>
+                    <textarea id="reject_reason_gudang"
+                              name="alasan"
+                              rows="3"
+                              required
+                              class="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring focus:ring-red-200"
+                              placeholder="Tuliskan alasan penolakan..."></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button"
+                            class="inline-flex items-center px-4 py-2 text-xs font-semibold text-gray-700 uppercase tracking-widest bg-gray-100 rounded-md hover:bg-gray-200"
+                            x-on:click="$dispatch('close-modal', 'reject-approval')">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white uppercase tracking-widest bg-red-600 rounded-md hover:bg-red-700">
+                        Tolak
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+
     <x-confirm-delete-modal />
 </x-app-layout>

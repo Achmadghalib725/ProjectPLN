@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Pic;
 use App\Models\Gudang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\Rule;
 
@@ -59,7 +61,7 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
@@ -71,21 +73,39 @@ class UserController extends Controller
             'no_hp' => ['nullable', 'string', 'max:20'],
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'username' => $request->username,
-            'email' => $request->username . '@egudang.local', // Generate dummy email
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'gudang_id' => $request->role === 'manager' ? null : $request->gudang_id,
-            'jabatan' => $request->jabatan,
-            'no_hp' => $request->no_hp,
-            'is_active' => true,
-        ]);
+        $user = DB::transaction(function () use ($validated) {
+            $gudangId = $validated['role'] === 'manager'
+                ? null
+                : ($validated['gudang_id'] ?? null);
 
-        if ($request->role === 'manager') {
-            $user->managedGudangs()->sync($request->input('gudang_ids', []));
-        }
+            $user = User::create([
+                'name' => $validated['name'],
+                'username' => $validated['username'],
+                'email' => $validated['username'] . '@egudang.local', // Generate dummy email
+                'password' => Hash::make($validated['password']),
+                'role' => $validated['role'],
+                'gudang_id' => $gudangId,
+                'jabatan' => $validated['jabatan'] ?? null,
+                'no_hp' => $validated['no_hp'] ?? null,
+                'is_active' => true,
+            ]);
+
+            if ($validated['role'] === 'manager') {
+                $user->managedGudangs()->sync($validated['gudang_ids'] ?? []);
+            }
+
+            if (in_array($validated['role'], ['operator_gudang', 'penerima'], true)) {
+                Pic::create([
+                    'nama' => $validated['name'],
+                    'jabatan' => $validated['jabatan'] ?? null,
+                    'no_hp' => $validated['no_hp'] ?? null,
+                    'gudang_id' => $gudangId,
+                    'user_id' => $user->id,
+                ]);
+            }
+
+            return $user;
+        });
 
         return redirect()->route('admin.users.index')->with('success', 'User berhasil ditambahkan.');
     }
@@ -141,6 +161,17 @@ class UserController extends Controller
             $user->managedGudangs()->sync($request->input('gudang_ids', []));
         } else {
             $user->managedGudangs()->detach();
+        }
+
+        if (in_array($user->role, ['operator_gudang', 'penerima'], true)) {
+            $pic = Pic::firstOrNew(['user_id' => $user->id]);
+            $pic->fill([
+                'nama' => $user->name,
+                'jabatan' => $user->jabatan,
+                'no_hp' => $user->no_hp,
+                'gudang_id' => $user->gudang_id,
+            ]);
+            $pic->save();
         }
 
         return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
