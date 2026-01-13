@@ -1,8 +1,8 @@
 <nav class="fixed inset-y-0 left-0 z-30 bg-white shadow-2xl transition-all duration-300 ease-in-out flex flex-col justify-between border-r border-gray-200 md:static shrink-0"
     :class="sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 w-64 md:w-20'">
     <div class="flex flex-col">
-        <div class="h-20 flex items-center bg-gradient-to-r from-pln-primary to-pln-light relative overflow-hidden transition-all duration-300"
-            :class="sidebarOpen ? 'px-6 justify-between' : 'px-0 justify-center'">
+        <div class="h-24 flex items-center bg-gradient-to-r from-pln-primary to-pln-light relative overflow-hidden transition-all duration-300"
+            :class="sidebarOpen ? 'px-5 justify-between' : 'px-0 justify-center'">
 
             <div class="absolute top-0 right-0 -mt-2 -mr-2 w-20 h-20 bg-pln-yellow opacity-10 rounded-full blur-2xl transition-opacity duration-300"
                 :class="sidebarOpen ? 'opacity-10' : 'opacity-0'"></div>
@@ -14,9 +14,9 @@
                 </a>
 
                 <div x-show="sidebarOpen"
-                    class="text-white whitespace-nowrap overflow-hidden transition-opacity duration-300 delay-100">
-                    <h1 class="font-bold text-xl leading-tight tracking-wide">E-STORAGE</h1>
-                    <p class="text-[10px] font-bold text-pln-yellow tracking-widest">ULPLTD/G Tanjung Karang</p>
+                    class="text-white overflow-hidden transition-opacity duration-300 delay-100 min-w-0">
+                    <h1 class="font-bold text-sm leading-snug">E-Dispatch & Tool<br>Management System</h1>
+                    <p class="text-[10px] font-bold text-pln-yellow tracking-wider mt-0.5">ULPLTD/G Tanjung Karang</p>
                 </div>
             </div>
 
