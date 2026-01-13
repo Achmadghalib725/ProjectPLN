@@ -1,3 +1,13 @@
+@php
+    // Tentukan nilai statistik berdasarkan tipe gudang yang sedang ditampilkan
+    $currentTotalItems = ($tipeGudang ?? 'mekanik') === 'mekanik'
+        ? ($totalItemsMekanik ?? 0)
+        : ($totalItemsListrik ?? 0);
+    $currentLowStockCount = ($tipeGudang ?? 'mekanik') === 'mekanik'
+        ? ($lowStockCountMekanik ?? 0)
+        : ($lowStockCountListrik ?? 0);
+@endphp
+
 {{-- Statistics Cards --}}
 <div class="grid grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
     {{-- Total Jenis Barang --}}
@@ -12,7 +22,7 @@
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
                         <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Jenis Barang</dt>
-                        <dd class="text-lg sm:text-xl font-bold text-[#035b71]">{{ $totalItems }}</dd>
+                        <dd class="text-lg sm:text-xl font-bold text-[#035b71]">{{ $currentTotalItems }}</dd>
                     </dl>
                 </div>
             </div>
@@ -31,7 +41,7 @@
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
                         <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Sedang Dipinjam</dt>
-                        <dd class="text-lg sm:text-xl font-bold text-gray-900">{{ number_format($totalBorrowed) }}</dd>
+                        <dd class="text-lg sm:text-xl font-bold text-gray-900">{{ number_format($totalBorrowed ?? 0) }}</dd>
                     </dl>
                 </div>
             </div>
@@ -50,7 +60,7 @@
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
                         <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Stok Rendah</dt>
-                        <dd class="text-lg sm:text-xl font-bold text-gray-900">{{ $lowStockCount }}</dd>
+                        <dd class="text-lg sm:text-xl font-bold text-gray-900">{{ $currentLowStockCount }}</dd>
                     </dl>
                 </div>
             </div>

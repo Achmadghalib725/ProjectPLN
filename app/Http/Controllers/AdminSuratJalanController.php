@@ -1318,42 +1318,59 @@ class AdminSuratJalanController extends Controller
                     ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
                     : ($suratJalan->gudangTujuan->nama ?? 'Gudang Tujuan');
 
+                // Build item totals with tipe_gudang
                 $itemTotals = $suratJalan->items
-                    ->groupBy('item_id')
-                    ->map(fn ($rows) => $rows->sum('jumlah'));
+                    ->groupBy(fn ($item) => $item->item_id . '_' . ($item->tipe_gudang ?? 'mekanik'))
+                    ->map(fn ($rows) => [
+                        'item_id' => $rows->first()->item_id,
+                        'tipe_gudang' => $rows->first()->tipe_gudang ?? 'mekanik',
+                        'qty' => (int) $rows->sum('jumlah')
+                    ]);
 
                 // Untuk PENGEMBALIAN, tidak perlu validasi stok (barang dikembalikan)
                 if ($suratJalan->tipe !== 'PENGEMBALIAN') {
                     $gudangId = $suratJalan->gudang_asal_id;
                     $borrowedTotals = $suratJalan->tipe === 'PEMINJAMAN'
-                        ? $this->getBorrowedItemTotals($gudangId, $itemTotals->keys())
+                        ? $this->getBorrowedItemTotals($gudangId, $itemTotals->pluck('item_id'))
                         : collect();
 
-                    // Validasi stok terlebih dahulu (per item total)
-                    foreach ($itemTotals as $itemId => $qty) {
+                    // Validasi stok terlebih dahulu (per item + tipe_gudang)
+                    foreach ($itemTotals as $key => $data) {
+                        $itemId = $data['item_id'];
+                        $tipeGudang = $data['tipe_gudang'];
+                        $qty = $data['qty'];
+
                         $stock = ItemStock::where('gudang_id', $gudangId)
                             ->where('item_id', $itemId)
+                            ->where('tipe_gudang', $tipeGudang)
                             ->lockForUpdate()
                             ->first();
 
                         $available = $stock?->jumlah ?? 0;
                         if ($suratJalan->tipe === 'PEMINJAMAN') {
-                            $available -= (int) ($borrowedTotals[$itemId] ?? 0);
+                            $borrowedKey = $itemId . '_' . $tipeGudang;
+                            $available -= (int) ($borrowedTotals[$borrowedKey] ?? 0);
                             $available = max(0, $available);
                         }
                         if ($available < $qty) {
                             $itemName = $suratJalan->items->firstWhere('item_id', $itemId)?->item->nama ?? "Item ID {$itemId}";
+                            $tipeLabel = $tipeGudang === 'mekanik' ? 'Mekanik' : 'Listrik';
                             $detail = $suratJalan->tipe === 'PEMINJAMAN'
-                                ? "Stok sendiri tidak cukup untuk {$itemName} (dibutuhkan {$qty}, tersedia {$available}). Barang pinjaman dari gudang lain tidak dapat dipinjamkan."
-                                : "Stok tidak cukup untuk {$itemName}.";
+                                ? "Stok Gudang {$tipeLabel} tidak cukup untuk {$itemName} (dibutuhkan {$qty}, tersedia {$available}). Barang pinjaman dari gudang lain tidak dapat dipinjamkan."
+                                : "Stok Gudang {$tipeLabel} tidak cukup untuk {$itemName}.";
                             throw new \RuntimeException($detail);
                         }
                     }
 
-                    // Kurangi stok dan catat movement (per item total)
-                    foreach ($itemTotals as $itemId => $qty) {
+                    // Kurangi stok dan catat movement (per item + tipe_gudang)
+                    foreach ($itemTotals as $key => $data) {
+                        $itemId = $data['item_id'];
+                        $tipeGudang = $data['tipe_gudang'];
+                        $qty = $data['qty'];
+
                         $stock = ItemStock::where('gudang_id', $gudangId)
                             ->where('item_id', $itemId)
+                            ->where('tipe_gudang', $tipeGudang)
                             ->first();
 
                         $stokSebelum = $stock->jumlah;
@@ -1364,6 +1381,7 @@ class AdminSuratJalanController extends Controller
                         StockMovement::create([
                             'item_id' => $itemId,
                             'gudang_id' => $gudangId,
+                            'tipe_gudang' => $tipeGudang,
                             'tipe' => 'OUT',
                             'jumlah' => $qty,
                             'stok_sebelum' => $stokSebelum,
@@ -1371,7 +1389,7 @@ class AdminSuratJalanController extends Controller
                             'referensi_type' => 'SuratJalan',
                             'referensi_id' => $suratJalan->id,
                             'created_by' => Auth::id(),
-                            'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$gudangTujuanNama}"
+                            'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$gudangTujuanNama} [{$tipeGudang}]"
                         ]);
                     }
 
@@ -1480,15 +1498,24 @@ class AdminSuratJalanController extends Controller
 
         try {
             DB::transaction(function () use ($suratJalan, $gudangId) {
+                // Build item totals with tipe_gudang
                 $itemTotals = $suratJalan->items
-                    ->groupBy('item_id')
-                    ->map(fn ($rows) => $rows->sum('jumlah'));
+                    ->groupBy(fn ($item) => $item->item_id . '_' . ($item->tipe_gudang ?? 'mekanik'))
+                    ->map(fn ($rows) => [
+                        'item_id' => $rows->first()->item_id,
+                        'tipe_gudang' => $rows->first()->tipe_gudang ?? 'mekanik',
+                        'qty' => (int) $rows->sum('jumlah')
+                    ]);
 
                 if ($suratJalan->tipe === 'PENGEMBALIAN') {
                     // PENGEMBALIAN: Tambah stok ke gudang pemilik dan set status SELESAI
-                    foreach ($itemTotals as $itemId => $qty) {
+                    foreach ($itemTotals as $key => $data) {
+                        $itemId = $data['item_id'];
+                        $tipeGudang = $data['tipe_gudang'];
+                        $qty = $data['qty'];
+
                         $stock = ItemStock::firstOrCreate(
-                            ['gudang_id' => $gudangId, 'item_id' => $itemId],
+                            ['gudang_id' => $gudangId, 'item_id' => $itemId, 'tipe_gudang' => $tipeGudang],
                             ['jumlah' => 0, 'stok_minimum' => 0]
                         );
 
@@ -1500,6 +1527,7 @@ class AdminSuratJalanController extends Controller
                         StockMovement::create([
                             'item_id' => $itemId,
                             'gudang_id' => $gudangId,
+                            'tipe_gudang' => $tipeGudang,
                             'tipe' => 'IN',
                             'jumlah' => $qty,
                             'stok_sebelum' => $stokSebelum,
@@ -1507,7 +1535,7 @@ class AdminSuratJalanController extends Controller
                             'referensi_type' => 'SuratJalan',
                             'referensi_id' => $suratJalan->id,
                             'created_by' => Auth::id(),
-                            'keterangan' => "Pengembalian via {$suratJalan->nomor} dari {$suratJalan->gudangAsal->nama}"
+                            'keterangan' => "Pengembalian via {$suratJalan->nomor} dari {$suratJalan->gudangAsal->nama} [{$tipeGudang}]"
                         ]);
                     }
 
@@ -1533,9 +1561,13 @@ class AdminSuratJalanController extends Controller
                     }
                 } else {
                     // TRANSFER/PEMINJAMAN: Tambah stok ke gudang tujuan dan set status DITERIMA
-                    foreach ($itemTotals as $itemId => $qty) {
+                    foreach ($itemTotals as $key => $data) {
+                        $itemId = $data['item_id'];
+                        $tipeGudang = $data['tipe_gudang'];
+                        $qty = $data['qty'];
+
                         $stock = ItemStock::firstOrCreate(
-                            ['gudang_id' => $gudangId, 'item_id' => $itemId],
+                            ['gudang_id' => $gudangId, 'item_id' => $itemId, 'tipe_gudang' => $tipeGudang],
                             ['jumlah' => 0, 'stok_minimum' => 0]
                         );
 
@@ -1547,6 +1579,7 @@ class AdminSuratJalanController extends Controller
                         StockMovement::create([
                             'item_id' => $itemId,
                             'gudang_id' => $gudangId,
+                            'tipe_gudang' => $tipeGudang,
                             'tipe' => 'IN',
                             'jumlah' => $qty,
                             'stok_sebelum' => $stokSebelum,
@@ -1554,7 +1587,7 @@ class AdminSuratJalanController extends Controller
                             'referensi_type' => 'SuratJalan',
                             'referensi_id' => $suratJalan->id,
                             'created_by' => Auth::id(),
-                            'keterangan' => "Penerimaan via {$suratJalan->nomor} dari {$suratJalan->gudangAsal->nama}"
+                            'keterangan' => "Penerimaan via {$suratJalan->nomor} dari {$suratJalan->gudangAsal->nama} [{$tipeGudang}]"
                         ]);
                     }
 
@@ -1630,13 +1663,22 @@ class AdminSuratJalanController extends Controller
 
         try {
             DB::transaction(function () use ($suratJalan, $gudangId) {
+                // Build item totals with tipe_gudang
                 $itemTotals = $suratJalan->items
-                    ->groupBy('item_id')
-                    ->map(fn ($rows) => $rows->sum('jumlah'));
+                    ->groupBy(fn ($item) => $item->item_id . '_' . ($item->tipe_gudang ?? 'mekanik'))
+                    ->map(fn ($rows) => [
+                        'item_id' => $rows->first()->item_id,
+                        'tipe_gudang' => $rows->first()->tipe_gudang ?? 'mekanik',
+                        'qty' => (int) $rows->sum('jumlah')
+                    ]);
 
-                foreach ($itemTotals as $itemId => $qty) {
+                foreach ($itemTotals as $key => $data) {
+                    $itemId = $data['item_id'];
+                    $tipeGudang = $data['tipe_gudang'];
+                    $qty = $data['qty'];
+
                     $stock = ItemStock::firstOrCreate(
-                        ['gudang_id' => $gudangId, 'item_id' => $itemId],
+                        ['gudang_id' => $gudangId, 'item_id' => $itemId, 'tipe_gudang' => $tipeGudang],
                         ['jumlah' => 0, 'stok_minimum' => 0]
                     );
 
@@ -1649,6 +1691,7 @@ class AdminSuratJalanController extends Controller
                     StockMovement::create([
                         'item_id' => $itemId,
                         'gudang_id' => $gudangId,
+                        'tipe_gudang' => $tipeGudang,
                         'tipe' => 'IN',
                         'jumlah' => $qty,
                         'stok_sebelum' => $stokSebelum,
@@ -1656,7 +1699,7 @@ class AdminSuratJalanController extends Controller
                         'referensi_type' => 'SuratJalan',
                         'referensi_id' => $suratJalan->id,
                         'created_by' => Auth::id(),
-                        'keterangan' => "Pengembalian manual dari {$tujuanNama}"
+                        'keterangan' => "Pengembalian manual dari {$tujuanNama} [{$tipeGudang}]"
                     ]);
                 }
 
@@ -1792,8 +1835,12 @@ class AdminSuratJalanController extends Controller
         $now = now();
 
         foreach ($movements as $movement) {
+            // Use tipe_gudang from the movement record (defaults to 'mekanik' for old records)
+            $tipeGudang = $movement->tipe_gudang ?? 'mekanik';
+
             $stock = ItemStock::where('gudang_id', $movement->gudang_id)
                 ->where('item_id', $movement->item_id)
+                ->where('tipe_gudang', $tipeGudang)
                 ->lockForUpdate()
                 ->first();
 
@@ -1802,6 +1849,7 @@ class AdminSuratJalanController extends Controller
                 $stock = ItemStock::create([
                     'gudang_id' => $movement->gudang_id,
                     'item_id' => $movement->item_id,
+                    'tipe_gudang' => $tipeGudang,
                     'jumlah' => 0,
                     'stok_minimum' => 0,
                 ]);
@@ -1825,6 +1873,7 @@ class AdminSuratJalanController extends Controller
             StockMovement::create([
                 'item_id' => $movement->item_id,
                 'gudang_id' => $movement->gudang_id,
+                'tipe_gudang' => $tipeGudang,
                 'tipe' => $reverseTipe,
                 'jumlah' => $movement->jumlah,
                 'stok_sebelum' => $stokSebelum,
@@ -2024,6 +2073,7 @@ class AdminSuratJalanController extends Controller
                 return [
                     'surat_jalan_id' => $suratJalanId,
                     'item_id' => (int) $row['item_id'],
+                    'tipe_gudang' => $row['tipe_gudang'] ?? 'mekanik',
                     'jumlah' => (int) $row['jumlah'],
                     'keterangan' => $row['keterangan'] ?? null,
                 ];
@@ -2042,6 +2092,7 @@ class AdminSuratJalanController extends Controller
                 return [
                     'peminjaman_id' => $peminjamanId,
                     'item_id' => (int) $row['item_id'],
+                    'tipe_gudang' => $row['tipe_gudang'] ?? 'mekanik',
                     'jumlah_dipinjam' => (int) $row['jumlah'],
                     'jumlah_diterima' => null,
                     'jumlah_dikembalikan' => null,
@@ -2059,33 +2110,45 @@ class AdminSuratJalanController extends Controller
     {
         $requested = collect($items)
             ->filter(fn ($row) => !empty($row['item_id']) && !empty($row['jumlah']))
-            ->groupBy('item_id')
-            ->map(fn ($rows) => $rows->sum(fn ($row) => (int) $row['jumlah']));
+            ->groupBy(fn ($row) => $row['item_id'] . '_' . ($row['tipe_gudang'] ?? 'mekanik'))
+            ->map(fn ($rows) => [
+                'item_id' => (int) $rows->first()['item_id'],
+                'tipe_gudang' => $rows->first()['tipe_gudang'] ?? 'mekanik',
+                'qty' => $rows->sum(fn ($row) => (int) $row['jumlah'])
+            ]);
 
         if ($requested->isEmpty()) {
             return [];
         }
 
+        $itemIds = $requested->pluck('item_id')->unique();
         $stocks = ItemStock::where('gudang_id', $gudangId)
-            ->whereIn('item_id', $requested->keys())
-            ->pluck('jumlah', 'item_id');
+            ->whereIn('item_id', $itemIds)
+            ->get()
+            ->mapWithKeys(fn ($s) => [$s->item_id . '_' . $s->tipe_gudang => $s->jumlah]);
 
-        $itemNames = Item::whereIn('id', $requested->keys())->pluck('nama', 'id');
+        $itemNames = Item::whereIn('id', $itemIds)->pluck('nama', 'id');
         $borrowedTotals = $excludeBorrowed
-            ? $this->getBorrowedItemTotals($gudangId, $requested->keys())
+            ? $this->getBorrowedItemTotals($gudangId, $itemIds)
             : collect();
 
         $warnings = [];
-        foreach ($requested as $itemId => $qty) {
-            $available = (int) ($stocks[$itemId] ?? 0);
+        foreach ($requested as $key => $data) {
+            $itemId = $data['item_id'];
+            $tipeGudang = $data['tipe_gudang'];
+            $qty = $data['qty'];
+            $stockKey = $itemId . '_' . $tipeGudang;
+
+            $available = (int) ($stocks[$stockKey] ?? 0);
             if ($excludeBorrowed) {
-                $available -= (int) ($borrowedTotals[$itemId] ?? 0);
+                $available -= (int) ($borrowedTotals[$stockKey] ?? 0);
                 $available = max(0, $available);
             }
             if ($qty > $available) {
                 $name = $itemNames[$itemId] ?? 'Item';
+                $tipeLabel = $tipeGudang === 'mekanik' ? 'Mekanik' : 'Listrik';
                 $label = $excludeBorrowed ? 'stok sendiri' : 'stok';
-                $warnings[] = "{$name} (diminta {$qty}, {$label} {$available})";
+                $warnings[] = "{$name} [{$tipeLabel}] (diminta {$qty}, {$label} {$available})";
             }
         }
 
@@ -2096,28 +2159,40 @@ class AdminSuratJalanController extends Controller
     {
         $requested = collect($items)
             ->filter(fn ($row) => !empty($row['item_id']) && !empty($row['jumlah']))
-            ->groupBy('item_id')
-            ->map(fn ($rows) => $rows->sum(fn ($row) => (int) $row['jumlah']));
+            ->groupBy(fn ($row) => $row['item_id'] . '_' . ($row['tipe_gudang'] ?? 'mekanik'))
+            ->map(fn ($rows) => [
+                'item_id' => (int) $rows->first()['item_id'],
+                'tipe_gudang' => $rows->first()['tipe_gudang'] ?? 'mekanik',
+                'qty' => $rows->sum(fn ($row) => (int) $row['jumlah'])
+            ]);
 
         if ($requested->isEmpty()) {
             return 'Stok barang tidak mencukupi.';
         }
 
+        $itemIds = $requested->pluck('item_id')->unique();
         $stocks = ItemStock::where('gudang_id', $gudangId)
-            ->whereIn('item_id', $requested->keys())
-            ->pluck('jumlah', 'item_id');
+            ->whereIn('item_id', $itemIds)
+            ->get()
+            ->mapWithKeys(fn ($s) => [$s->item_id . '_' . $s->tipe_gudang => $s->jumlah]);
 
-        $itemNames = Item::whereIn('id', $requested->keys())->pluck('nama', 'id');
-        $borrowedTotals = $this->getBorrowedItemTotals($gudangId, $requested->keys());
+        $itemNames = Item::whereIn('id', $itemIds)->pluck('nama', 'id');
+        $borrowedTotals = $this->getBorrowedItemTotals($gudangId, $itemIds);
 
         $details = [];
-        foreach ($requested as $itemId => $qty) {
-            $stock = (int) ($stocks[$itemId] ?? 0);
-            $borrowed = (int) ($borrowedTotals[$itemId] ?? 0);
+        foreach ($requested as $key => $data) {
+            $itemId = $data['item_id'];
+            $tipeGudang = $data['tipe_gudang'];
+            $qty = $data['qty'];
+            $stockKey = $itemId . '_' . $tipeGudang;
+
+            $stock = (int) ($stocks[$stockKey] ?? 0);
+            $borrowed = (int) ($borrowedTotals[$stockKey] ?? 0);
             $available = max(0, $stock - $borrowed);
             if ($qty > $available) {
                 $name = $itemNames[$itemId] ?? 'Item';
-                $details[] = "{$name} (diminta {$qty}, tersedia {$available})";
+                $tipeLabel = $tipeGudang === 'mekanik' ? 'Mekanik' : 'Listrik';
+                $details[] = "{$name} [{$tipeLabel}] (diminta {$qty}, tersedia {$available})";
             }
         }
 
@@ -2132,34 +2207,45 @@ class AdminSuratJalanController extends Controller
     {
         return collect($items)
             ->filter(fn ($row) => !empty($row['item_id']) && !empty($row['jumlah']))
-            ->groupBy('item_id')
-            ->map(fn ($rows) => $rows->sum(fn ($row) => (int) $row['jumlah']));
+            ->groupBy(fn ($row) => $row['item_id'] . '_' . ($row['tipe_gudang'] ?? 'mekanik'))
+            ->map(fn ($rows) => [
+                'item_id' => (int) $rows->first()['item_id'],
+                'tipe_gudang' => $rows->first()['tipe_gudang'] ?? 'mekanik',
+                'qty' => $rows->sum(fn ($row) => (int) $row['jumlah'])
+            ]);
     }
 
     private function assertStockAvailable(int $gudangId, $itemTotals, bool $excludeBorrowed = false): void
     {
-        $itemNames = Item::whereIn('id', $itemTotals->keys())
-            ->pluck('nama', 'id');
+        $itemIds = $itemTotals->pluck('item_id')->unique();
+        $itemNames = Item::whereIn('id', $itemIds)->pluck('nama', 'id');
         $borrowedTotals = $excludeBorrowed
-            ? $this->getBorrowedItemTotals($gudangId, $itemTotals->keys())
+            ? $this->getBorrowedItemTotals($gudangId, $itemIds)
             : collect();
 
-        foreach ($itemTotals as $itemId => $qty) {
+        foreach ($itemTotals as $key => $data) {
+            $itemId = $data['item_id'];
+            $tipeGudang = $data['tipe_gudang'];
+            $qty = $data['qty'];
+
             $stock = ItemStock::where('gudang_id', $gudangId)
                 ->where('item_id', $itemId)
+                ->where('tipe_gudang', $tipeGudang)
                 ->lockForUpdate()
                 ->first();
 
             $available = $stock?->jumlah ?? 0;
             if ($excludeBorrowed) {
-                $available -= (int) ($borrowedTotals[$itemId] ?? 0);
+                $borrowedKey = $itemId . '_' . $tipeGudang;
+                $available -= (int) ($borrowedTotals[$borrowedKey] ?? 0);
                 $available = max(0, $available);
             }
             if ($available < $qty) {
                 $name = $itemNames[$itemId] ?? 'Item';
+                $tipeLabel = $tipeGudang === 'mekanik' ? 'Mekanik' : 'Listrik';
                 $detail = $excludeBorrowed
-                    ? "Stok sendiri tidak cukup untuk {$name} (dibutuhkan {$qty}, tersedia {$available}). Barang pinjaman dari gudang lain tidak dapat dipinjamkan."
-                    : "Stok tidak cukup untuk {$name} (dibutuhkan {$qty}, tersedia {$available}).";
+                    ? "Stok Gudang {$tipeLabel} tidak cukup untuk {$name} (dibutuhkan {$qty}, tersedia {$available}). Barang pinjaman dari gudang lain tidak dapat dipinjamkan."
+                    : "Stok Gudang {$tipeLabel} tidak cukup untuk {$name} (dibutuhkan {$qty}, tersedia {$available}).";
                 throw new \RuntimeException($detail);
             }
         }
@@ -2168,7 +2254,11 @@ class AdminSuratJalanController extends Controller
     private function getBorrowedItemTotals(int $gudangId, $itemIds = null)
     {
         $query = PeminjamanItem::query()
-            ->select('peminjaman_items.item_id', DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total'))
+            ->select(
+                'peminjaman_items.item_id',
+                'peminjaman_items.tipe_gudang',
+                DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total')
+            )
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
             ->where('peminjamans.gudang_peminjam_id', $gudangId)
             ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
@@ -2182,20 +2272,27 @@ class AdminSuratJalanController extends Controller
         }
 
         return $query
-            ->groupBy('peminjaman_items.item_id')
-            ->pluck('total', 'peminjaman_items.item_id');
+            ->groupBy('peminjaman_items.item_id', 'peminjaman_items.tipe_gudang')
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->item_id . '_' . ($row->tipe_gudang ?? 'mekanik') => $row->total]);
     }
 
     private function applyStockOut(int $gudangId, $itemTotals, SuratJalan $suratJalan, Carbon $eventTime, string $keterangan): void
     {
-        foreach ($itemTotals as $itemId => $qty) {
+        foreach ($itemTotals as $key => $data) {
+            $itemId = $data['item_id'];
+            $tipeGudang = $data['tipe_gudang'];
+            $qty = $data['qty'];
+
             $stock = ItemStock::where('gudang_id', $gudangId)
                 ->where('item_id', $itemId)
+                ->where('tipe_gudang', $tipeGudang)
                 ->lockForUpdate()
                 ->first();
 
             if (!$stock) {
-                throw new \RuntimeException("Stok item {$itemId} tidak ditemukan.");
+                $tipeLabel = $tipeGudang === 'mekanik' ? 'Mekanik' : 'Listrik';
+                throw new \RuntimeException("Stok item {$itemId} di Gudang {$tipeLabel} tidak ditemukan.");
             }
 
             $stokSebelum = $stock->jumlah;
@@ -2206,6 +2303,7 @@ class AdminSuratJalanController extends Controller
             StockMovement::create([
                 'item_id' => $itemId,
                 'gudang_id' => $gudangId,
+                'tipe_gudang' => $tipeGudang,
                 'tipe' => 'OUT',
                 'jumlah' => $qty,
                 'stok_sebelum' => $stokSebelum,
@@ -2213,7 +2311,7 @@ class AdminSuratJalanController extends Controller
                 'referensi_type' => 'SuratJalan',
                 'referensi_id' => $suratJalan->id,
                 'created_by' => Auth::id(),
-                'keterangan' => $keterangan,
+                'keterangan' => $keterangan . " [{$tipeGudang}]",
                 'created_at' => $eventTime,
                 'updated_at' => $eventTime,
             ]);
@@ -2222,9 +2320,13 @@ class AdminSuratJalanController extends Controller
 
     private function applyStockIn(int $gudangId, $itemTotals, SuratJalan $suratJalan, Carbon $eventTime, string $keterangan): void
     {
-        foreach ($itemTotals as $itemId => $qty) {
+        foreach ($itemTotals as $key => $data) {
+            $itemId = $data['item_id'];
+            $tipeGudang = $data['tipe_gudang'];
+            $qty = $data['qty'];
+
             $stock = ItemStock::firstOrCreate(
-                ['gudang_id' => $gudangId, 'item_id' => $itemId],
+                ['gudang_id' => $gudangId, 'item_id' => $itemId, 'tipe_gudang' => $tipeGudang],
                 ['jumlah' => 0, 'stok_minimum' => 0]
             );
 
@@ -2236,6 +2338,7 @@ class AdminSuratJalanController extends Controller
             StockMovement::create([
                 'item_id' => $itemId,
                 'gudang_id' => $gudangId,
+                'tipe_gudang' => $tipeGudang,
                 'tipe' => 'IN',
                 'jumlah' => $qty,
                 'stok_sebelum' => $stokSebelum,
@@ -2243,7 +2346,7 @@ class AdminSuratJalanController extends Controller
                 'referensi_type' => 'SuratJalan',
                 'referensi_id' => $suratJalan->id,
                 'created_by' => Auth::id(),
-                'keterangan' => $keterangan,
+                'keterangan' => $keterangan . " [{$tipeGudang}]",
                 'created_at' => $eventTime,
                 'updated_at' => $eventTime,
             ]);

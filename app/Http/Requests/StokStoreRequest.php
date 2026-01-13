@@ -26,10 +26,12 @@ class StokStoreRequest extends FormRequest
             'item_id' => [
                 'required',
                 'exists:items,id',
-                // Prevent duplicate: item already in this warehouse
+                // Prevent duplicate: item already in this warehouse for same tipe_gudang
                 Rule::unique('item_stocks')
                     ->where('gudang_id', $this->user()->gudang_id)
+                    ->where('tipe_gudang', $this->input('tipe_gudang', 'mekanik'))
             ],
+            'tipe_gudang' => ['required', 'in:mekanik,listrik'],
             'jumlah' => ['required', 'integer', 'min:0'],
             'stok_minimum' => ['required', 'integer', 'min:0'],
             'keterangan' => ['nullable', 'string', 'max:500']
@@ -43,10 +45,14 @@ class StokStoreRequest extends FormRequest
      */
     public function messages(): array
     {
+        $tipeLabel = $this->input('tipe_gudang') === 'listrik' ? 'Listrik' : 'Mekanik';
+
         return [
             'item_id.required' => 'Item harus dipilih',
             'item_id.exists' => 'Item yang dipilih tidak valid',
-            'item_id.unique' => 'Item ini sudah ada di gudang Anda',
+            'item_id.unique' => "Item ini sudah ada di Gudang {$tipeLabel} Anda",
+            'tipe_gudang.required' => 'Tipe gudang harus dipilih',
+            'tipe_gudang.in' => 'Tipe gudang tidak valid',
             'jumlah.required' => 'Jumlah stok harus diisi',
             'jumlah.integer' => 'Jumlah stok harus berupa angka',
             'jumlah.min' => 'Jumlah stok tidak boleh negatif',

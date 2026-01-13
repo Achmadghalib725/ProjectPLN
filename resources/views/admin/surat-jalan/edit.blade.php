@@ -43,7 +43,9 @@
                 <div class="p-6"
                      x-data="{
                         items: @js(old('items', $suratJalan->items->map(fn($item) => [
+                            'stock_id' => '',
                             'item_id' => $item->item_id,
+                            'tipe_gudang' => $item->tipe_gudang ?? 'mekanik',
                             'jumlah' => $item->jumlah,
                             'keterangan' => $item->keterangan,
                         ])->values())),
@@ -62,11 +64,20 @@
                             jabatan: @js(old('pic_custom_jabatan', $suratJalan->pic_tujuan_custom_jabatan)),
                             no_hp: @js(old('pic_custom_no_hp', $suratJalan->pic_tujuan_custom_no_hp)),
                         },
+                        stocksCatalog: @js(($availableStocks ?? collect())->map(fn($s) => [
+                            'id' => $s->id,
+                            'item_id' => $s->item_id,
+                            'kode' => $s->item->kode ?? '',
+                            'nama' => $s->item->nama ?? 'Item',
+                            'satuan' => $s->item->satuan ?? '',
+                            'stok' => (int) ($s->jumlah ?? 0),
+                            'tipe_gudang' => $s->tipe_gudang ?? 'mekanik',
+                        ])),
                         itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
-                            return [$stock->item_id => ($stock->item->satuan ?? '')];
+                            return [$stock->id => ($stock->item->satuan ?? '')];
                         })),
                         itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
-                            return [$stock->item_id => (int) ($stock->jumlah ?? 0)];
+                            return [$stock->id => (int) ($stock->jumlah ?? 0)];
                         })),
                         pics: @js(($pics ?? collect())->map(fn($pic) => [
                             'id' => $pic->id,
@@ -74,7 +85,16 @@
                             'jabatan' => $pic->jabatan,
                             'gudang_id' => $pic->gudang_id,
                         ])->values()),
-                        addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
+                        addRow() { this.items.push({ stock_id: '', item_id: '', tipe_gudang: 'mekanik', jumlah: 1, keterangan: '' }); },
+                        onStockSelect(row, stockId) {
+                            const stock = this.stocksCatalog.find(s => String(s.id) === String(stockId));
+                            if (stock) {
+                                row.item_id = stock.item_id;
+                                row.tipe_gudang = stock.tipe_gudang;
+                            }
+                        },
+                        unitFor(stockId) { return this.itemUnits[stockId] ?? ''; },
+                        stockFor(stockId) { return this.itemStocks[stockId] ?? 0; },
                         removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
                         filteredPics() {
                             // Untuk PENGEMBALIAN, selalu tampilkan PIC dari gudang tujuan
@@ -99,6 +119,17 @@
                             this.$nextTick(() => {
                                 if (!this.selectedPic && this.initialPic) {
                                     this.selectedPic = this.initialPic;
+                                }
+                            });
+                            // Match existing items to stock_id based on item_id + tipe_gudang
+                            this.items.forEach(row => {
+                                if (row.item_id && !row.stock_id) {
+                                    const stock = this.stocksCatalog.find(s =>
+                                        s.item_id == row.item_id && s.tipe_gudang === (row.tipe_gudang || 'mekanik')
+                                    );
+                                    if (stock) {
+                                        row.stock_id = String(stock.id);
+                                    }
                                 }
                             });
                         },
@@ -329,20 +360,20 @@
                                                 <tr>
                                                     <td class="px-4 py-3">
                                                         <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50"
-                                                                x-model="row.item_id"
-                                                                :name="`items[${idx}][item_id]`">
+                                                                x-model="row.stock_id"
+                                                                @change="onStockSelect(row, $event.target.value)">
                                                             <option value="">Pilih item...</option>
-                                                            @foreach($availableStocks as $stock)
-                                                                <option value="{{ $stock->item_id }}">
-                                                                    {{ $stock->item->kode ?? '-' }} - {{ $stock->item->nama ?? 'Item' }} (Stok: {{ $stock->jumlah }})
-                                                                </option>
-                                                            @endforeach
+                                                            <template x-for="stock in stocksCatalog" :key="stock.id">
+                                                                <option :value="stock.id" x-text="`${stock.nama} (${stock.kode || '-'}) · Stok: ${stock.stok} · ${stock.tipe_gudang === 'mekanik' ? 'Mekanik' : 'Listrik'}`"></option>
+                                                            </template>
                                                         </select>
+                                                        <input type="hidden" :name="`items[${idx}][item_id]`" :value="row.item_id">
+                                                        <input type="hidden" :name="`items[${idx}][tipe_gudang]`" :value="row.tipe_gudang">
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <input type="text"
                                                                class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
-                                                               :value="unitFor(row.item_id)"
+                                                               :value="unitFor(row.stock_id)"
                                                                readonly>
                                                     </td>
                                                     <td class="px-4 py-3">
@@ -351,9 +382,9 @@
                                                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50"
                                                                x-model="row.jumlah"
                                                                :name="`items[${idx}][jumlah]`">
-                                                        <p x-show="row.item_id && row.jumlah > stockFor(row.item_id)"
+                                                        <p x-show="row.stock_id && row.jumlah > stockFor(row.stock_id)"
                                                            class="mt-1 text-xs text-red-600">
-                                                            Stok tidak cukup (tersedia <span x-text="stockFor(row.item_id)"></span>)
+                                                            Stok tidak cukup (tersedia <span x-text="stockFor(row.stock_id)"></span>)
                                                         </p>
                                                     </td>
                                                     <td class="px-4 py-3">

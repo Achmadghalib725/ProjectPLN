@@ -713,7 +713,7 @@
         <div class="p-6"
             x-data="{
                 mode: @js(old('mode', 'transfer')),
-                items: @js(old('items', [['item_id' => '', 'jumlah' => 1, 'keterangan' => '']])),
+                items: @js(old('items', [['stock_id' => '', 'item_id' => '', 'tipe_gudang' => 'mekanik', 'jumlah' => 1, 'keterangan' => '']])),
 
                 // State untuk Gudang Tujuan
                 gudangOpen: false,
@@ -740,14 +740,16 @@
                     no_hp: @js(old('pic_custom_no_hp', '')),
                 },
 
-                  // Data Pendukung
-                  itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
-                  itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
+                  // Data Pendukung - gunakan stock_id sebagai identifier unik
+                  itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->id => ($s->item->satuan ?? '')])),
+                  itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->id => (int)($s->jumlah ?? 0)])),
                   itemsCatalog: @js(($availableStocks ?? collect())->map(fn($s) => [
-                      'id' => $s->item_id,
+                      'id' => $s->id,
+                      'item_id' => $s->item_id,
                       'nama' => $s->item->nama,
                       'kode' => $s->item->kode ?? '',
                       'stok' => (int) ($s->jumlah ?? 0),
+                      'tipe_gudang' => $s->tipe_gudang ?? 'mekanik',
                   ])),
                   asalGudangId: @js($activeGudangId),
 
@@ -766,22 +768,25 @@
                 },
 
                 newItemRow(data = {}) {
-                    const itemId = data.item_id ?? '';
+                    const stockId = data.stock_id ?? '';
                     return {
-                        item_id: itemId,
+                        stock_id: stockId,
+                        item_id: data.item_id ?? '',
+                        tipe_gudang: data.tipe_gudang ?? 'mekanik',
                         jumlah: data.jumlah ?? 1,
                         keterangan: data.keterangan ?? '',
-                        search: this.itemLabel(itemId),
+                        search: this.itemLabel(stockId),
                         open: false,
                     };
                 },
                 addRow() { this.items.push(this.newItemRow()); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
-                itemLabel(id) {
-                    if (!id) return '';
-                    const item = this.itemsCatalog.find(i => String(i.id) === String(id));
+                itemLabel(stockId) {
+                    if (!stockId) return '';
+                    const item = this.itemsCatalog.find(i => String(i.id) === String(stockId));
                     if (!item) return '';
-                    return item.kode ? `${item.nama} (${item.kode})` : item.nama;
+                    const tipeSuffix = item.tipe_gudang === 'mekanik' ? 'Mekanik' : 'Listrik';
+                    return item.kode ? `${item.nama} (${item.kode}) · ${tipeSuffix}` : `${item.nama} · ${tipeSuffix}`;
                 },
                 filteredItems(term) {
                     const q = (term ?? '').toLowerCase().trim();
@@ -792,7 +797,9 @@
                     );
                 },
                 selectItem(row, item) {
-                    row.item_id = item.id;
+                    row.stock_id = item.id;
+                    row.item_id = item.item_id;
+                    row.tipe_gudang = item.tipe_gudang;
                     row.search = this.itemLabel(item.id);
                     row.open = false;
                 },
@@ -800,7 +807,7 @@
                     return (row.search ?? '').trim() !== '';
                 },
                 itemErrorMessage(row) {
-                    if (row.item_id || !this.hasSearch(row)) {
+                    if (row.stock_id || !this.hasSearch(row)) {
                         return '';
                     }
                     return this.filteredItems(row.search).length === 0
@@ -808,7 +815,7 @@
                         : 'Pilih barang dari daftar.';
                 },
                 get hasInvalidItems() {
-                    return this.items.some(row => !row.item_id);
+                    return this.items.some(row => !row.stock_id);
                 },
 
                 get filteredGudangs() {
@@ -1094,16 +1101,13 @@
                                         <div class="relative" @click.away="row.open = false">
                                             <input type="text"
                                                    x-model="row.search"
-                                                   @input="row.open = true; row.item_id = ''"
+                                                   @input="row.open = true; row.stock_id = ''; row.item_id = ''; row.tipe_gudang = 'mekanik'"
                                                    @focus="row.open = true"
                                                    placeholder="Cari barang..."
                                                    class="w-full text-sm rounded-md border-gray-300">
-                                            <select x-model="row.item_id" :name="`items[${idx}][item_id]`" required class="hidden">
-                                                <option value="">Pilih Item Stok...</option>
-                                                @foreach($availableStocks as $stock)
-                                                    <option value="{{ $stock->item_id }}">{{ $stock->item->nama }} (Sisa: {{ $stock->jumlah }})</option>
-                                                @endforeach
-                                            </select>
+                                            {{-- Hidden inputs for form submission --}}
+                                            <input type="hidden" x-model="row.item_id" :name="`items[${idx}][item_id]`" required>
+                                            <input type="hidden" x-model="row.tipe_gudang" :name="`items[${idx}][tipe_gudang]`">
                                             <div x-show="row.open"
                                                  x-cloak
                                                  @wheel.stop
@@ -1114,7 +1118,7 @@
                                                             @click="selectItem(row, item)"
                                                             class="w-full text-left px-3 py-2 text-xs hover:bg-pln-primary hover:text-white transition">
                                                         <div class="font-medium" x-text="item.nama"></div>
-                                                        <div class="text-[10px] opacity-70" x-text="(item.kode ? item.kode + ' • ' : '') + 'Sisa: ' + item.stok"></div>
+                                                        <div class="text-[10px] opacity-70" x-text="(item.kode ? item.kode + ' · ' : '') + 'Sisa: ' + item.stok + ' · ' + (item.tipe_gudang === 'mekanik' ? 'Mekanik' : 'Listrik')"></div>
                                                     </button>
                                                 </template>
                                                 <div x-show="filteredItems(row.search).length === 0" class="px-3 py-2 text-xs text-gray-500">

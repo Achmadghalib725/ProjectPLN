@@ -3,11 +3,11 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             {{-- Header --}}
             <div class="mb-6">
-                <a href="{{ route('gudang.stok.index') }}" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+                <a href="{{ route('gudang.stok.index', ['tab' => $stock->tipe_gudang ?? 'mekanik']) }}" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
-                    Kembali ke Inventaris
+                    Kembali ke Inventaris {{ ($stock->tipe_gudang ?? 'mekanik') === 'mekanik' ? 'Mekanik' : 'Listrik' }}
                 </a>
                 <div class="flex justify-between items-start mt-2">
                     <div>
@@ -48,6 +48,10 @@
                                 <div>
                                     <p class="text-sm text-gray-600 mb-1">Satuan</p>
                                     <p class="font-medium text-gray-900">{{ $stock->item->satuan }}</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <p class="text-sm text-gray-600 mb-1">Tipe Gudang</p>
+                                    <p class="font-medium text-gray-900">{{ ($stock->tipe_gudang ?? 'mekanik') === 'mekanik' ? 'Mekanik' : 'Listrik' }}</p>
                                 </div>
                             </div>
 
@@ -246,6 +250,10 @@
                         <p class="font-medium text-gray-900">{{ $stock->item->kategori ?? '-' }}</p>
                     </div>
                     <div>
+                        <p class="text-gray-500">Tipe Gudang</p>
+                        <p class="font-medium text-gray-900">{{ ($stock->tipe_gudang ?? 'mekanik') === 'mekanik' ? 'Mekanik' : 'Listrik' }}</p>
+                    </div>
+                    <div class="col-span-2">
                         <p class="text-gray-500">Stok Saat Ini</p>
                         <p class="font-bold text-[#035b71] text-lg">{{ number_format($stock->jumlah) }}</p>
                     </div>

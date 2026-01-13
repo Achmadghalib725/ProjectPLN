@@ -56,6 +56,13 @@
         </svg>
         @break
 
+    {{-- ICON PEMINJAMAN / EXCHANGE --}}
+    @case('exchange')
+        <svg class="w-6 h-6 shrink-0 transition-transform duration-300 group-hover:scale-110 {{ $isActive ? 'text-pln-primary' : 'text-gray-400 group-hover:text-pln-light' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+        </svg>
+        @break
+
     {{-- ICON DASHBOARD / DEFAULT --}}
     @case('grid')
     @default

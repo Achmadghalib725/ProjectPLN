@@ -27,6 +27,7 @@ class ItemStoreRequest extends FormRequest
             'nama' => ['required', 'string', 'max:255'],
             'satuan' => ['required', 'string', 'max:50'],
             'kategori' => ['required', 'string', 'max:100'],
+            'tipe_gudang' => ['required', 'in:mekanik,listrik'],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -47,6 +48,8 @@ class ItemStoreRequest extends FormRequest
             'satuan.max' => 'Satuan maksimal 50 karakter',
             'kategori.required' => 'Kategori harus diisi',
             'kategori.max' => 'Kategori maksimal 100 karakter',
+            'tipe_gudang.required' => 'Tipe gudang harus dipilih',
+            'tipe_gudang.in' => 'Tipe gudang harus Mekanik atau Listrik',
             'deskripsi.max' => 'Deskripsi maksimal 1000 karakter',
         ];
     }

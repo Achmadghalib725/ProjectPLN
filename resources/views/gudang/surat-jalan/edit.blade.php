@@ -334,7 +334,7 @@
                                                             <option value="">Pilih item...</option>
                                                             @foreach($availableStocks as $stock)
                                                                 <option value="{{ $stock->item_id }}">
-                                                                    {{ $stock->item->kode ?? '-' }} - {{ $stock->item->nama ?? 'Item' }} (Stok: {{ $stock->jumlah }})
+                                                                    {{ $stock->item->nama ?? 'Item' }} ({{ $stock->item->kode ?? '-' }}) · Stok: {{ $stock->jumlah }} · {{ $stock->tipe_gudang === 'mekanik' ? 'Mekanik' : 'Listrik' }}
                                                                 </option>
                                                             @endforeach
                                                         </select>
@@ -396,7 +396,7 @@
                                             @foreach($suratJalan->items as $item)
                                                 <tr>
                                                     <td class="px-4 py-3 text-sm text-gray-900">
-                                                        {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}
+                                                        {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }} · {{ ($item->tipe_gudang ?? 'mekanik') === 'mekanik' ? 'Mekanik' : 'Listrik' }}
                                                     </td>
                                                     <td class="px-4 py-3 text-sm text-gray-900">{{ $item->jumlah }}</td>
                                                 </tr>

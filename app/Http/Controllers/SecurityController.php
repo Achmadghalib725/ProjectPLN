@@ -276,13 +276,22 @@ class SecurityController extends Controller
             ]);
 
             if ($suratJalan->tipe !== 'PENGEMBALIAN') {
+                // Build item totals with tipe_gudang
                 $itemTotals = $suratJalan->items
-                    ->groupBy('item_id')
-                    ->map(fn ($rows) => $rows->sum('jumlah'));
+                    ->groupBy(fn ($item) => $item->item_id . '_' . ($item->tipe_gudang ?? 'mekanik'))
+                    ->map(fn ($rows) => [
+                        'item_id' => $rows->first()->item_id,
+                        'tipe_gudang' => $rows->first()->tipe_gudang ?? 'mekanik',
+                        'qty' => (int) $rows->sum('jumlah')
+                    ]);
 
-                foreach ($itemTotals as $itemId => $qty) {
+                foreach ($itemTotals as $key => $data) {
+                    $itemId = $data['item_id'];
+                    $tipeGudang = $data['tipe_gudang'];
+                    $qty = $data['qty'];
+
                     $stock = ItemStock::firstOrCreate(
-                        ['gudang_id' => $suratJalan->gudang_asal_id, 'item_id' => $itemId],
+                        ['gudang_id' => $suratJalan->gudang_asal_id, 'item_id' => $itemId, 'tipe_gudang' => $tipeGudang],
                         ['jumlah' => 0, 'stok_minimum' => 0]
                     );
 
@@ -294,6 +303,7 @@ class SecurityController extends Controller
                     StockMovement::create([
                         'item_id' => $itemId,
                         'gudang_id' => $suratJalan->gudang_asal_id,
+                        'tipe_gudang' => $tipeGudang,
                         'tipe' => 'IN',
                         'jumlah' => $qty,
                         'stok_sebelum' => $stokSebelum,
@@ -301,7 +311,7 @@ class SecurityController extends Controller
                         'referensi_type' => 'SuratJalan',
                         'referensi_id' => $suratJalan->id,
                         'created_by' => Auth::id(),
-                        'keterangan' => "Pengembalian stok karena surat jalan ditolak ({$suratJalan->nomor})",
+                        'keterangan' => "Pengembalian stok karena surat jalan ditolak ({$suratJalan->nomor}) [{$tipeGudang}]",
                     ]);
                 }
             }

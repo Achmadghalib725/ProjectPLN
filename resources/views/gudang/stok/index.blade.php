@@ -46,7 +46,6 @@
                                 {{ Auth::user()->gudang->nama ?? 'Gudang Saya' }}
                             </p>
                         </div>
-                        @if($tab === 'stok')
                         <div class="flex flex-col sm:flex-row gap-2">
                             <button type="button"
                                 @click="$dispatch('open-modal', 'create-item')"
@@ -62,47 +61,39 @@
                                 Tambah Item
                             </button>
                         </div>
-                        @endif
                     </div>
                 </div>
 
-                {{-- Tab Navigation --}}
+                {{-- Tab Navigation - Gudang Mekanik & Gudang Listrik --}}
                 <div class="border-t border-gray-200">
                     <nav class="flex" data-ajax-tabs>
-                        <a href="{{ route('gudang.stok.index', ['tab' => 'stok']) }}"
+                        {{-- Tab Gudang Mekanik --}}
+                        <a href="{{ route('gudang.stok.index', ['tab' => 'mekanik']) }}"
                            data-ajax-tab
                            data-ajax-target="#stok-content"
                            class="flex-1 py-4 px-4 border-b-2 font-medium text-sm text-center transition-colors
-                               {{ $tab === 'stok' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                               {{ $tab === 'mekanik' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                             <div class="flex items-center justify-center gap-2">
+                                {{-- Icon Gear/Mekanik --}}
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
-                                <span>Kelola Stok</span>
+                                <span>Gudang Mekanik</span>
                             </div>
                         </a>
-                        <a href="{{ route('gudang.stok.index', ['tab' => 'dipinjamkan']) }}"
+                        {{-- Tab Gudang Listrik --}}
+                        <a href="{{ route('gudang.stok.index', ['tab' => 'listrik']) }}"
                            data-ajax-tab
                            data-ajax-target="#stok-content"
                            class="flex-1 py-4 px-4 border-b-2 font-medium text-sm text-center transition-colors
-                               {{ $tab === 'dipinjamkan' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                               {{ $tab === 'listrik' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                             <div class="flex items-center justify-center gap-2">
+                                {{-- Icon Lightning/Listrik --}}
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                                 </svg>
-                                <span>Dipinjamkan</span>
-                            </div>
-                        </a>
-                        <a href="{{ route('gudang.stok.index', ['tab' => 'pinjaman']) }}"
-                           data-ajax-tab
-                           data-ajax-target="#stok-content"
-                           class="flex-1 py-4 px-4 border-b-2 font-medium text-sm text-center transition-colors
-                               {{ $tab === 'pinjaman' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
-                            <div class="flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                                </svg>
-                                <span>Pinjaman</span>
+                                <span>Gudang Listrik</span>
                             </div>
                         </a>
                     </nav>
@@ -111,16 +102,7 @@
 
             {{-- Tab Content --}}
             <div id="stok-content" data-ajax-container>
-                @if($tab === 'stok')
-                    {{-- KELOLA STOK TAB --}}
-                    @include('gudang.stok.tab-stok')
-                @elseif($tab === 'dipinjamkan')
-                    {{-- DIPINJAMKAN TAB --}}
-                    @include('gudang.stok.tab-dipinjamkan')
-                @elseif($tab === 'pinjaman')
-                    {{-- PINJAMAN TAB --}}
-                    @include('gudang.stok.tab-pinjaman')
-                @endif
+                @include('gudang.stok.tab-stok', ['tipeGudang' => $tab])
             </div>
         </div>
     </div>
@@ -403,7 +385,42 @@
             search: '',
             selectedId: '',
             selectedName: '',
-            items: @js($availableItems->map(fn($i) => ['id' => $i->id, 'nama' => $i->nama, 'kategori' => $i->kategori, 'kode' => $i->kode])),
+            allItems: @js($allItems->map(fn($i) => ['id' => $i->id, 'nama' => $i->nama, 'kategori' => $i->kategori, 'kode' => $i->kode])),
+            stockData: {},
+            currentTab: 'mekanik',
+            loading: false,
+            init() {
+                this.currentTab = this.getTabFromUrl();
+                this.loadAvailableItems();
+
+                // Listen for tab changes
+                window.addEventListener('popstate', () => {
+                    this.currentTab = this.getTabFromUrl();
+                    this.loadAvailableItems();
+                });
+            },
+            getTabFromUrl() {
+                const params = new URLSearchParams(window.location.search);
+                return params.get('tab') || 'mekanik';
+            },
+            async loadAvailableItems() {
+                this.loading = true;
+                try {
+                    const response = await fetch(`{{ route('gudang.stok.available-items') }}?tipe_gudang=${this.currentTab}`);
+                    const data = await response.json();
+                    this.stockData = {
+                        items: data.items || [],
+                        isEmpty: data.isEmpty || false
+                    };
+                } catch (e) {
+                    console.error('Failed to load items:', e);
+                    this.stockData = { items: [], isEmpty: true };
+                }
+                this.loading = false;
+            },
+            get items() {
+                return this.stockData.items || [];
+            },
             get filtered() {
                 if (!this.search) return this.items;
                 const term = this.search.toLowerCase();
@@ -412,6 +429,9 @@
                     (item.kode || '').toLowerCase().includes(term) ||
                     (item.kategori || '').toLowerCase().includes(term)
                 );
+            },
+            get tipeLabel() {
+                return this.currentTab === 'mekanik' ? 'Mekanik' : 'Listrik';
             },
             select(item) {
                 this.selectedId = item.id;
@@ -428,11 +448,16 @@
                 this.selectedId = detail.id;
                 this.selectedName = detail.nama + ' (' + (detail.kategori || '-') + ')';
                 this.search = this.selectedName;
+            },
+            refreshOnOpen() {
+                this.currentTab = this.getTabFromUrl();
+                this.loadAvailableItems();
+                this.clear();
             }
-        }" @preset-stock-item.window="preset($event.detail)">
+        }" @preset-stock-item.window="preset($event.detail)" @open-modal.window="if($event.detail === 'create-stock') refreshOnOpen()">
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <h2 class="text-lg font-bold text-gray-900">Tambah Item Baru ke Gudang</h2>
+                    <h2 class="text-lg font-bold text-gray-900">Tambah Item ke Gudang <span x-text="tipeLabel"></span></h2>
                     <p class="text-sm text-gray-600">{{ Auth::user()->gudang->nama ?? 'Gudang Saya' }}</p>
                 </div>
                 <button type="button" class="text-gray-400 hover:text-gray-600"
@@ -464,6 +489,7 @@
             <form method="POST" action="{{ route('gudang.stok.store') }}" class="space-y-4">
                 @csrf
                 <input type="hidden" name="item_id" x-model="selectedId" required>
+                <input type="hidden" name="tipe_gudang" x-model="currentTab">
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Cari dan Pilih Item *</label>
@@ -483,8 +509,12 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                     </svg>
                                 </button>
-                                <svg x-show="!search" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg x-show="!search && !loading" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                <svg x-show="loading" class="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             </div>
                         </div>
@@ -499,14 +529,14 @@
                                 </div>
                             </template>
                         </div>
-                        <div x-show="open && search && filtered.length === 0"
+                        <div x-show="open && search && filtered.length === 0 && !loading"
                              class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-sm text-gray-500">
                             Tidak ada item yang cocok
                         </div>
                     </div>
-                    @if($availableItems->isEmpty())
-                        <p class="mt-2 text-sm text-yellow-600">Semua item sudah ada di gudang Anda.</p>
-                    @endif
+                    <p x-show="stockData.isEmpty && !loading" class="mt-2 text-sm text-yellow-600">
+                        Semua item sudah ada di Gudang <span x-text="tipeLabel"></span> Anda.
+                    </p>
                 </div>
 
                 <div>

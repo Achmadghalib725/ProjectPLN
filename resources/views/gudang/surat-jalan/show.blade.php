@@ -787,8 +787,9 @@
                         <div class="p-4">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
-                                    <p class="font-medium text-gray-900 text-sm">{{ $item->item->nama ?? 'Item' }}</p>
-                                    <p class="text-xs text-gray-500 mt-0.5">{{ $item->item->kode ?? '-' }}</p>
+                                    <p class="font-medium text-gray-900 text-sm">
+                                        {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }} · {{ ($item->tipe_gudang ?? 'mekanik') === 'mekanik' ? 'Mekanik' : 'Listrik' }}
+                                    </p>
                                 </div>
                                 <div class="text-right">
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-pln-primary/10 text-pln-primary">
@@ -836,7 +837,7 @@
                             @forelse($suratJalan->items as $item)
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}
+                                        {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }} · {{ ($item->tipe_gudang ?? 'mekanik') === 'mekanik' ? 'Mekanik' : 'Listrik' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->jumlah }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->keterangan ?? '-' }}</td>
@@ -1333,7 +1334,9 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @forelse($peminjaman->items as $item)
                                     <tr>
-                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }} · {{ ($item->tipe_gudang ?? 'mekanik') === 'mekanik' ? 'Mekanik' : 'Listrik' }}
+                                        </td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $item->jumlah_dipinjam }}</td>
                                     </tr>

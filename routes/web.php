@@ -206,6 +206,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:operator_gudang')->prefix('gudang')->name('gudang.')->group(function () {
         Route::get('/riwayat', [StokController::class, 'riwayat'])->name('riwayat');
         Route::resource('stok', StokController::class);
+        Route::get('/stok-available-items', [StokController::class, 'availableItems'])->name('stok.available-items');
+        Route::get('/peminjaman', [StokController::class, 'peminjaman'])->name('peminjaman.index');
         Route::post('/items', [GudangItemController::class, 'store'])->name('items.store');
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
         Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
