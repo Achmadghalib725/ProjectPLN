@@ -590,6 +590,11 @@
                     <strong>{{ number_format($suratJalan->items->sum('jumlah')) }}</strong> unit
                 </div>
             @endif
+
+            <!-- Redaksi -->
+            <div style="intro-section">
+                <p>Sebagai perhatian, segala resiko selama dalam perjalanan menjadi tanggung jawab pihak pembawa barang. Demikian Surat Jalan ini dibuat dengan sebenarnya dan untuk dapat digunakan sebagaimana mestinya.</p>
+            </div>
         </div>
 
         <!-- Notes -->
