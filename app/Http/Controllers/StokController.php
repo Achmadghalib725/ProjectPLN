@@ -31,8 +31,20 @@ class StokController extends Controller
             ->whereColumn('jumlah', '<', 'stok_minimum')
             ->count();
         $totalItems = ItemStock::where('gudang_id', $gudangId)->count();
-        $totalUnits = ItemStock::where('gudang_id', $gudangId)->sum('jumlah');
+
+        // Total unit yang sedang dipinjam dari gudang lain
+        $totalBorrowed = PeminjamanItem::query()
+            ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
+            ->where('peminjamans.gudang_peminjam_id', $gudangId)
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
+            ->where(function ($query) {
+                $query->whereNotNull('peminjamans.waktu_diterima')
+                    ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
+            })
+            ->sum('peminjaman_items.jumlah_dipinjam');
+
         $categories = Item::distinct()->pluck('kategori')->filter();
+        $allItems = Item::select('id', 'nama', 'kode', 'kategori', 'satuan')->orderBy('nama')->get();
 
         // Get items NOT yet in this warehouse (for create modal)
         $existingItemIds = ItemStock::where('gudang_id', $gudangId)->pluck('item_id');
@@ -61,7 +73,7 @@ class StokController extends Controller
 
             return view('gudang.stok.index', compact(
                 'tab', 'peminjamans', 'totalAktif', 'totalOverdue',
-                'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+                'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'availableItems', 'allItems',
                 'countDipinjamkan', 'countPinjaman'
             ));
         } elseif ($tab === 'pinjaman') {
@@ -78,7 +90,7 @@ class StokController extends Controller
 
             return view('gudang.stok.index', compact(
                 'tab', 'peminjamans', 'totalAktif', 'totalOverdue',
-                'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+                'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'availableItems', 'allItems',
                 'countDipinjamkan', 'countPinjaman'
             ));
         }
@@ -98,7 +110,7 @@ class StokController extends Controller
                     $q->where('kategori', $kategori);
                 });
             })
-            ->paginate(15)->onEachSide(1)
+            ->paginate(25)->onEachSide(1)
             ->withQueryString();
 
         $borrowedTotals = collect();
@@ -126,7 +138,7 @@ class StokController extends Controller
         });
 
         return view('gudang.stok.index', compact(
-            'tab', 'stocks', 'lowStockCount', 'totalItems', 'totalUnits', 'categories', 'availableItems',
+            'tab', 'stocks', 'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'availableItems', 'allItems',
             'countDipinjamkan', 'countPinjaman'
         ));
     }
@@ -161,7 +173,7 @@ class StokController extends Controller
                 }
             })
             ->orderBy('created_at', 'desc')
-            ->paginate(15)->onEachSide(1)
+            ->paginate(25)->onEachSide(1)
             ->withQueryString();
     }
 
@@ -195,7 +207,7 @@ class StokController extends Controller
                 }
             })
             ->orderBy('created_at', 'desc')
-            ->paginate(15)->onEachSide(1)
+            ->paginate(25)->onEachSide(1)
             ->withQueryString();
     }
 

@@ -46,23 +46,27 @@ class PicController extends Controller
     {
         $request->validate([
             'nama' => ['required', 'string', 'max:255'],
+            'role' => ['required', 'in:operator_gudang,penerima'],
             'username' => ['required', 'string', 'lowercase', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
-            'gudang_id' => ['nullable', 'exists:gudangs,id'],
+            'gudang_id' => ['required', 'exists:gudangs,id'],
+        ], [
+            'gudang_id.required' => 'Lokasi gudang wajib dipilih.',
         ]);
 
         $userJabatan = $request->jabatan;
         $username = trim((string) $request->username);
+        $role = $request->input('role');
 
-        DB::transaction(function () use ($request, $userJabatan, $username) {
+        DB::transaction(function () use ($request, $userJabatan, $username, $role) {
             $user = User::create([
                 'name' => $request->nama,
                 'username' => $username,
                 'email' => $username . '@egudang.local',
                 'password' => $request->password,
-                'role' => 'penerima',
+                'role' => $role,
                 'gudang_id' => $request->gudang_id,
                 'jabatan' => $userJabatan,
                 'no_hp' => $request->no_hp,
@@ -95,7 +99,9 @@ class PicController extends Controller
             'nama' => ['required', 'string', 'max:255'],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:20'],
-            'gudang_id' => ['nullable', 'exists:gudangs,id'],
+            'gudang_id' => ['required', 'exists:gudangs,id'],
+        ], [
+            'gudang_id.required' => 'Lokasi gudang wajib dipilih.',
         ]);
 
         $pic->update([

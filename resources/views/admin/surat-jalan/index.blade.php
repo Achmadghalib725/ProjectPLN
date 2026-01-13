@@ -57,9 +57,10 @@
                 </div>
             @endif
 
-            {{-- Header --}}
+            {{-- Header + Tabs Navigation --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
-                <div class="p-4 sm:p-6">
+                {{-- Header --}}
+                <div class="p-4 sm:p-6 border-b border-gray-100">
                     @if(count($headerNotices) > 0)
                         <div class="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-lg text-xs sm:text-sm">
                             <div class="flex flex-col gap-1">
@@ -126,36 +127,31 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {{-- Tabs Navigation --}}
-            <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex" aria-label="Tabs" data-ajax-tabs>
-                        <a href="{{ route('admin.surat-jalan.index', ['tab' => 'keluar']) }}"
-                           data-ajax-tab
-                           data-ajax-target="#surat-jalan-content"
-                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
-                            <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                                </svg>
-                                <span>Surat Keluar</span>
-                            </div>
-                        </a>
-                        <a href="{{ route('admin.surat-jalan.index', ['tab' => 'masuk']) }}"
-                           data-ajax-tab
-                           data-ajax-target="#surat-jalan-content"
-                           class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
-                            <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                                </svg>
-                                <span>Surat Masuk</span>
-                            </div>
-                        </a>
-                    </nav>
-                </div>
+                {{-- Tabs --}}
+                <nav class="flex" aria-label="Tabs" data-ajax-tabs>
+                    <a href="{{ route('admin.surat-jalan.index', array_merge(request()->query(), ['tab' => 'keluar'])) }}"
+                       data-ajax-tab
+                       data-ajax-target="#surat-jalan-content"
+                       class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'keluar' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                        <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                            <span>Surat Keluar</span>
+                        </div>
+                    </a>
+                    <a href="{{ route('admin.surat-jalan.index', array_merge(request()->query(), ['tab' => 'masuk'])) }}"
+                       data-ajax-tab
+                       data-ajax-target="#surat-jalan-content"
+                       class="w-1/2 py-3 sm:py-4 px-1 text-center border-b-2 font-medium text-xs sm:text-sm {{ $tab === 'masuk' ? 'border-[#035b71] text-[#035b71]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} active:bg-gray-50 transition">
+                        <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                            </svg>
+                            <span>Surat Masuk</span>
+                        </div>
+                    </a>
+                </nav>
             </div>
 
             {{-- AJAX Content Container --}}
@@ -474,7 +470,7 @@
                                 default => 'bg-gray-100 text-gray-700',
                             };
                         @endphp
-                        <a href="{{ route('admin.surat-jalan.show', $sj->id) }}" class="block p-4 hover:bg-gray-50 active:bg-gray-100 transition">
+                        <a href="{{ route('admin.surat-jalan.show', $sj->id) }}" class="block p-4 transition-colors hover:bg-[#e6f7fb] active:bg-[#cfeff7]">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <p class="font-semibold text-gray-900 text-sm truncate">{{ $sj->nomor ?? '-' }}</p>
@@ -578,8 +574,9 @@
                                         'SELESAI' => 'bg-green-100 text-green-800',
                                         default => 'bg-gray-100 text-gray-800',
                                     };
+                                    $rowLink = !empty($sj->id) ? route('admin.surat-jalan.show', $sj->id) : null;
                                 @endphp
-                                <tr>
+                                <tr @if($rowLink) data-row-link="{{ $rowLink }}" class="cursor-pointer transition-colors hover:bg-[#e6f7fb]" @endif>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $suratJalans->firstItem() + $index }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                         {{ $sj->nomor ?? '-' }}
@@ -649,14 +646,6 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex items-center gap-2">
                                             @if(!empty($sj->id))
-                                                <a href="{{ route('admin.surat-jalan.show', $sj->id) }}"
-                                                   class="text-pln-primary hover:text-pln-light"
-                                                   title="Lihat Detail">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                                    </svg>
-                                                </a>
                                                 <a href="{{ route('admin.surat-jalan.pdf', $sj->id) }}"
                                                    class="text-green-600 hover:text-green-800"
                                                    title="Download PDF">
@@ -679,12 +668,7 @@
                                                     </button>
                                                 @endif
                                             @else
-                                                <span class="text-gray-300" title="Belum tersedia">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                                    </svg>
-                                                </span>
+                                                <span class="text-gray-400">-</span>
                                             @endif
                                         </div>
                                     </td>
@@ -751,14 +735,73 @@
                   // Data Pendukung
                   itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
                   itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
+                  itemsCatalog: @js(($availableStocks ?? collect())->map(fn($s) => [
+                      'id' => $s->item_id,
+                      'nama' => $s->item->nama,
+                      'kode' => $s->item->kode ?? '',
+                      'stok' => (int) ($s->jumlah ?? 0),
+                  ])),
                   asalGudangId: @js($activeGudangId),
 
                 // Error handling
                 errors: @js($errors->toArray()),
                 submitting: false,
+                get hasErrors() {
+                    return Object.keys(this.errors || {}).length > 0;
+                },
+                getError(field) {
+                    const error = this.errors?.[field];
+                    if (!error) {
+                        return '';
+                    }
+                    return Array.isArray(error) ? (error[0] ?? '') : error;
+                },
 
-                addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
+                newItemRow(data = {}) {
+                    const itemId = data.item_id ?? '';
+                    return {
+                        item_id: itemId,
+                        jumlah: data.jumlah ?? 1,
+                        keterangan: data.keterangan ?? '',
+                        search: this.itemLabel(itemId),
+                        open: false,
+                    };
+                },
+                addRow() { this.items.push(this.newItemRow()); },
                 removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
+                itemLabel(id) {
+                    if (!id) return '';
+                    const item = this.itemsCatalog.find(i => String(i.id) === String(id));
+                    if (!item) return '';
+                    return item.kode ? `${item.nama} (${item.kode})` : item.nama;
+                },
+                filteredItems(term) {
+                    const q = (term ?? '').toLowerCase().trim();
+                    if (!q) return this.itemsCatalog;
+                    return this.itemsCatalog.filter(item =>
+                        item.nama.toLowerCase().includes(q) ||
+                        (item.kode || '').toLowerCase().includes(q)
+                    );
+                },
+                selectItem(row, item) {
+                    row.item_id = item.id;
+                    row.search = this.itemLabel(item.id);
+                    row.open = false;
+                },
+                hasSearch(row) {
+                    return (row.search ?? '').trim() !== '';
+                },
+                itemErrorMessage(row) {
+                    if (row.item_id || !this.hasSearch(row)) {
+                        return '';
+                    }
+                    return this.filteredItems(row.search).length === 0
+                        ? 'Barang tidak ditemukan.'
+                        : 'Pilih barang dari daftar.';
+                },
+                get hasInvalidItems() {
+                    return this.items.some(row => !row.item_id);
+                },
 
                 get filteredGudangs() {
                     return this.allGudangs.filter(g =>
@@ -785,6 +828,7 @@
                 unitFor(id) { return this.itemUnits[id] ?? ''; },
                 stockFor(id) { return this.itemStocks[id] ?? 0; },
                 init() {
+                    this.items = this.items.map(row => this.newItemRow(row));
                     if (this.gudangMode === 'custom') {
                         this.labelGudang = 'Lainnya';
                     } else if (this.selectedGudang !== '') {
@@ -848,6 +892,7 @@
 
               <form method="POST" action="{{ route('admin.surat-jalan.store') }}" x-ref="createForm" class="space-y-5" enctype="multipart/form-data">
                   @csrf
+                  <input type="hidden" name="tab" value="{{ $tab }}">
                   @if($isAdmin && $needsGudangSelection)
                       <input type="hidden" name="gudang_asal_id" value="{{ $activeGudangId }}">
                   @endif
@@ -1020,34 +1065,62 @@
                 </div>
 
                 {{-- Table Items --}}
-                <div class="border rounded-lg overflow-hidden">
-                    <table class="min-w-full divide-y divide-gray-200">
+                <div class="border rounded-lg overflow-visible">
+                    <table class="min-w-full table-fixed divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Barang</th>
-                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-24">Jumlah</th>
-                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Keterangan</th>
-                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16"></th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[45%] sm:w-auto">Barang</th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[20%] sm:w-24">Jumlah</th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[30%] sm:w-auto">Keterangan</th>
+                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[5%] sm:w-16"></th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <template x-for="(row, idx) in items" :key="idx">
                                 <tr>
-                                    <td class="px-4 py-2">
-                                        <select x-model="row.item_id" :name="`items[${idx}][item_id]`" required class="w-full text-sm rounded-md border-gray-300">
-                                            <option value="">Pilih Item Stok...</option>
-                                            @foreach($availableStocks as $stock)
-                                                <option value="{{ $stock->item_id }}">{{ $stock->item->nama }} (Sisa: {{ $stock->jumlah }})</option>
-                                            @endforeach
-                                        </select>
+                                    <td class="px-2 sm:px-4 py-2 w-[45%] sm:w-auto">
+                                        <div class="relative" @click.away="row.open = false">
+                                            <input type="text"
+                                                   x-model="row.search"
+                                                   @input="row.open = true; row.item_id = ''"
+                                                   @focus="row.open = true"
+                                                   placeholder="Cari barang..."
+                                                   class="w-full text-sm rounded-md border-gray-300">
+                                            <select x-model="row.item_id" :name="`items[${idx}][item_id]`" required class="hidden">
+                                                <option value="">Pilih Item Stok...</option>
+                                                @foreach($availableStocks as $stock)
+                                                    <option value="{{ $stock->item_id }}">{{ $stock->item->nama }} (Sisa: {{ $stock->jumlah }})</option>
+                                                @endforeach
+                                            </select>
+                                            <div x-show="row.open"
+                                                 x-cloak
+                                                 @wheel.stop
+                                                 @touchmove.stop
+                                                 class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto overscroll-contain">
+                                                <template x-for="item in filteredItems(row.search)" :key="item.id">
+                                                    <button type="button"
+                                                            @click="selectItem(row, item)"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-pln-primary hover:text-white transition">
+                                                        <div class="font-medium" x-text="item.nama"></div>
+                                                        <div class="text-[10px] opacity-70" x-text="(item.kode ? item.kode + ' • ' : '') + 'Sisa: ' + item.stok"></div>
+                                                    </button>
+                                                </template>
+                                                <div x-show="filteredItems(row.search).length === 0" class="px-3 py-2 text-xs text-gray-500">
+                                                    Item tidak ditemukan.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <template x-if="itemErrorMessage(row)">
+                                            <p class="mt-1 text-xs text-red-500" x-text="itemErrorMessage(row)"></p>
+                                        </template>
                                     </td>
-                                    <td class="px-4 py-2">
+                                    <td class="px-2 sm:px-4 py-2 w-[20%] sm:w-24">
                                         <input type="number" x-model="row.jumlah" :name="`items[${idx}][jumlah]`" min="1" class="w-full text-sm rounded-md border-gray-300">
                                     </td>
-                                    <td class="px-4 py-2">
+                                    <td class="px-2 sm:px-4 py-2 w-[30%] sm:w-auto">
                                         <input type="text" x-model="row.keterangan" :name="`items[${idx}][keterangan]`" placeholder="Opsional..." class="w-full text-sm rounded-md border-gray-300">
                                     </td>
-                                    <td class="px-4 py-2 text-right">
+                                    <td class="px-2 sm:px-4 py-2 text-right w-[5%] sm:w-16">
                                         <button type="button" @click="removeRow(idx)" class="text-red-500 hover:text-red-700">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                         </button>
@@ -1122,14 +1195,11 @@
                         <button type="submit"
                                 name="admin_finish"
                                 value="1"
-                                class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 flex items-center gap-2">
+                                :disabled="hasInvalidItems"
+                                class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                             Simpan dan Selesaikan (Admin)
                         </button>
                     @endif
-                    <button type="submit"
-                            class="px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light flex items-center gap-2">
-                        Simpan Draft
-                    </button>
                 </div>
             </form>
         </div>
@@ -1204,6 +1274,7 @@
             <form method="POST" action="{{ route('admin.surat-jalan.return') }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="admin_finish" value="1">
+                <input type="hidden" name="tab" value="{{ $tab }}">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>

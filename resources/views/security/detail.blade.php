@@ -23,14 +23,33 @@
             {{-- Header Card --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6">
                 <div class="p-4 sm:p-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                         <div class="text-center sm:text-left">
                             <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Detail Surat Jalan</h2>
                             <p class="text-sm text-gray-500 mt-1">{{ $suratJalan->nomor }}</p>
                         </div>
-                        <div class="flex justify-center sm:justify-end">
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <div class="flex gap-2">
+                                <a href="{{ route('security.surat-jalan.preview', $suratJalan->id) }}"
+                                   target="_blank"
+                                   class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 flex items-center justify-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    <span class="hidden sm:inline">Preview PDF</span>
+                                    <span class="sm:hidden">Preview</span>
+                                </a>
+                                <a href="{{ route('security.surat-jalan.pdf', $suratJalan->id) }}"
+                                   class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 flex items-center justify-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    </svg>
+                                    <span>Download</span>
+                                </a>
+                            </div>
                             <a href="{{ route('dashboard') }}"
-                               class="inline-flex items-center gap-2 bg-gray-200 hover:bg-gray-300 active:scale-95 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition duration-150 text-sm sm:text-base">
+                               class="inline-flex items-center justify-center gap-2 bg-gray-200 hover:bg-gray-300 active:scale-95 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition duration-150 text-sm sm:text-base">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                                 </svg>
@@ -192,6 +211,23 @@
                     }
                 }
 
+                if ($isRejected) {
+                    $periksaIndexes = collect($steps)
+                        ->keys()
+                        ->filter(fn ($index) => ($steps[$index]['label'] ?? '') === 'Diperiksa')
+                        ->values();
+
+                    if ($periksaIndexes->count() > 1) {
+                        $rejectedStep = $suratJalan->tipe === 'PENGEMBALIAN'
+                            ? $periksaIndexes->last()
+                            : $periksaIndexes->first();
+                    } else {
+                        $rejectedStep = $periksaIndexes->first();
+                    }
+
+                    $currentStep = $rejectedStep === null ? 0 : $rejectedStep;
+                }
+
                 $maxStep = count($steps) - 1;
             @endphp
 
@@ -226,15 +262,16 @@
                     <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                         @php
                             $totalSteps = count($steps);
+                            $progressStep = $isRejected ? $currentStep + 1 : $currentStep;
                             // Calculate progress bar width to reach center of last completed step
                             // Each step container is (100/totalSteps)% wide, circles are centered
                             // For currentStep = C, last completed = C-1, center position = (C-0.5)/totalSteps * 100
-                            if ($currentStep <= 0) {
+                            if ($progressStep <= 0) {
                                 $progressWidth = 0;
-                            } elseif ($currentStep >= $totalSteps) {
+                            } elseif ($progressStep >= $totalSteps) {
                                 $progressWidth = 100;
                             } else {
-                                $progressWidth = (($currentStep - 0.5) / $totalSteps) * 100;
+                                $progressWidth = (($progressStep - 0.5) / $totalSteps) * 100;
                             }
                         @endphp
                         <div class="relative min-w-[500px] sm:min-w-0">
@@ -248,8 +285,17 @@
                                         $isCompleted = $currentStep > $index;
                                         $isActive = $currentStep === $index;
                                         $isPending = $currentStep < $index;
+                                        $useRejectedStyle = $isRejected && ($isCompleted || $isActive);
 
-                                        if ($isCompleted) {
+                                        if ($useRejectedStyle) {
+                                            if ($isActive) {
+                                                $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
+                                                $labelClass = 'text-red-700 font-bold';
+                                            } else {
+                                                $circleClass = 'bg-red-500 text-white border-red-500';
+                                                $labelClass = 'text-red-700 font-semibold';
+                                            }
+                                        } elseif ($isCompleted) {
                                             $circleClass = 'bg-green-500 text-white border-green-500';
                                             $labelClass = 'text-green-700 font-semibold';
                                         } elseif ($isActive) {
@@ -270,7 +316,9 @@
                                                 {{ $index + 1 }}
                                             @endif
                                         </div>
-                                        <span class="mt-2 text-[10px] sm:text-xs text-center {{ $labelClass }} leading-tight">{{ $step['label'] }}</span>
+                                        <span class="mt-2 text-[10px] sm:text-xs text-center {{ $labelClass }} leading-tight">
+                                            {{ ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) ? 'Ditolak' : $step['label'] }}
+                                        </span>
                                     </div>
                                 @endforeach
                             </div>
@@ -291,23 +339,37 @@
                                     $isCompleted = $currentStep > $index;
                                     $isActive = $currentStep === $index;
                                     $hasDetail = !empty($step['detail']) || !empty($step['time']);
+                                    $useRejectedStyle = $isRejected && ($isCompleted || $isActive);
+                                    $circleClass = $useRejectedStyle
+                                        ? ($isActive ? 'bg-red-600 ring-4 ring-red-300/30' : 'bg-red-500')
+                                        : ($isCompleted ? 'bg-green-500' : ($isActive ? 'bg-pln-primary ring-4 ring-pln-primary/20' : 'bg-gray-300'));
+                                    $lineClass = $isCompleted
+                                        ? ($isRejected ? 'bg-red-500' : 'bg-green-500')
+                                        : 'bg-gray-200';
+                                    $labelClass = $useRejectedStyle
+                                        ? 'text-red-700'
+                                        : ($isCompleted ? 'text-green-700' : ($isActive ? 'text-pln-primary' : 'text-gray-500'));
+                                    $badgeClass = $useRejectedStyle
+                                        ? 'bg-red-100 text-red-700'
+                                        : ($isCompleted ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
+                                    $badgeText = $useRejectedStyle && $isActive ? 'Ditolak' : ($isCompleted ? 'Selesai' : 'Proses');
                                 @endphp
                                 <div class="flex gap-3 sm:gap-4 {{ !$isCompleted && !$isActive ? 'opacity-40' : '' }}">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-pln-primary ring-4 ring-pln-primary/20' : 'bg-gray-300') }}"></div>
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $circleClass }}"></div>
                                         @if($index < count($steps) - 1)
-                                            <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $isCompleted ? 'bg-green-500' : 'bg-gray-200' }}"></div>
+                                            <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $lineClass }}"></div>
                                         @endif
                                     </div>
                                     <div class="flex-1 pb-3 sm:pb-4">
                                         <div class="flex flex-wrap items-center gap-1 sm:gap-2">
-                                            <span class="font-semibold text-sm sm:text-base {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-pln-primary' : 'text-gray-500') }}">
-                                                {{ $step['label'] }}
+                                            <span class="font-semibold text-sm sm:text-base {{ $labelClass }}">
+                                                {{ ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) ? 'Ditolak' : $step['label'] }}
                                             </span>
                                             @if($isCompleted)
-                                                <span class="text-[10px] sm:text-xs bg-green-100 text-green-700 px-1.5 sm:px-2 py-0.5 rounded-full">Selesai</span>
+                                                <span class="text-[10px] sm:text-xs {{ $badgeClass }} px-1.5 sm:px-2 py-0.5 rounded-full">{{ $badgeText }}</span>
                                             @elseif($isActive)
-                                                <span class="text-[10px] sm:text-xs bg-blue-100 text-blue-700 px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">Proses</span>
+                                                <span class="text-[10px] sm:text-xs {{ $badgeClass }} px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">{{ $badgeText }}</span>
                                             @endif
                                         </div>
                                         <p class="text-xs sm:text-sm text-gray-500">{{ $step['desc'] }}</p>

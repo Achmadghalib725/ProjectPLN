@@ -6,6 +6,8 @@ use App\Http\Requests\ItemStoreRequest;
 use App\Http\Requests\ItemUpdateRequest;
 use App\Models\Item;
 use App\Models\ItemStock;
+use App\Models\ItemCategory;
+use App\Models\ItemUnit;
 use Illuminate\Http\Request;
 
 class ItemController extends Controller
@@ -30,20 +32,24 @@ class ItemController extends Controller
                 $query->whereRaw('LOWER(kategori) = ?', [strtolower($kategori)]);
             })
             ->orderBy('created_at', 'desc')
-            ->paginate(15)->onEachSide(1)
+            ->paginate(25)->onEachSide(1)
             ->withQueryString();
 
-        // Mengambil kategori unik untuk keperluan filter di halaman index
-        $categories = Item::distinct()->pluck('kategori')->filter();
+        // Mengambil kategori dari tabel item_categories untuk filter
+        $categories = ItemCategory::orderBy('nama')->pluck('nama');
 
-        // Mengambil satuan unik untuk dropdown
-        $satuans = Item::distinct()->pluck('satuan')->filter();
+        // Mengambil satuan dari tabel item_units untuk dropdown
+        $satuans = ItemUnit::orderBy('nama')->pluck('nama');
+
+        $allItems = Item::select('id', 'nama', 'kode', 'kategori', 'satuan', 'deskripsi')
+            ->orderBy('nama')
+            ->get();
 
         // Statistik untuk Dashboard Master Barang
         $totalItems = Item::count();
-        $totalCategories = Item::distinct('kategori')->count('kategori');
+        $totalCategories = ItemCategory::count();
 
-        return view('admin.items.index', compact('items', 'categories', 'satuans', 'totalItems', 'totalCategories'));
+        return view('admin.items.index', compact('items', 'categories', 'satuans', 'allItems', 'totalItems', 'totalCategories'));
     }
 
     /**
@@ -52,9 +58,7 @@ class ItemController extends Controller
      */
     public function create()
     {
-        // Solusi: Mengambil semua data item agar variabel $items tersedia di view create
-        $items = Item::all();
-        return view('admin.items.create', compact('items'));
+        return redirect()->route('admin.items.index');
     }
 
     /**
@@ -63,6 +67,27 @@ class ItemController extends Controller
     public function store(ItemStoreRequest $request)
     {
         try {
+            $searchTerm = trim((string) $request->input('search_term', ''));
+            if ($searchTerm === '') {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->withErrors(['search_term' => 'Wajib melakukan pencarian terlebih dahulu sebelum menambahkan item baru.']);
+            }
+
+            $searchLower = strtolower($searchTerm);
+            $hasMatch = Item::query()
+                ->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
+                ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"])
+                ->exists();
+
+            if ($hasMatch) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->withErrors(['search_term' => 'Item serupa sudah ditemukan. Gunakan item yang sudah ada.']);
+            }
+
             $data = $request->validated();
 
             // Normalisasi kategori dan satuan ke lowercase untuk konsistensi
@@ -80,6 +105,7 @@ class ItemController extends Controller
         }
     }
 
+
     /**
      * Menampilkan detail item tertentu.
      */
@@ -95,17 +121,11 @@ class ItemController extends Controller
     }
 
     /**
-     * Menampilkan form edit item.
-     * Mengambil data $items agar dropdown kategori & satuan bisa muncul.
+     * Redirect ke halaman index (edit menggunakan modal).
      */
     public function edit(string $id)
     {
-        $item = Item::findOrFail($id);
-        
-        // Solusi: Mengambil semua data item agar variabel $items tersedia di view edit
-        $items = Item::all();
-        
-        return view('admin.items.edit', compact('item', 'items'));
+        return redirect()->route('admin.items.index');
     }
 
     /**

@@ -1,58 +1,56 @@
 {{-- Statistics Cards --}}
-<div class="grid grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-6">
-    {{-- Total Items --}}
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg">
-        <div class="p-3 sm:p-6">
+<div class="grid grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
+    {{-- Total Jenis Barang --}}
+    <div class="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200">
+        <div class="p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row items-center sm:items-center">
                 <div class="flex-shrink-0 bg-[#035b71] rounded-md p-2 sm:p-3 mb-2 sm:mb-0">
-                    <svg class="h-4 w-4 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                     </svg>
                 </div>
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
-                        <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Item</dt>
-                        <dd class="text-base sm:text-lg font-bold text-gray-900">{{ $totalItems }}</dd>
+                        <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Jenis Barang</dt>
+                        <dd class="text-lg sm:text-xl font-bold text-[#035b71]">{{ $totalItems }}</dd>
                     </dl>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Total Stock Units --}}
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg">
-        <div class="p-3 sm:p-6">
+    {{-- Sedang Dipinjam --}}
+    <div class="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200">
+        <div class="p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row items-center sm:items-center">
                 <div class="flex-shrink-0 bg-[#00aff0] rounded-md p-2 sm:p-3 mb-2 sm:mb-0">
-                    <svg class="h-4 w-4 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
                     </svg>
                 </div>
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
-                        <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Unit Stok</dt>
-                        <dd class="text-base sm:text-lg font-bold text-gray-900">{{ number_format($totalUnits) }}</dd>
+                        <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Sedang Dipinjam</dt>
+                        <dd class="text-lg sm:text-xl font-bold text-gray-900">{{ number_format($totalBorrowed) }}</dd>
                     </dl>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Low Stock Alerts --}}
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg">
-        <div class="p-3 sm:p-6">
+    {{-- Stok Rendah --}}
+    <div class="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200">
+        <div class="p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row items-center sm:items-center">
-                <div class="flex-shrink-0 {{ $lowStockCount > 0 ? 'bg-red-500' : 'bg-green-500' }} rounded-md p-2 sm:p-3 mb-2 sm:mb-0">
-                    <svg class="h-4 w-4 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex-shrink-0 bg-amber-500 rounded-md p-2 sm:p-3 mb-2 sm:mb-0">
+                    <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
                 <div class="sm:ml-5 w-full sm:w-0 sm:flex-1 text-center sm:text-left">
                     <dl>
                         <dt class="text-xs sm:text-sm font-medium text-gray-500 truncate">Stok Rendah</dt>
-                        <dd class="text-base sm:text-lg font-bold {{ $lowStockCount > 0 ? 'text-red-600' : 'text-green-600' }}">
-                            {{ $lowStockCount }}
-                        </dd>
+                        <dd class="text-lg sm:text-xl font-bold text-gray-900">{{ $lowStockCount }}</dd>
                     </dl>
                 </div>
             </div>
@@ -125,7 +123,8 @@
     {{-- Mobile Card View --}}
     <div class="sm:hidden">
         @forelse($stocks as $index => $stock)
-            <div class="p-4 border-b border-gray-200 {{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-l-red-500' : '' }}">
+            <div class="p-4 border-b border-gray-200 cursor-pointer transition-colors {{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-l-red-500 hover:bg-red-100 active:bg-red-200' : 'hover:bg-[#e6f7fb] active:bg-[#cfeff7]' }}"
+                 data-row-link="{{ route('gudang.stok.show', $stock->id) }}">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex-1">
                         <h3 class="font-semibold text-gray-900 text-sm">{{ $stock->item->nama }}</h3>
@@ -165,14 +164,6 @@
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-                    <a href="{{ route('gudang.stok.show', $stock->id) }}"
-                       class="inline-flex items-center gap-1 text-xs text-[#035b71] hover:text-[#00aff0] font-medium">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                        Detail
-                    </a>
                     <button type="button"
                         x-data
                         @click="$dispatch('set-edit-stock', {
@@ -194,7 +185,7 @@
                     @if($stock->jumlah == 0)
                         <button type="button"
                             x-data
-                            @click="$dispatch('open-modal', 'confirm-delete'); window.deleteStockUrl = '{{ route('gudang.stok.destroy', $stock->id) }}'"
+                            @click="$dispatch('open-delete-stock', '{{ route('gudang.stok.destroy', $stock->id) }}')"
                             class="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-900 font-medium">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -239,7 +230,8 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($stocks as $index => $stock)
-                    <tr class="{{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-red-500' : '' }}">
+                    <tr class="cursor-pointer {{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-red-500' : '' }}"
+                        data-row-link="{{ route('gudang.stok.show', $stock->id) }}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ $stocks->firstItem() + $index }}
                         </td>
@@ -280,14 +272,6 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center gap-2">
-                                <a href="{{ route('gudang.stok.show', $stock->id) }}"
-                                   class="text-[#035b71] hover:text-[#00aff0]"
-                                   title="Lihat Detail">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                    </svg>
-                                </a>
                                 <button type="button"
                                     x-data
                                     @click="$dispatch('set-edit-stock', {
@@ -309,7 +293,7 @@
                                 @if($stock->jumlah == 0)
                                     <button type="button"
                                         x-data
-                                        @click="$dispatch('open-modal', 'confirm-delete'); window.deleteStockUrl = '{{ route('gudang.stok.destroy', $stock->id) }}'"
+                                        @click="$dispatch('open-delete-stock', '{{ route('gudang.stok.destroy', $stock->id) }}')"
                                         class="text-red-600 hover:text-red-900"
                                         title="Hapus">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

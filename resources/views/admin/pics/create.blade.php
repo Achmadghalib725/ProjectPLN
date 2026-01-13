@@ -52,6 +52,17 @@
                                 </div>
                             </div>
 
+                            {{-- Role Akun --}}
+                            <div class="space-y-2">
+                                <x-input-label for="role" :value="__('Role Akun')" class="text-gray-700 font-semibold" />
+                                <select id="role" name="role" required class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer">
+                                    <option value="">-- Pilih Role --</option>
+                                    <option value="penerima" {{ old('role') === 'penerima' ? 'selected' : '' }}>Penerima</option>
+                                    <option value="operator_gudang" {{ old('role') === 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
+                                </select>
+                                <x-input-error :messages="$errors->get('role')" />
+                            </div>
+
                             {{-- Username --}}
                             <div class="space-y-2">
                                 <x-input-label for="username" :value="__('Username')" class="text-gray-700 font-semibold" />

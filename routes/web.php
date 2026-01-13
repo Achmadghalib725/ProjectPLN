@@ -11,6 +11,9 @@ use App\Http\Controllers\PublicSuratJalanController;
 use App\Http\Controllers\RekapController;
 use App\Http\Controllers\ManagerSuratJalanController;
 use App\Http\Controllers\AdminSuratJalanController;
+use App\Http\Controllers\GudangItemController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ItemMetaController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -84,9 +87,9 @@ Route::get('/dashboard', function () {
                     $query->where('gudang_asal_id', $gudangId)
                         ->orWhere('gudang_tujuan_id', $gudangId);
                 })
-                ->where('status', '!=', 'SELESAI')
+                ->whereNotIn('status', ['DRAFT', 'SELESAI'])
                 ->orderByDesc('tanggal')
-                ->limit(6)
+                ->limit(5)
                 ->get()
             : collect(),
         'recentActivities' => $gudangId && Schema::hasTable('stock_movements')
@@ -168,13 +171,30 @@ Route::get('/dashboard', function () {
 
 // GROUPING BERDASARKAN ROLE
 Route::middleware('auth')->group(function () {
-    // ... (sisa kode route lainnya tetap sama)
-    
+
+    // Notification Routes
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [NotificationController::class, 'clearAll'])->name('clear-all');
+    });
+
     // 1. AREA ADMIN
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', UserController::class);
         Route::resource('items', ItemController::class);
         Route::resource('pics', PicController::class);
+
+        // Kelola Kategori & Satuan
+        Route::get('/item-categories', [ItemMetaController::class, 'categories'])->name('item-categories.index');
+        Route::post('/item-categories', [ItemMetaController::class, 'storeCategory'])->name('item-categories.store');
+        Route::delete('/item-categories/{category}', [ItemMetaController::class, 'destroyCategory'])->name('item-categories.destroy');
+        Route::get('/item-units', [ItemMetaController::class, 'units'])->name('item-units.index');
+        Route::post('/item-units', [ItemMetaController::class, 'storeUnit'])->name('item-units.store');
+        Route::delete('/item-units/{unit}', [ItemMetaController::class, 'destroyUnit'])->name('item-units.destroy');
 
         // Rekap Surat Jalan
         Route::get('/rekap', [RekapController::class, 'index'])->name('rekap.index');
@@ -186,6 +206,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:operator_gudang')->prefix('gudang')->name('gudang.')->group(function () {
         Route::get('/riwayat', [StokController::class, 'riwayat'])->name('riwayat');
         Route::resource('stok', StokController::class);
+        Route::post('/items', [GudangItemController::class, 'store'])->name('items.store');
         Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->name('surat-jalan.create');
         Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->name('surat-jalan.store');
         Route::post('/surat-jalan/pengembalian', [SuratJalanController::class, 'storeReturn'])->name('surat-jalan.return');
@@ -245,6 +266,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:security,admin')->prefix('security')->name('security.')->group(function () {
         Route::post('/search', [SecurityController::class, 'search'])->name('search');
         Route::get('/surat-jalan/{id}/qr/{token}', [SecurityController::class, 'showByToken'])->whereNumber('id')->name('qr');
+        Route::get('/surat-jalan/{id}/preview', [SuratJalanController::class, 'previewPdf'])->whereNumber('id')->name('surat-jalan.preview');
+        Route::get('/surat-jalan/{id}/pdf', [SuratJalanController::class, 'generatePdf'])->whereNumber('id')->name('surat-jalan.pdf');
         Route::get('/surat-jalan/{id}', [SecurityController::class, 'show'])->whereNumber('id')->name('show');
         Route::post('/surat-jalan/{id}/terima', [SecurityController::class, 'terima'])->whereNumber('id')->name('terima');
         Route::post('/surat-jalan/{id}/tolak', [SecurityController::class, 'tolak'])->whereNumber('id')->name('tolak');

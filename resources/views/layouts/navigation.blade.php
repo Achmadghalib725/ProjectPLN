@@ -199,6 +199,13 @@
                 <p class="text-xs text-gray-500 truncate">{{ Auth::user()->jabatan ?? Auth::user()->role }}</p>
             </a>
 
+            {{-- Notification Bell - Desktop only, hanya untuk operator_gudang dan penerima --}}
+            @if(in_array(Auth::user()->role, ['operator_gudang', 'penerima']))
+                <div class="hidden md:block">
+                    <x-notification-bell />
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('logout') }}"
                 :class="!sidebarOpen ? 'md:w-full md:flex md:justify-center ml-auto md:ml-0' : ''">
                 @csrf

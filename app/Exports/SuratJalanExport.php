@@ -5,21 +5,27 @@ namespace App\Exports;
 use App\Models\SuratJalan;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class SuratJalanExport implements FromQuery, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithTitle
+class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithTitle
 {
     protected ?int $gudangId;
     protected ?string $tipe;
     protected ?string $tanggalMulai;
     protected ?string $tanggalSelesai;
     protected int $rowNumber = 0;
+    protected Carbon $exportedAt;
 
     public function __construct(
         ?int $gudangId = null,
@@ -31,6 +37,7 @@ class SuratJalanExport implements FromQuery, WithHeadings, WithMapping, WithStyl
         $this->tipe = $tipe;
         $this->tanggalMulai = $tanggalMulai;
         $this->tanggalSelesai = $tanggalSelesai;
+        $this->exportedAt = Carbon::now();
     }
 
     public function query()
@@ -207,14 +214,37 @@ class SuratJalanExport implements FromQuery, WithHeadings, WithMapping, WithStyl
     public function styles(Worksheet $sheet): array
     {
         return [
-            // Style the header row (bold, background color)
             1 => [
+                'font' => ['bold' => true],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
+            ],
+            // Style the header row (bold, background color)
+            2 => [
                 'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['rgb' => '0066CC'],
                 ],
             ],
+        ];
+    }
+
+    public function startCell(): string
+    {
+        return 'A2';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event): void {
+                $sheet = $event->sheet->getDelegate();
+                $lastColumn = Coordinate::stringFromColumnIndex(count($this->headings()));
+                $sheet->mergeCells("A1:{$lastColumn}1");
+                $sheet->setCellValue('A1', 'Waktu Rekap: ' . $this->exportedAt->format('Y-m-d H:i:s'));
+                $sheet->getRowDimension(1)->setRowHeight(20);
+                $sheet->getStyle("A1:{$lastColumn}1")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            },
         ];
     }
 

@@ -21,8 +21,10 @@ class ItemUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $itemId = $this->route('item');
+
         return [
-            // kode tidak bisa diubah (auto-generated)
+            'kode' => ['required', 'string', 'max:50', 'unique:items,kode,' . $itemId],
             'nama' => ['required', 'string', 'max:255'],
             'satuan' => ['required', 'string', 'max:50'],
             'kategori' => ['required', 'string', 'max:100'],
@@ -38,6 +40,9 @@ class ItemUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'kode.required' => 'Kode item harus diisi',
+            'kode.max' => 'Kode item maksimal 50 karakter',
+            'kode.unique' => 'Kode item sudah digunakan',
             'nama.required' => 'Nama item harus diisi',
             'nama.max' => 'Nama item maksimal 255 karakter',
             'satuan.required' => 'Satuan harus diisi',

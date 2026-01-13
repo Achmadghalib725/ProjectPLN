@@ -109,13 +109,7 @@
                                         </button>
                                     </form>
                                     <button type="button"
-                                        @click="$dispatch('open-delete-modal', {
-                                            title: 'Tolak Persetujuan',
-                                            message: 'Apakah Anda yakin ingin menolak persetujuan surat jalan ini?',
-                                            action: '{{ route('gudang.surat-jalan.reject-approval', $suratJalan->id) }}',
-                                            method: 'POST',
-                                            confirmText: 'Tolak'
-                                        })"
+                                        @click="$dispatch('open-reject-approval', { action: '{{ route('gudang.surat-jalan.reject-approval', $suratJalan->id) }}' })"
                                         class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
                                         Tolak Persetujuan
                                     </button>
@@ -410,7 +404,7 @@
 
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($isPeminjaman && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
+            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -439,15 +433,16 @@
                     <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                         @php
                             $totalSteps = count($steps);
+                            $progressStep = $isRejected ? $currentStep + 1 : $currentStep;
                             // Calculate progress bar width to reach center of last completed step
                             // Each step container is (100/totalSteps)% wide, circles are centered
                             // For currentStep = C, last completed = C-1, center position = (C-0.5)/totalSteps * 100
-                            if ($currentStep <= 0) {
+                            if ($progressStep <= 0) {
                                 $progressWidth = 0;
-                            } elseif ($currentStep >= $totalSteps) {
+                            } elseif ($progressStep >= $totalSteps) {
                                 $progressWidth = 100;
                             } else {
-                                $progressWidth = (($currentStep - 0.5) / $totalSteps) * 100;
+                                $progressWidth = (($progressStep - 0.5) / $totalSteps) * 100;
                             }
                         @endphp
                         <div class="relative min-w-[500px] sm:min-w-0">
@@ -461,9 +456,18 @@
                                         $isCompleted = $currentStep > $index;
                                         $isActive = $currentStep === $index;
                                         $isPending = $currentStep < $index;
+                                        $useRejectedStyle = $isRejected && ($isCompleted || $isActive);
 
                                         // Color logic: completed = green, active = teal (pln-primary), pending = gray
-                                        if ($isCompleted) {
+                                        if ($useRejectedStyle) {
+                                            if ($isActive) {
+                                                $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
+                                                $labelClass = 'text-red-700 font-bold';
+                                            } else {
+                                                $circleClass = 'bg-red-500 text-white border-red-500';
+                                                $labelClass = 'text-red-700 font-semibold';
+                                            }
+                                        } elseif ($isCompleted) {
                                             $circleClass = 'bg-green-500 text-white border-green-500';
                                             $labelClass = 'text-green-700 font-semibold';
                                         } elseif ($isActive) {
@@ -473,15 +477,9 @@
                                             $circleClass = 'bg-white text-gray-400 border-gray-300';
                                             $labelClass = 'text-gray-400';
                                         }
-
-                                        // Override for rejected status
-                                        if ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) {
-                                            $circleClass = 'bg-red-600 text-white border-red-600 ring-4 ring-red-300/30';
-                                            $labelClass = 'text-red-700 font-bold';
-                                        }
                                     @endphp
                                     <div class="flex flex-col items-center" style="width: {{ 100 / $totalSteps }}%">
-                                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold {{ $circleClass }} z-10">
+                                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold {{ $circleClass }}">
                                             @if($isCompleted)
                                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
@@ -513,23 +511,37 @@
                                     $isCompleted = $currentStep > $index;
                                     $isActive = $currentStep === $index;
                                     $hasDetail = !empty($step['detail']) || !empty($step['time']);
+                                    $useRejectedStyle = $isRejected && ($isCompleted || $isActive);
+                                    $circleClass = $useRejectedStyle
+                                        ? ($isActive ? 'bg-red-600 ring-4 ring-red-300/30' : 'bg-red-500')
+                                        : ($isCompleted ? 'bg-green-500' : ($isActive ? 'bg-[#4a6b7c] ring-4 ring-[#4a6b7c]/20' : 'bg-gray-300'));
+                                    $lineClass = $isCompleted
+                                        ? ($isRejected ? 'bg-red-500' : 'bg-green-500')
+                                        : 'bg-gray-200';
+                                    $labelClass = $useRejectedStyle
+                                        ? 'text-red-700'
+                                        : ($isCompleted ? 'text-green-700' : ($isActive ? 'text-[#4a6b7c]' : 'text-gray-500'));
+                                    $badgeClass = $useRejectedStyle
+                                        ? 'bg-red-100 text-red-700'
+                                        : ($isCompleted ? 'bg-green-100 text-green-700' : 'bg-[#4a6b7c]/10 text-[#4a6b7c]');
+                                    $badgeText = $useRejectedStyle && $isActive ? 'Ditolak' : ($isCompleted ? 'Selesai' : 'Proses');
                                 @endphp
                                 <div class="flex gap-3 sm:gap-4 {{ !$isCompleted && !$isActive ? 'opacity-40' : '' }}">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $isCompleted ? 'bg-green-500' : ($isActive ? 'bg-[#4a6b7c] ring-4 ring-[#4a6b7c]/20' : 'bg-gray-300') }}"></div>
+                                        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full {{ $circleClass }}"></div>
                                         @if($index < count($steps) - 1)
-                                            <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $isCompleted ? 'bg-green-500' : 'bg-gray-200' }}"></div>
+                                            <div class="w-0.5 h-full min-h-[36px] sm:min-h-[40px] {{ $lineClass }}"></div>
                                         @endif
                                     </div>
                                     <div class="flex-1 pb-3 sm:pb-4">
                                         <div class="flex flex-wrap items-center gap-1 sm:gap-2">
-                                            <span class="font-semibold text-sm sm:text-base {{ $isCompleted ? 'text-green-700' : ($isActive ? 'text-[#4a6b7c]' : 'text-gray-500') }}">
-                                                {{ $step['label'] }}
+                                            <span class="font-semibold text-sm sm:text-base {{ $labelClass }}">
+                                                {{ ($isRejected && ($step['label'] ?? '') === 'Diperiksa' && $index === $currentStep) ? 'Ditolak' : $step['label'] }}
                                             </span>
                                             @if($isCompleted)
-                                                <span class="text-[10px] sm:text-xs bg-green-100 text-green-700 px-1.5 sm:px-2 py-0.5 rounded-full">Selesai</span>
+                                                <span class="text-[10px] sm:text-xs {{ $badgeClass }} px-1.5 sm:px-2 py-0.5 rounded-full">{{ $badgeText }}</span>
                                             @elseif($isActive)
-                                                <span class="text-[10px] sm:text-xs bg-[#4a6b7c]/10 text-[#4a6b7c] px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">Proses</span>
+                                                <span class="text-[10px] sm:text-xs {{ $badgeClass }} px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">{{ $badgeText }}</span>
                                             @endif
                                         </div>
                                         <p class="text-xs sm:text-sm text-gray-500">{{ $step['desc'] }}</p>
@@ -609,7 +621,7 @@
                         <div class="relative flex justify-between">
                             @foreach($steps as $index => $step)
                                 <div class="flex flex-col items-center" style="width: {{ 100 / count($steps) }}%">
-                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold bg-white text-gray-400 border-gray-300 z-10">
+                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm font-bold bg-white text-gray-400 border-gray-300">
                                         {{ $index + 1 }}
                                     </div>
                                     <span class="mt-2 text-[10px] sm:text-xs text-center text-gray-400 leading-tight">
@@ -961,30 +973,22 @@
                 </div>
             @endif
 
-            @if($suratJalan->status === 'DITOLAK' && $isGudangAsal && !$isManagerView && !$isDivisiView)
-                <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
+            {{-- Tombol Buat Ulang Pengembalian jika surat pengembalian ditolak --}}
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->suratJalanKembali?->status === 'DITOLAK' && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView && !$isDivisiView)
+                <div class="bg-red-50 border border-red-200 rounded-xl mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
-                        <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Penyelesaian Surat Ditolak</h3>
-                        <p class="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
-                            Surat jalan ini ditolak oleh security. Klik tombol di bawah untuk menandai proses sebagai selesai.
+                        <h3 class="text-base sm:text-lg font-bold text-red-900 mb-3 sm:mb-4">Pengembalian Ditolak</h3>
+                        <p class="text-xs sm:text-sm text-red-700 mb-3 sm:mb-4">
+                            Surat pengembalian sebelumnya ditolak oleh security. Silakan buat ulang surat pengembalian.
                         </p>
-                        <form method="POST" action="{{ route('gudang.surat-jalan.finalize-rejected', $suratJalan->id) }}"
-                              x-data="{ submitting: false }"
-                              @submit="submitting = true">
-                            @csrf
-                            <button type="submit"
-                                    :disabled="submitting"
-                                    class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-gray-700 hover:bg-gray-800 disabled:bg-gray-500 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
-                                <svg x-show="!submitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                <svg x-show="submitting" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span x-text="submitting ? 'Memproses...' : 'Selesaikan'"></span>
-                            </button>
-                        </form>
+                        <button type="button"
+                                @click="$dispatch('open-modal', 'return-peminjaman-modal')"
+                                class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                            </svg>
+                            Buat Ulang Surat Pengembalian
+                        </button>
                     </div>
                 </div>
             @endif
@@ -1076,14 +1080,14 @@
                     </div>
                 </div>
             @elseif($suratJalan->status === 'DITOLAK')
-                <div class="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
+                <!-- <div class="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 text-center mt-4 sm:mt-6">
                     <div class="inline-flex flex-col sm:flex-row items-center gap-2 px-4 sm:px-6 py-3 bg-red-100 text-red-800 rounded-xl">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                         </svg>
                         <span class="font-semibold text-sm sm:text-base">Surat Jalan telah DITOLAK</span>
                     </div>
-                </div>
+                </div> -->
             @endif
         </div>
     </div>
@@ -1093,7 +1097,7 @@
     </style>
 
     {{-- Modal Pengembalian Peminjaman --}}
-    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && !$peminjaman->surat_jalan_kembali_id && !$isDivisiView)
+    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && (!$peminjaman->surat_jalan_kembali_id || $peminjaman->suratJalanKembali?->status === 'DITOLAK') && !$isDivisiView)
     <x-modal name="return-peminjaman-modal" focusable>
         <div class="p-6"
              x-data="{
@@ -1639,5 +1643,46 @@
             initCameraCaptures();
         });
     </script>
+    <x-modal name="reject-approval" focusable>
+        <div class="p-6"
+             x-data="{ formAction: '' }"
+             x-on:open-reject-approval.window="formAction = $event.detail.action; $dispatch('open-modal', 'reject-approval')">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Tolak Persetujuan</h2>
+                    <p class="text-sm text-gray-600">Masukkan alasan penolakan untuk surat jalan ini.</p>
+                </div>
+            </div>
+            <form method="POST" x-bind:action="formAction" class="mt-4 space-y-4">
+                @csrf
+                <div>
+                    <label for="reject_reason_gudang" class="block text-sm font-medium text-gray-700 mb-1">Alasan Penolakan</label>
+                    <textarea id="reject_reason_gudang"
+                              name="alasan"
+                              rows="3"
+                              required
+                              class="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring focus:ring-red-200"
+                              placeholder="Tuliskan alasan penolakan..."></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button"
+                            class="inline-flex items-center px-4 py-2 text-xs font-semibold text-gray-700 uppercase tracking-widest bg-gray-100 rounded-md hover:bg-gray-200"
+                            x-on:click="$dispatch('close-modal', 'reject-approval')">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 text-xs font-semibold text-white uppercase tracking-widest bg-red-600 rounded-md hover:bg-red-700">
+                        Tolak
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+
     <x-confirm-delete-modal />
 </x-app-layout>
