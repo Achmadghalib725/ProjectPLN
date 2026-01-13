@@ -102,14 +102,28 @@ Route::get('/dashboard', function () {
         // Stats untuk Security (filter by gudang_tujuan_id untuk security role)
         'stats' => [
             'diterima_hari_ini' => $gudangId && Schema::hasTable('surat_jalans')
-                ? SuratJalan::where('gudang_tujuan_id', $gudangId)
-                    ->where('status', 'DIPERIKSA')
+                ? SuratJalan::where(function ($query) use ($gudangId) {
+                    $query->where(function ($inner) use ($gudangId) {
+                        $inner->where('gudang_asal_id', $gudangId)
+                            ->whereIn('status', ['DIKIRIM', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN', 'SELESAI']);
+                    })->orWhere(function ($inner) use ($gudangId) {
+                        $inner->where('gudang_tujuan_id', $gudangId)
+                            ->whereIn('status', ['DIPERIKSA_PENERIMA', 'DIPERIKSA']);
+                    });
+                })
                     ->whereDate('updated_at', today())
                     ->count()
                 : 0,
             'menunggu' => $gudangId && Schema::hasTable('surat_jalans')
-                ? SuratJalan::where('gudang_tujuan_id', $gudangId)
-                    ->whereIn('status', ['DIKIRIM', 'DIKEMBALIKAN'])
+                ? SuratJalan::where(function ($query) use ($gudangId) {
+                    $query->where(function ($inner) use ($gudangId) {
+                        $inner->where('gudang_asal_id', $gudangId)
+                            ->where('status', 'DIPERIKSA_PENGIRIM');
+                    })->orWhere(function ($inner) use ($gudangId) {
+                        $inner->where('gudang_tujuan_id', $gudangId)
+                            ->whereIn('status', ['DIKIRIM', 'DIKEMBALIKAN']);
+                    });
+                })
                     ->count()
                 : 0,
         ],
@@ -138,7 +152,7 @@ Route::get('/dashboard', function () {
             'total' => (clone $managerQuery)->count(),
             'menunggu_persetujuan' => (clone $managerQuery)->where('status', 'MENUNGGU_PERSETUJUAN')->count(),
             'ditolak_persetujuan' => (clone $managerQuery)->where('status', 'DITOLAK_PERSETUJUAN')->count(),
-            'dikirim' => (clone $managerQuery)->whereIn('status', ['DIKIRIM', 'MENUNGGU_DIKEMBALIKAN'])->count(),
+            'dikirim' => (clone $managerQuery)->whereIn('status', ['DIKIRIM', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'MENUNGGU_DIKEMBALIKAN'])->count(),
             'selesai' => (clone $managerQuery)->where('status', 'SELESAI')->count(),
         ];
         $data['managerRecent'] = $managerQuery->orderByDesc('tanggal')->limit(6)->get();

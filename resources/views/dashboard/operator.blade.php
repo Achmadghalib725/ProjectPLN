@@ -72,6 +72,8 @@
                     $statusLabel = match($suratJalan->status) {
                         'MENUNGGU_PERSETUJUAN' => 'Menunggu',
                         'DIKIRIM' => 'Dikirim',
+                        'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan Pengirim',
+                        'DIPERIKSA_PENERIMA' => 'Diperiksa Penerima',
                         'DIPERIKSA' => 'Diperiksa',
                         'DITERIMA' => 'Diterima',
                         'DITOLAK' => 'Ditolak',

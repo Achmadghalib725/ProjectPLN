@@ -60,6 +60,7 @@ class SuratJalanObserver
                     break;
 
                 case 'DIPERIKSA':
+                case 'DIPERIKSA_PENERIMA':
                     // Notify operator gudang tujuan: surat siap diterima
                     if ($suratJalan->gudang_tujuan_id) {
                         AppNotification::notifyGudangOperators(

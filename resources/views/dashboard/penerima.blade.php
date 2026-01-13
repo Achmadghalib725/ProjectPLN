@@ -1,6 +1,8 @@
 @php
     $statusClasses = [
         'DIKIRIM' => 'bg-yellow-100 text-yellow-800',
+        'DIPERIKSA_PENGIRIM' => 'bg-purple-100 text-purple-800',
+        'DIPERIKSA_PENERIMA' => 'bg-purple-100 text-purple-800',
         'DIPERIKSA' => 'bg-purple-100 text-purple-800',
         'DITERIMA' => 'bg-emerald-100 text-emerald-700',
         'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',

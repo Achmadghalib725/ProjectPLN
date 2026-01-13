@@ -371,13 +371,13 @@
                                             class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                                         <option value="">Semua Status</option>
                                         @if($tab === 'keluar')
-                                            @foreach(['DRAFT','MENUNGGU_PERSETUJUAN','DITOLAK_PERSETUJUAN','DIKIRIM','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
+                                            @foreach(['DRAFT','MENUNGGU_PERSETUJUAN','DITOLAK_PERSETUJUAN','DIKIRIM','DIPERIKSA_PENGIRIM','DIPERIKSA_PENERIMA','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
                                                 <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
                                                     {{ $statusOption }}
                                                 </option>
                                             @endforeach
                                         @else
-                                            @foreach(['DIKIRIM','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK'] as $statusOption)
+                                            @foreach(['DIKIRIM','DIPERIKSA_PENGIRIM','DIPERIKSA_PENERIMA','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK'] as $statusOption)
                                                 <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
                                                     {{ in_array($statusOption, ['DIKIRIM', 'DIKEMBALIKAN']) ? 'MENUNGGU' : $statusOption }}
                                                 </option>
@@ -454,6 +454,8 @@
                                 'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
                                 'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
                                 'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                                'DIPERIKSA_PENGIRIM' => 'bg-cyan-100 text-cyan-800',
+                                'DIPERIKSA_PENERIMA' => 'bg-purple-100 text-purple-800',
                                 'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
                                 'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
                                 'DIPERIKSA' => 'bg-purple-100 text-purple-800',
@@ -566,6 +568,8 @@
                                         'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
                                         'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
                                         'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                                        'DIPERIKSA_PENGIRIM' => 'bg-cyan-100 text-cyan-800',
+                                        'DIPERIKSA_PENERIMA' => 'bg-purple-100 text-purple-800',
                                         'DIKEMBALIKAN' => 'bg-indigo-100 text-indigo-800',
                                         'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
                                         'DIPERIKSA' => 'bg-purple-100 text-purple-800',
@@ -657,7 +661,7 @@
                                                     <button type="button"
                                                         @click="$dispatch('open-delete-modal', {
                                                             title: 'Batalkan Surat Jalan',
-                                                            message: 'Apakah Anda yakin ingin membatalkan surat jalan {{ $sj->nomor }}? {{ in_array($sj->status, ['DIKIRIM', 'DITERIMA', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'DIPERIKSA']) ? 'Semua pergerakan stok akan di-rollback.' : '' }}',
+                                                            message: 'Apakah Anda yakin ingin membatalkan surat jalan {{ $sj->nomor }}? {{ in_array($sj->status, ['DIKIRIM', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DITERIMA', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'DIPERIKSA']) ? 'Semua pergerakan stok akan di-rollback.' : '' }}',
                                                             action: '{{ route('admin.surat-jalan.destroy', $sj->id) }}'
                                                         })"
                                                         class="text-red-500 hover:text-red-700"
