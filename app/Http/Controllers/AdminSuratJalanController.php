@@ -86,8 +86,8 @@ class AdminSuratJalanController extends Controller
             $baseQuery = SuratJalan::where('gudang_asal_id', $activeGudangId)->where('status', '!=', 'SELESAI');
             $stats = [
                 'total' => (clone $baseQuery)->count(),
-                'draft' => (clone $baseQuery)->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN'])->count(),
-                'dikirim' => (clone $baseQuery)->whereIn('status', ['DIKIRIM', 'MENUNGGU_DIKEMBALIKAN'])->count(),
+                'draft' => (clone $baseQuery)->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'])->count(),
+                'dikirim' => (clone $baseQuery)->whereIn('status', ['DIKIRIM', 'DIPERIKSA_PENGIRIM', 'MENUNGGU_DIKEMBALIKAN'])->count(),
                 'diterima' => (clone $baseQuery)->where('status', 'DITERIMA')->count(),
             ];
         } elseif ($activeGudangId) {
@@ -95,7 +95,7 @@ class AdminSuratJalanController extends Controller
                 ->whereNotIn('status', ['DRAFT', 'SELESAI', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
             $stats = [
                 'total' => (clone $baseQuery)->count(),
-                'menunggu' => (clone $baseQuery)->where('status', 'DIKIRIM')->count(),
+                'menunggu' => (clone $baseQuery)->whereIn('status', ['DIKIRIM', 'DIKEMBALIKAN'])->count(),
                 'diterima' => (clone $baseQuery)->where('status', 'DITERIMA')->count(),
             ];
         } else {
@@ -860,11 +860,11 @@ class AdminSuratJalanController extends Controller
             abort(403, 'Anda tidak berhak mengedit surat jalan gudang lain.');
         }
 
-        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
+        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'];
         if (!in_array($suratJalan->status, $editableStatuses, true)) {
             return redirect()
                 ->route('admin.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Hanya surat jalan Draft atau Ditolak Persetujuan yang bisa diedit.');
+                ->with('error', 'Hanya surat jalan Draft atau Ditolak yang bisa diedit.');
         }
 
         $gudangs = Schema::hasTable('gudangs')
@@ -905,11 +905,11 @@ class AdminSuratJalanController extends Controller
             abort(403, 'Anda tidak berhak mengedit surat jalan gudang lain.');
         }
 
-        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
+        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'];
         if (!in_array($suratJalan->status, $editableStatuses, true)) {
             return redirect()
                 ->route('admin.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Hanya surat jalan Draft atau Ditolak Persetujuan yang bisa diedit.');
+                ->with('error', 'Hanya surat jalan Draft atau Ditolak yang bisa diedit.');
         }
 
         $pendingDeleteCount = collect($request->input('delete_attachments', []))
@@ -917,6 +917,9 @@ class AdminSuratJalanController extends Controller
             ->unique()
             ->count();
         $maxAttachments = max(0, 3 - $suratJalan->attachments()->count() + $pendingDeleteCount);
+
+        $resetAfterReject = $suratJalan->status === 'DITOLAK';
+        $nextStatus = $resetAfterReject ? 'DRAFT' : $suratJalan->status;
 
         if ($suratJalan->tipe === 'PENGEMBALIAN') {
             $validated = $request->validate([
@@ -941,17 +944,33 @@ class AdminSuratJalanController extends Controller
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
             ]);
 
-            $suratJalan->update([
+            $catatanValue = $validated['catatan'] ?? null;
+            if ($resetAfterReject) {
+                $catatanValue = $this->stripSecurityRejectTags($catatanValue);
+            }
+
+            $updatePayload = [
                 'pic_tujuan_id' => $validated['pic_tujuan_id'],
                 'pic_tujuan_custom_nama' => null,
                 'pic_tujuan_custom_jabatan' => null,
                 'pic_tujuan_custom_no_hp' => null,
                 'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
-                'catatan' => $validated['catatan'] ?? null,
+                'catatan' => $catatanValue,
                 'nama_driver' => $validated['nama_driver'] ?? null,
                 'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
                 'nomor_plat' => $validated['nomor_plat'] ?? null,
-            ]);
+                'status' => $nextStatus,
+            ];
+            if ($resetAfterReject) {
+                $updatePayload['ttd_pembuat_id'] = null;
+                $updatePayload['waktu_ttd_pembuat'] = null;
+            }
+
+            $suratJalan->update($updatePayload);
+
+            if ($resetAfterReject) {
+                $this->resetSuratJalanAfterSecurityReject($suratJalan);
+            }
 
             $this->deleteAttachmentsByIds($suratJalan, $request->input('delete_attachments', []));
 
@@ -1100,8 +1119,13 @@ class AdminSuratJalanController extends Controller
             $picTujuanId = null;
         }
 
-        DB::transaction(function () use ($suratJalan, $validated, $gudangId, $gudangTujuanId, $isCustomGudang, $customGudangData, $picTujuanId, $picCustomData) {
-            $suratJalan->update([
+        $catatanValue = $validated['catatan'] ?? null;
+        if ($resetAfterReject) {
+            $catatanValue = $this->stripSecurityRejectTags($catatanValue);
+        }
+
+        DB::transaction(function () use ($suratJalan, $validated, $gudangId, $gudangTujuanId, $isCustomGudang, $customGudangData, $picTujuanId, $picCustomData, $nextStatus, $resetAfterReject, $catatanValue) {
+            $updatePayload = [
                 'gudang_tujuan_id' => $gudangTujuanId,
                 'gudang_tujuan_is_custom' => $isCustomGudang,
                 'gudang_tujuan_custom_nama' => $isCustomGudang ? $customGudangData['nama'] : null,
@@ -1112,14 +1136,24 @@ class AdminSuratJalanController extends Controller
                 'pic_tujuan_custom_jabatan' => $picCustomData['jabatan'] ?? null,
                 'pic_tujuan_custom_no_hp' => $picCustomData['no_hp'] ?? null,
                 'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
-                'catatan' => $validated['catatan'] ?? null,
+                'catatan' => $catatanValue,
                 'nama_driver' => $validated['nama_driver'] ?? null,
                 'jenis_kendaraan' => $validated['jenis_kendaraan'] ?? null,
                 'nomor_plat' => $validated['nomor_plat'] ?? null,
-            ]);
+                'status' => $nextStatus,
+            ];
+            if ($resetAfterReject) {
+                $updatePayload['ttd_pembuat_id'] = null;
+                $updatePayload['waktu_ttd_pembuat'] = null;
+            }
+            $suratJalan->update($updatePayload);
 
             $suratJalan->items()->delete();
             $this->createSuratJalanItems($suratJalan->id, $validated['items']);
+
+            if ($resetAfterReject) {
+                $this->resetSuratJalanAfterSecurityReject($suratJalan);
+            }
 
             if ($suratJalan->tipe === 'PEMINJAMAN') {
                 $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
@@ -1161,6 +1195,48 @@ class AdminSuratJalanController extends Controller
         return $redirect;
     }
 
+    private function stripSecurityRejectTags(?string $catatan): ?string
+    {
+        if ($catatan === null) {
+            return null;
+        }
+
+        $cleaned = preg_replace('/\\[DITOLAK_(PENGIRIM|PENERIMA):[^\\]]*\\]/', '', $catatan);
+        $cleaned = trim((string) $cleaned);
+
+        return $cleaned === '' ? null : $cleaned;
+    }
+
+    private function resetSuratJalanAfterSecurityReject(SuratJalan $suratJalan): void
+    {
+        SuratJalanItem::where('surat_jalan_id', $suratJalan->id)->update([
+            'checked_by_security' => false,
+            'checked_by_user_id' => null,
+            'checked_at' => null,
+        ]);
+
+        if ($suratJalan->tipe !== 'PEMINJAMAN') {
+            return;
+        }
+
+        $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        if (!$peminjaman) {
+            return;
+        }
+
+        $peminjaman->update([
+            'status' => 'DIAJUKAN',
+            'waktu_kirim' => null,
+            'waktu_diterima' => null,
+            'waktu_pengembalian' => null,
+            'waktu_selesai' => null,
+            'waktu_ttd_pengirim' => null,
+            'waktu_ttd_penerima' => null,
+            'waktu_ttd_pengembalian' => null,
+            'waktu_ttd_terima_kembali' => null,
+        ]);
+    }
+
     public function requestApproval($id)
     {
         $suratJalan = SuratJalan::with(['attachments', 'items'])->findOrFail($id);
@@ -1174,6 +1250,12 @@ class AdminSuratJalanController extends Controller
         $gudangId = $user?->gudang_id;
         if (!$isAdmin && (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId)) {
             abort(403, 'Anda tidak berhak meminta persetujuan surat jalan gudang lain.');
+        }
+
+        if ($suratJalan->status === 'DITOLAK') {
+            return redirect()
+                ->route('admin.surat-jalan.show', $suratJalan->id)
+                ->with('error', 'Surat Jalan ini ditolak oleh security. Silakan edit terlebih dahulu sebelum ajukan ulang.');
         }
 
         if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true)) {
@@ -1375,68 +1457,24 @@ class AdminSuratJalanController extends Controller
                         ]);
                     }
 
-                    if ($suratJalan->tipe === 'PEMINJAMAN' && $isCustomGudang) {
-                        $suratJalan->update([
-                            'status' => 'MENUNGGU_DIKEMBALIKAN',
-                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
-                            'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
-                        ]);
-
-                        $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
-                        if ($peminjaman) {
-                            $peminjaman->update([
-                                'status' => 'MENUNGGU_DIKEMBALIKAN',
-                                'waktu_kirim' => now(),
-                            ]);
-                        }
-                    } else {
-                        $suratJalan->update([
-                            'status' => $isCustomGudang && $suratJalan->tipe === 'TRANSFER' ? 'SELESAI' : 'DIKIRIM',
-                            'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
-                            'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
-                        ]);
-
-                        // Update peminjaman status if applicable
-                        if ($suratJalan->tipe === 'PEMINJAMAN') {
-                            $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
-                            if ($peminjaman) {
-                                $peminjaman->update([
-                                    'status' => 'DIKIRIM',
-                                    'waktu_kirim' => now(),
-                                ]);
-                            }
-                        }
-                    }
-                } else {
-                    // PENGEMBALIAN: Update status to DIKEMBALIKAN
                     $suratJalan->update([
-                        'status' => 'DIKEMBALIKAN',
+                        'status' => 'DIPERIKSA_PENGIRIM',
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                     ]);
-
-                    // Update peminjaman status
-                    $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
-                    if ($peminjaman) {
-                        $peminjaman->update([
-                            'status' => 'DIKEMBALIKAN',
-                            'waktu_pengembalian' => now(),
-                        ]);
-
-                        // Sync status surat jalan peminjaman (kirim)
-                        if ($peminjaman->surat_jalan_kirim_id) {
-                            SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                                ->update(['status' => 'DIKEMBALIKAN']);
-                        }
-                    }
+                } else {
+                    // PENGEMBALIAN: menunggu pemeriksaan security pengirim
+                    $suratJalan->update([
+                        'status' => 'DIPERIKSA_PENGIRIM',
+                        'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
+                        'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
+                    ]);
                 }
             });
 
             $message = $suratJalan->tipe === 'PENGEMBALIAN'
-                ? 'Surat Jalan Pengembalian berhasil dikirim.'
-                : ($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->gudang_tujuan_is_custom
-                    ? 'Surat Jalan disetujui. Menunggu konfirmasi pengembalian.'
-                    : 'Surat Jalan disetujui dan stok berhasil dikurangi.');
+                ? 'Surat Jalan Pengembalian disetujui. Menunggu pemeriksaan security pengirim.'
+                : 'Surat Jalan disetujui. Menunggu pemeriksaan security pengirim.';
 
             $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
@@ -1472,10 +1510,10 @@ class AdminSuratJalanController extends Controller
             abort(403, 'Anda tidak berhak menerima surat jalan ini.');
         }
 
-        if ($suratJalan->status !== 'DIPERIKSA') {
+        if (!in_array($suratJalan->status, ['DIPERIKSA', 'DIPERIKSA_PENERIMA'], true)) {
             return redirect()
                 ->route('admin.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Surat Jalan ini belum diperiksa oleh security.');
+                ->with('error', 'Surat Jalan ini belum diperiksa oleh security penerima.');
         }
 
         try {
@@ -1915,7 +1953,7 @@ class AdminSuratJalanController extends Controller
             $query = SuratJalan::where('gudang_asal_id', $gudangId)->where('status', '!=', 'SELESAI');
             return [
                 'total' => (clone $query)->count(),
-                'draft' => (clone $query)->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN'])->count(),
+                'draft' => (clone $query)->whereIn('status', ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'])->count(),
             ];
         });
     }
@@ -1929,7 +1967,7 @@ class AdminSuratJalanController extends Controller
                 ->whereNotIn('status', ['DRAFT', 'SELESAI', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN']);
            return [
                 'total' => (clone $query)->count(),
-                'menunggu' => (clone $query)->where('status', 'DIKIRIM')->count(),
+                'menunggu' => (clone $query)->whereIn('status', ['DIKIRIM', 'DIKEMBALIKAN'])->count(),
             ];
         });
     }
@@ -2674,9 +2712,9 @@ class AdminSuratJalanController extends Controller
             abort(403, 'Anda tidak berhak menghapus lampiran ini.');
         }
 
-        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN'];
+        $editableStatuses = ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'];
         if (!in_array($suratJalan->status, $editableStatuses, true)) {
-            return redirect()->back()->with('error', 'Lampiran hanya bisa dihapus saat status Draft atau Ditolak Persetujuan.');
+            return redirect()->back()->with('error', 'Lampiran hanya bisa dihapus saat status Draft atau Ditolak.');
         }
 
         // Delete file from storage

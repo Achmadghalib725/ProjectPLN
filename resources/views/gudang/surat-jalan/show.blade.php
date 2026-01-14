@@ -68,20 +68,22 @@
                                     <span>Download</span>
                                 </a>
                             </div>
-                            @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $canEditDraft)
+                            @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true) && $canEditDraft)
                                 {{-- Draft Actions Row --}}
                                 <div class="flex gap-2">
                                     <a href="{{ route('gudang.surat-jalan.edit', $suratJalan->id) }}"
                                        class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                         Edit Draft
                                     </a>
-                                    <form method="POST" action="{{ route('gudang.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
-                                        @csrf
-                                        <button type="submit"
-                                                class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                            {{ $suratJalan->status === 'DITOLAK_PERSETUJUAN' ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
-                                        </button>
-                                    </form>
+                                    @if($suratJalan->status !== 'DITOLAK')
+                                        <form method="POST" action="{{ route('gudang.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                                {{ $suratJalan->status === 'DITOLAK_PERSETUJUAN' ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="button"
@@ -206,10 +208,10 @@
                             [
                                 'label' => 'Diperiksa',
                                 'desc' => 'Security memeriksa',
-                                'detail' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI'])
+                                'detail' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
                                     ? "Diperiksa oleh Security di <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI'])
+                                'time' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
                                     ? $formatWaktu($sjKirim->updated_at)
                                     : null,
                                 'by' => null,
@@ -227,16 +229,18 @@
                             ],
                         ];
                         // currentStep menunjukkan step yang SEDANG aktif (in progress)
-                        // DIKIRIM = sudah dikirim, menunggu security -> step Diperiksa active
-                        // DIPERIKSA = sudah diperiksa, menunggu operator terima -> step Selesai active
+                        // DIKIRIM = sudah dikirim, menunggu security penerima -> step Diperiksa active
+                        // DIPERIKSA_PENERIMA = menunggu operator terima -> step Selesai active
                         $statusIndexMap = [
                             'DRAFT' => 0,
                             'MENUNGGU_PERSETUJUAN' => 0,
                             'DITOLAK_PERSETUJUAN' => 0,
-                            'DIKIRIM' => 1,      // step 0 (Dikirim) completed, step 1 (Diperiksa) active
-                            'DIPERIKSA' => 2,    // step 0,1 completed, step 2 (Selesai) active
-                            'DITERIMA' => 3,     // semua completed
-                            'SELESAI' => 3,      // semua completed
+                            'DIKIRIM' => 1,
+                            'DIPERIKSA_PENGIRIM' => 1,
+                            'DIPERIKSA_PENERIMA' => 2,
+                            'DIPERIKSA' => 2,
+                            'DITERIMA' => 3,
+                            'SELESAI' => 3,
                             'DITOLAK' => -2,
                         ];
                         $currentStep = $statusIndexMap[$suratStatus] ?? 0;
@@ -312,10 +316,10 @@
                             [
                                 'label' => 'Diperiksa',
                                 'desc' => 'Security gudang tujuan',
-                                'detail' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                'detail' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
                                     ? "Diperiksa oleh Security di <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                'time' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
                                     ? $formatWaktu($sjKirim->updated_at) : null,
                                 'by' => null,
                             ],
@@ -331,7 +335,7 @@
                             [
                                 'label' => 'Dikembalikan',
                                 'desc' => 'Barang dikembalikan',
-                                'detail' => $sjKembali && in_array($sjKembali->status, ['DIKEMBALIKAN', 'DIPERIKSA', 'SELESAI'])
+                                'detail' => $sjKembali && in_array($sjKembali->status, ['DIKEMBALIKAN', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
                                     ? "Dikembalikan dari <strong>{$gudangPeminjamNama}</strong> ke <strong>{$gudangPemilikNama}</strong>"
                                     : null,
                                 'time' => $peminjaman?->waktu_pengembalian ? $formatWaktu($peminjaman->waktu_pengembalian) : null,
@@ -340,10 +344,10 @@
                             [
                                 'label' => 'Diperiksa',
                                 'desc' => 'Security gudang pemilik',
-                                'detail' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA', 'SELESAI'])
+                                'detail' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
                                     ? "Diperiksa oleh Security di <strong>{$gudangPemilikNama}</strong>"
                                     : null,
-                                'time' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA', 'SELESAI'])
+                                'time' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
                                     ? $formatWaktu($sjKembali->updated_at) : null,
                                 'by' => null,
                             ],
@@ -361,16 +365,16 @@
                         // Map status ke step (step yang SEDANG aktif, bukan yang sudah selesai)
                         if ($peminjamanStatus === 'SELESAI' || $sjKembaliStatus === 'SELESAI') {
                             $currentStep = 6; // Semua selesai (di luar range = semua hijau)
-                        } elseif ($sjKembaliStatus === 'DIPERIKSA') {
-                            $currentStep = 5; // Sedang di step Selesai (menunggu operator approve)
-                        } elseif ($sjKembaliStatus === 'DIKEMBALIKAN' || $peminjamanStatus === 'DIKEMBALIKAN') {
-                            $currentStep = 4; // Sedang di step Diperiksa pengembalian (menunggu security)
+                        } elseif (in_array($sjKembaliStatus, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], true)) {
+                            $currentStep = 5; // Menunggu operator menerima pengembalian
+                        } elseif (in_array($sjKembaliStatus, ['DIKEMBALIKAN', 'DIPERIKSA_PENGIRIM'], true) || $peminjamanStatus === 'DIKEMBALIKAN') {
+                            $currentStep = 4; // Menunggu security penerima (gudang pemilik)
                         } elseif ($peminjamanStatus === 'DITERIMA' || $sjKirimStatus === 'DITERIMA') {
-                            $currentStep = 3; // Sedang di step Dikembalikan (menunggu pengembalian)
-                        } elseif ($sjKirimStatus === 'DIPERIKSA' || $peminjamanStatus === 'DIPERIKSA') {
-                            $currentStep = 2; // Sedang di step Diterima (menunggu operator approve)
-                        } elseif ($sjKirimStatus === 'DIKIRIM' || $peminjamanStatus === 'DIKIRIM') {
-                            $currentStep = 1; // Sedang di step Diperiksa (menunggu security)
+                            $currentStep = 3; // Menunggu pengembalian barang
+                        } elseif (in_array($sjKirimStatus, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], true) || $peminjamanStatus === 'DIPERIKSA') {
+                            $currentStep = 2; // Menunggu operator menerima
+                        } elseif (in_array($sjKirimStatus, ['DIKIRIM', 'DIPERIKSA_PENGIRIM'], true) || $peminjamanStatus === 'DIKIRIM') {
+                            $currentStep = 1; // Menunggu security penerima (gudang tujuan)
                         } else {
                             $currentStep = 0; // Belum dikirim
                         }
@@ -385,7 +389,7 @@
                 if ($isRejected) {
                     $periksaIndexes = collect($steps)
                         ->keys()
-                        ->filter(fn ($index) => ($steps[$index]['label'] ?? '') === 'Diperiksa')
+                        ->filter(fn ($index) => str_starts_with(($steps[$index]['label'] ?? ''), 'Diperiksa'))
                         ->values();
 
                     if ($periksaIndexes->count() > 1) {
@@ -404,7 +408,7 @@
 
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
+            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK'))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -419,12 +423,31 @@
                     </div>
 
                     @if($isRejected)
+                        @php
+                            $rejectTitle = 'Surat Jalan Ditolak oleh Security';
+                            $rejectReason = null;
+                            $catatanText = (string) ($suratJalan->catatan ?? '');
+                            if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                                $rejectStage = strtolower($matches[1] ?? '');
+                                $rejectReason = trim($matches[2] ?? '');
+                                if ($rejectStage === 'pengirim') {
+                                    $rejectTitle = 'Surat Jalan Ditolak oleh Security Pengirim';
+                                } elseif ($rejectStage === 'penerima') {
+                                    $rejectTitle = 'Surat Jalan Ditolak oleh Security Penerima';
+                                }
+                            }
+                        @endphp
                         <div class="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
-                            <div class="flex items-center gap-2 text-red-700 text-sm sm:text-base">
-                                <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <div class="flex items-start gap-2 text-red-700 text-sm sm:text-base">
+                                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                 </svg>
-                                <span class="font-semibold">Surat Jalan Ditolak oleh Security</span>
+                                <div>
+                                    <span class="font-semibold">{{ $rejectTitle }}</span>
+                                    @if($rejectReason)
+                                        <p class="text-xs sm:text-sm text-red-700 mt-1">Alasan: {{ $rejectReason }}</p>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -580,33 +603,63 @@
             @else
             {{-- DRAFT Status Card with Blurred Progress Background --}}
             @php
-                $draftMessage = match ($suratStatus) {
+                $securityRejectMessage = null;
+                if ($suratStatus === 'DITOLAK') {
+                    $rejectStageLabel = 'security';
+                    $rejectReason = null;
+                    $catatanText = (string) ($suratJalan->catatan ?? '');
+                    if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                        $rejectStage = strtolower($matches[1] ?? '');
+                        $rejectReason = trim($matches[2] ?? '');
+                        if ($rejectStage === 'pengirim') {
+                            $rejectStageLabel = 'security pengirim';
+                        } elseif ($rejectStage === 'penerima') {
+                            $rejectStageLabel = 'security penerima';
+                        }
+                    }
+                    $securityRejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
+                    if ($rejectReason) {
+                        $securityRejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    }
+                }
+
+                $draftMessage = $securityRejectMessage ?? match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                    'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
                     'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                    'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
                     default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
                 };
 
                 $draftIcon = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
+                    'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
+                    'DITOLAK' => 'x-circle',
                     default => 'document',
                 };
 
                 $draftBgClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
+                    'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
+                    'DITOLAK' => 'bg-red-50 border-red-200',
                     default => 'bg-gray-50 border-gray-200',
                 };
 
                 $draftTextClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
+                    'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
+                    'DITOLAK' => 'text-red-800',
                     default => 'text-gray-700',
                 };
 
                 $draftIconBgClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
+                    'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
+                    'DITOLAK' => 'bg-red-100 text-red-600',
                     default => 'bg-gray-100 text-gray-600',
                 };
             @endphp
@@ -881,7 +934,7 @@
                                              class="w-full h-28 sm:h-40 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition">
                                     </a>
                                     <p class="text-[10px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2 truncate">{{ $attachment->file_name }}</p>
-                                    @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $isGudangAsalView)
+                                    @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true) && $isGudangAsalView)
                                         <form action="{{ route('gudang.surat-jalan.delete-attachment', $attachment->id) }}"
                                               method="POST"
                                               class="absolute top-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition">
@@ -901,7 +954,7 @@
                         </div>
                     </div>
                 </div>
-            @elseif(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $isGudangAsalView)
+            @elseif(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true) && $isGudangAsalView)
                 <div class="bg-yellow-50 border border-yellow-200 rounded-xl mt-4 sm:mt-6 p-4">
                     <p class="text-yellow-800 text-xs sm:text-sm">
                         <strong>Perhatian:</strong> Belum ada lampiran gambar. Upload minimal 1 gambar sebelum meminta persetujuan.
@@ -917,7 +970,7 @@
             @endphp
 
             {{-- Tombol Terima Barang untuk Operator Gudang Tujuan (status DIPERIKSA) --}}
-            @if($suratJalan->status === 'DIPERIKSA' && $isGudangTujuan && !$isManagerView && (!$isDivisiView || $divisiMatches))
+            @if(in_array($suratJalan->status, ['DIPERIKSA', 'DIPERIKSA_PENERIMA'], true) && $isGudangTujuan && !$isManagerView && (!$isDivisiView || $divisiMatches))
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Penerimaan</h3>
@@ -1023,7 +1076,7 @@
             @endif
 
             {{-- Info Pengembalian Menunggu Diterima (untuk PEMINJAMAN ketika surat kembali sudah DIPERIKSA) --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman?->suratJalanKembali?->status === 'DIPERIKSA' && $isGudangAsal && !$isManagerView)
+            @if($suratJalan->tipe === 'PEMINJAMAN' && in_array(($peminjaman?->suratJalanKembali?->status ?? ''), ['DIPERIKSA', 'DIPERIKSA_PENERIMA'], true) && $isGudangAsal && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Menunggu Diterima</h3>
