@@ -307,13 +307,59 @@
                                         <p class="text-xs text-gray-500">Minimal 1 item. Sumber item dari stok gudang Anda.</p>
                                     </div>
                                     <button type="button"
-                                            class="bg-pln-primary hover:bg-pln-light text-white text-sm font-semibold px-4 py-2 rounded-md transition"
+                                            class="hidden sm:inline-flex bg-pln-primary hover:bg-pln-light text-white text-sm font-semibold px-4 py-2 rounded-md transition"
                                             @click="addRow()">
                                         + Tambah Baris
                                     </button>
                                 </div>
 
-                                <div class="overflow-x-auto">
+                                {{-- Mobile Card Layout --}}
+                                <div class="sm:hidden">
+                                    <div class="divide-y divide-gray-200">
+                                        <template x-for="(row, idx) in items" :key="idx">
+                                            <div class="p-3 bg-white">
+                                                <div class="flex items-start justify-between gap-2 mb-2">
+                                                    <span class="text-xs font-semibold text-gray-500">Item #<span x-text="idx + 1"></span></span>
+                                                    <button type="button" @click="removeRow(idx)" class="text-red-500 hover:text-red-700 p-1">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                    </button>
+                                                </div>
+                                                {{-- Barang --}}
+                                                <div class="mb-3">
+                                                    <label class="block text-xs font-medium text-gray-600 mb-1">Barang <span class="text-red-500">*</span></label>
+                                                    <select class="w-full text-sm rounded-md border-gray-300 py-2.5"
+                                                            x-model="row.item_id"
+                                                            :name="`items[${idx}][item_id]`">
+                                                        <option value="">Pilih item...</option>
+                                                        @foreach($availableStocks as $stock)
+                                                            <option value="{{ $stock->item_id }}">
+                                                                {{ $stock->item->kode ?? '-' }} - {{ $stock->item->nama ?? 'Item' }} (Stok: {{ $stock->jumlah }})
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                {{-- Jumlah & Keterangan --}}
+                                                <div class="grid grid-cols-3 gap-2">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-600 mb-1">Jumlah <span class="text-red-500">*</span></label>
+                                                        <input type="number" min="1" x-model="row.jumlah" :name="`items[${idx}][jumlah]`" class="w-full text-sm rounded-md border-gray-300 py-2.5">
+                                                        <p x-show="row.item_id && row.jumlah > stockFor(row.item_id)" class="mt-1 text-xs text-red-600">
+                                                            Stok tidak cukup
+                                                        </p>
+                                                    </div>
+                                                    <div class="col-span-2">
+                                                        <label class="block text-xs font-medium text-gray-600 mb-1">Keterangan</label>
+                                                        <input type="text" x-model="row.keterangan" :name="`items[${idx}][keterangan]`" placeholder="Opsional..." class="w-full text-sm rounded-md border-gray-300 py-2.5">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <button type="button" @click="addRow()" class="w-full py-3 bg-gray-50 text-sm font-bold text-pln-primary hover:bg-gray-100 uppercase border-t">+ Tambah Barang</button>
+                                </div>
+
+                                {{-- Desktop Table Layout --}}
+                                <div class="hidden sm:block overflow-x-auto">
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-white">
                                             <tr>
@@ -384,7 +430,27 @@
                                     <p class="font-semibold text-gray-900">Daftar Barang Pengembalian</p>
                                     <p class="text-xs text-gray-500">Jumlah mengikuti peminjaman dan tidak dapat diubah.</p>
                                 </div>
-                                <div class="overflow-x-auto">
+
+                                {{-- Mobile Card Layout --}}
+                                <div class="sm:hidden divide-y divide-gray-200">
+                                    @foreach($suratJalan->items as $index => $item)
+                                        <div class="p-3 bg-white">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="text-xs font-semibold text-gray-500">Item #{{ $index + 1 }}</span>
+                                            </div>
+                                            <p class="font-medium text-sm text-gray-900 mb-2">
+                                                {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}
+                                            </p>
+                                            <div>
+                                                <span class="block text-xs text-gray-500">Jumlah</span>
+                                                <span class="text-sm font-semibold text-gray-900">{{ $item->jumlah }}</span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                {{-- Desktop Table Layout --}}
+                                <div class="hidden sm:block overflow-x-auto">
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-white">
                                             <tr>
@@ -408,100 +474,123 @@
                         @endif
 
                         {{-- Lampiran Gambar --}}
-                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
-                            <div class="mb-4">
-                                <p class="font-semibold text-gray-900">Lampiran Gambar</p>
-                                <p class="text-xs text-gray-500">Maksimal 3 gambar. Wajib ada minimal 1 gambar sebelum mengirim surat jalan.</p>
+                        <div class="border border-dashed border-gray-300 rounded-xl bg-gray-50/50 overflow-hidden" data-camera-capture data-target-input="attachments-edit-admin" data-max-files="{{ 3 - $suratJalan->attachments->count() }}">
+                            {{-- Header --}}
+                            <div class="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span class="text-sm font-medium text-gray-700">Lampiran Foto</span>
+                                </div>
+                                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full" data-camera-status>{{ $suratJalan->attachments->count() }}/3</span>
                             </div>
 
                             {{-- Existing Attachments --}}
                             @if($suratJalan->attachments->count() > 0)
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                                    @foreach($suratJalan->attachments as $attachment)
-                                        <div class="border border-gray-200 rounded-lg bg-white p-2" data-attachment-card data-attachment-id="{{ $attachment->id }}">
-                                            <div class="relative">
-                                                <img src="{{ Storage::url($attachment->file_path) }}"
-                                                     alt="{{ $attachment->file_name }}"
-                                                     class="w-full h-32 object-cover rounded-md border border-gray-100">
-                                                <span class="hidden absolute top-2 left-2 rounded bg-red-600/90 text-white text-[10px] px-2 py-0.5" data-attachment-badge>
-                                                    Akan dihapus
-                                                </span>
+                                <div class="p-4 border-b border-gray-100">
+                                    <p class="text-xs font-medium text-gray-600 mb-3">Foto Tersimpan</p>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        @foreach($suratJalan->attachments as $attachment)
+                                            <div class="relative group" data-attachment-card data-attachment-id="{{ $attachment->id }}">
+                                                <div class="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-white">
+                                                    <img src="{{ Storage::url($attachment->file_path) }}"
+                                                         alt="{{ $attachment->file_name }}"
+                                                         class="w-full h-full object-cover">
+                                                    <span class="hidden absolute top-1 left-1 rounded bg-red-600/90 text-white text-[10px] px-1.5 py-0.5" data-attachment-badge>
+                                                        Hapus
+                                                    </span>
+                                                </div>
+                                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                    <button type="button"
+                                                            class="p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white"
+                                                            data-attachment-delete
+                                                            title="Hapus">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                        </svg>
+                                                    </button>
+                                                    <button type="button"
+                                                            class="hidden p-1.5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white ml-2"
+                                                            data-attachment-undo
+                                                            title="Urungkan">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <p class="text-xs text-red-600 mt-1 hidden text-center" data-attachment-status>Akan dihapus</p>
                                             </div>
-                                            <div class="mt-2 flex items-center gap-2">
-                                                <p class="text-xs text-gray-500 truncate flex-1" title="{{ $attachment->file_name }}">{{ $attachment->file_name }}</p>
-                                                <button type="button"
-                                                        class="text-xs font-semibold text-red-600 hover:text-red-700"
-                                                        data-attachment-delete>
-                                                    Hapus
-                                                </button>
-                                                <button type="button"
-                                                        class="hidden text-xs font-semibold text-emerald-600 hover:text-emerald-700"
-                                                        data-attachment-undo>
-                                                    Urungkan
-                                                </button>
-                                            </div>
-                                            <p class="text-xs text-red-600 mt-1 hidden" data-attachment-status>Akan dihapus saat disimpan.</p>
-                                        </div>
-                                    @endforeach
+                                        @endforeach
+                                    </div>
                                 </div>
                             @endif
 
                             <div data-delete-attachments></div>
 
-                            {{-- Upload New --}}
-                            @if($suratJalan->attachments->count() < 3)
-                                <div data-camera-capture data-target-input="attachments-edit-admin" data-max-files="{{ 3 - $suratJalan->attachments->count() }}">
-                                    <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <p class="text-sm font-semibold text-gray-900">
-                                                Tambah Lampiran <span class="text-gray-400 font-normal">(Sisa {{ 3 - $suratJalan->attachments->count() }} slot)</span>
-                                            </p>
-                                            <p class="text-xs text-gray-500">Maksimal 10MB per file.</p>
-                                        </div>
-                                        <p class="text-xs text-gray-500" data-camera-status>Dipilih: 0/{{ 3 - $suratJalan->attachments->count() }}</p>
-                                    </div>
-                                    <div class="mt-4 grid gap-4 md:grid-cols-2">
-                                        <div class="space-y-3">
-                                            <div class="flex flex-wrap items-center gap-2">
-                                                <button type="button"
-                                                        data-camera-open
-                                                        class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light">
-                                                    Buka Kamera
-                                                </button>
-                                                <button type="button"
-                                                        data-camera-capture-btn
-                                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
-                                                    Ambil Foto
-                                                </button>
-                                                <button type="button"
-                                                        data-camera-close
-                                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                                                    Tutup Kamera
-                                                </button>
-                                                <span class="text-xs text-gray-500">atau pilih dari galeri</span>
-                                            </div>
-                                            <div data-camera-panel class="hidden border border-gray-200 rounded-lg overflow-hidden bg-white">
-                                                <video class="w-full h-48 sm:h-56 object-cover bg-black" playsinline muted></video>
-                                                <canvas class="hidden"></canvas>
-                                            </div>
-                                            <input type="file"
-                                                   id="attachments-edit-admin"
-                                                   name="attachments[]"
-                                                   multiple
-                                                   accept="image/jpeg,image/jpg,image/png"
-                                                   capture="environment"
-                                                   class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                                            <p class="text-xs text-gray-500">Format: JPG, JPEG, PNG.</p>
-                                            <p class="text-xs text-red-600 hidden" data-camera-error></p>
-                                        </div>
-                                        <div class="space-y-2">
-                                            <p class="text-xs font-semibold text-gray-600">Preview</p>
-                                            <div class="grid grid-cols-3 gap-2" data-camera-preview></div>
-                                        </div>
+                            {{-- Camera Panel (Hidden by default) --}}
+                            <div data-camera-panel class="hidden bg-black">
+                                <div class="relative">
+                                    <video class="w-full h-48 object-cover" playsinline muted></video>
+                                    <canvas class="hidden"></canvas>
+                                    <div class="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3">
+                                        <button type="button"
+                                                data-camera-capture-btn
+                                                class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors">
+                                            <div class="w-10 h-10 bg-red-500 rounded-full"></div>
+                                        </button>
+                                        <button type="button"
+                                                data-camera-close
+                                                class="w-10 h-10 bg-gray-800/80 rounded-full flex items-center justify-center text-white hover:bg-gray-700 transition-colors">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
+                            </div>
+
+                            {{-- Upload Area --}}
+                            @if($suratJalan->attachments->count() < 3)
+                                <div class="p-4">
+                                    <div class="flex flex-col sm:flex-row items-center gap-4">
+                                        {{-- Action Buttons --}}
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" data-camera-open class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                </svg>
+                                                Kamera
+                                            </button>
+                                            <label class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light cursor-pointer transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                </svg>
+                                                Pilih File
+                                                <input type="file"
+                                                       id="attachments-edit-admin"
+                                                       name="attachments[]"
+                                                       multiple
+                                                       accept="image/jpeg,image/jpg,image/png"
+                                                       capture="environment"
+                                                       class="hidden">
+                                            </label>
+                                        </div>
+                                        {{-- Info --}}
+                                        <p class="text-xs text-gray-500">JPG, PNG. Maks 10MB. Sisa {{ 3 - $suratJalan->attachments->count() }} slot.</p>
+                                    </div>
+
+                                    {{-- Preview Grid (empty by default, populated dynamically) --}}
+                                    <div class="mt-4 grid grid-cols-3 gap-3 hidden" data-camera-preview></div>
+
+                                    {{-- Error message --}}
+                                    <p class="text-xs text-red-600 mt-2 hidden" data-camera-error></p>
+                                </div>
                             @else
-                                <p class="text-sm text-yellow-600">Slot lampiran sudah penuh (3/3). Hapus salah satu untuk menambah yang baru.</p>
+                                <div class="p-4">
+                                    <p class="text-sm text-amber-600 text-center">Slot lampiran penuh. Hapus salah satu untuk menambah yang baru.</p>
+                                </div>
                             @endif
                         </div>
 
@@ -614,6 +703,9 @@
             const status = wrapper.querySelector('[data-camera-status]');
             const preview = wrapper.querySelector('[data-camera-preview]');
 
+            // Store collected files separately to prevent browser replacing them
+            wrapper._collectedFiles = [];
+
             const setError = (message) => {
                 if (!error) {
                     return;
@@ -631,8 +723,17 @@
                 if (!status) {
                     return;
                 }
-                const count = input?.files?.length || 0;
-                status.textContent = `Dipilih: ${count}/${maxFiles}`;
+                const count = wrapper._collectedFiles.length;
+                status.textContent = `${count}/${maxFiles}`;
+            };
+
+            const syncToInput = () => {
+                if (!input) {
+                    return;
+                }
+                const dataTransfer = new DataTransfer();
+                wrapper._collectedFiles.forEach((file) => dataTransfer.items.add(file));
+                input.files = dataTransfer.files;
             };
 
             const clearPreview = () => {
@@ -646,14 +747,8 @@
             };
 
             const removeFile = (index) => {
-                if (!input) {
-                    return;
-                }
-                const files = Array.from(input.files || []);
-                files.splice(index, 1);
-                const dataTransfer = new DataTransfer();
-                files.forEach((file) => dataTransfer.items.add(file));
-                input.files = dataTransfer.files;
+                wrapper._collectedFiles.splice(index, 1);
+                syncToInput();
                 renderPreview();
             };
 
@@ -663,39 +758,40 @@
                     return;
                 }
                 clearPreview();
-                const files = Array.from(input?.files || []);
+                const files = wrapper._collectedFiles;
+
+                // Hide preview grid if no files
                 if (files.length === 0) {
-                    const empty = document.createElement('p');
-                    empty.className = 'col-span-3 text-xs text-gray-400';
-                    empty.textContent = 'Belum ada foto.';
-                    preview.appendChild(empty);
+                    preview.classList.add('hidden');
                     return;
                 }
+
+                // Show preview grid and add file previews
+                preview.classList.remove('hidden');
                 files.forEach((file, index) => {
                     const url = URL.createObjectURL(file);
                     wrapper._objectUrls.push(url);
 
                     const item = document.createElement('div');
-                    item.className = 'relative';
+                    item.className = 'aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-white relative group';
 
                     const img = document.createElement('img');
-                    img.className = 'w-full h-24 object-cover rounded border border-gray-200';
+                    img.className = 'w-full h-full object-cover';
                     img.src = url;
                     img.alt = file.name;
 
+                    const overlay = document.createElement('div');
+                    overlay.className = 'absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center';
+
                     const removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
-                    removeBtn.className = 'absolute top-1 right-1 text-[10px] px-1.5 py-0.5 bg-black bg-opacity-60 text-white rounded';
-                    removeBtn.textContent = 'Hapus';
+                    removeBtn.className = 'p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white';
+                    removeBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
                     removeBtn.addEventListener('click', () => removeFile(index));
 
-                    const name = document.createElement('p');
-                    name.className = 'mt-1 text-[10px] text-gray-500 truncate';
-                    name.textContent = file.name;
-
+                    overlay.appendChild(removeBtn);
                     item.appendChild(img);
-                    item.appendChild(removeBtn);
-                    item.appendChild(name);
+                    item.appendChild(overlay);
                     preview.appendChild(item);
                 });
             };
@@ -705,14 +801,18 @@
                     return;
                 }
                 setError('');
-                const files = Array.from(input.files || []);
-                if (files.length > maxFiles) {
+                // Merge new files with existing collected files
+                const newFiles = Array.from(input.files || []);
+                newFiles.forEach((file) => {
+                    if (wrapper._collectedFiles.length < maxFiles) {
+                        wrapper._collectedFiles.push(file);
+                    }
+                });
+                if (wrapper._collectedFiles.length > maxFiles) {
                     setError(`Maksimal ${maxFiles} gambar.`);
+                    wrapper._collectedFiles = wrapper._collectedFiles.slice(0, maxFiles);
                 }
-                const limited = files.slice(0, maxFiles);
-                const dataTransfer = new DataTransfer();
-                limited.forEach((file) => dataTransfer.items.add(file));
-                input.files = dataTransfer.files;
+                syncToInput();
                 renderPreview();
             };
 
@@ -726,15 +826,6 @@
                 }
                 if (panel) {
                     panel.classList.add('hidden');
-                }
-                if (openBtn) {
-                    openBtn.classList.remove('hidden');
-                }
-                if (captureBtn) {
-                    captureBtn.classList.add('hidden');
-                }
-                if (closeBtn) {
-                    closeBtn.classList.add('hidden');
                 }
             };
 
@@ -757,15 +848,6 @@
                     if (panel) {
                         panel.classList.remove('hidden');
                     }
-                    if (openBtn) {
-                        openBtn.classList.add('hidden');
-                    }
-                    if (captureBtn) {
-                        captureBtn.classList.remove('hidden');
-                    }
-                    if (closeBtn) {
-                        closeBtn.classList.remove('hidden');
-                    }
                 } catch (err) {
                     setError('Tidak bisa mengakses kamera. Pastikan izin kamera diaktifkan.');
                 }
@@ -781,8 +863,7 @@
                     setError('Kamera belum siap.');
                     return;
                 }
-                const existingCount = input.files?.length || 0;
-                if (existingCount >= maxFiles) {
+                if (wrapper._collectedFiles.length >= maxFiles) {
                     setError(`Maksimal ${maxFiles} gambar.`);
                     return;
                 }
@@ -803,10 +884,8 @@
                     }
                     const fileName = `camera-${Date.now()}.jpg`;
                     const file = new File([blob], fileName, { type: 'image/jpeg' });
-                    const dataTransfer = new DataTransfer();
-                    Array.from(input.files || []).forEach((existing) => dataTransfer.items.add(existing));
-                    dataTransfer.items.add(file);
-                    input.files = dataTransfer.files;
+                    wrapper._collectedFiles.push(file);
+                    syncToInput();
                     renderPreview();
                 }, 'image/jpeg', 0.9);
             };

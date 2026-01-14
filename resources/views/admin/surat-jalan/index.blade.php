@@ -1068,21 +1068,90 @@
                     </div>
                 </div>
 
-                {{-- Table Items --}}
-                <div class="border rounded-lg overflow-visible">
-                    <table class="min-w-full table-fixed divide-y divide-gray-200">
+                {{-- Items - Mobile Card Layout --}}
+                <div class="sm:hidden border rounded-lg overflow-visible">
+                    <div class="bg-gray-50 px-3 py-2 border-b">
+                        <span class="text-xs font-bold text-gray-500 uppercase">Daftar Barang</span>
+                    </div>
+                    <div class="divide-y divide-gray-200">
+                        <template x-for="(row, idx) in items" :key="idx">
+                            <div class="p-3 bg-white">
+                                <div class="flex items-start justify-between gap-2 mb-2">
+                                    <span class="text-xs font-semibold text-gray-500">Item #<span x-text="idx + 1"></span></span>
+                                    <button type="button" @click="removeRow(idx)" class="text-red-500 hover:text-red-700 p-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+                                </div>
+                                {{-- Barang --}}
+                                <div class="mb-3">
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Barang <span class="text-red-500">*</span></label>
+                                    <div class="relative" @click.away="row.open = false">
+                                        <input type="text"
+                                               x-model="row.search"
+                                               @input="row.open = true; row.item_id = ''"
+                                               @focus="row.open = true"
+                                               placeholder="Ketik untuk mencari barang..."
+                                               class="w-full text-sm rounded-md border-gray-300 py-2.5">
+                                        <select x-model="row.item_id" :name="`items[${idx}][item_id]`" required class="hidden">
+                                            <option value="">Pilih Item Stok...</option>
+                                            @foreach($availableStocks as $stock)
+                                                <option value="{{ $stock->item_id }}">{{ $stock->item->nama }} (Sisa: {{ $stock->jumlah }})</option>
+                                            @endforeach
+                                        </select>
+                                        <div x-show="row.open"
+                                             x-cloak
+                                             @wheel.stop
+                                             @touchmove.stop
+                                             class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto overscroll-contain">
+                                            <template x-for="item in filteredItems(row.search)" :key="item.id">
+                                                <button type="button"
+                                                        @click="selectItem(row, item)"
+                                                        class="w-full text-left px-3 py-2.5 text-sm hover:bg-pln-primary hover:text-white transition">
+                                                    <div class="font-medium" x-text="item.nama"></div>
+                                                    <div class="text-xs opacity-70" x-text="(item.kode ? item.kode + ' • ' : '') + 'Sisa: ' + item.stok"></div>
+                                                </button>
+                                            </template>
+                                            <div x-show="filteredItems(row.search).length === 0" class="px-3 py-2 text-sm text-gray-500">
+                                                Item tidak ditemukan.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <template x-if="itemErrorMessage(row)">
+                                        <p class="mt-1 text-xs text-red-500" x-text="itemErrorMessage(row)"></p>
+                                    </template>
+                                </div>
+                                {{-- Jumlah & Keterangan --}}
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Jumlah <span class="text-red-500">*</span></label>
+                                        <input type="number" x-model="row.jumlah" :name="`items[${idx}][jumlah]`" min="1" class="w-full text-sm rounded-md border-gray-300 py-2.5">
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Keterangan</label>
+                                        <input type="text" x-model="row.keterangan" :name="`items[${idx}][keterangan]`" placeholder="Opsional..." class="w-full text-sm rounded-md border-gray-300 py-2.5">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <button type="button" @click="addRow()" class="w-full py-3 bg-gray-50 text-sm font-bold text-pln-primary hover:bg-gray-100 uppercase border-t">+ Tambah Barang</button>
+                </div>
+
+                {{-- Items - Desktop Table Layout --}}
+                <div class="hidden sm:block border rounded-lg overflow-visible">
+                    <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[45%] sm:w-auto">Barang</th>
-                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[20%] sm:w-24">Jumlah</th>
-                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[30%] sm:w-auto">Keterangan</th>
-                                <th class="px-2 sm:px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-[5%] sm:w-16"></th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Barang</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-24">Jumlah</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Keterangan</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16"></th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <template x-for="(row, idx) in items" :key="idx">
                                 <tr>
-                                    <td class="px-2 sm:px-4 py-2 w-[45%] sm:w-auto">
+                                    <td class="px-4 py-2">
                                         <div class="relative" @click.away="row.open = false">
                                             <input type="text"
                                                    x-model="row.search"
@@ -1118,13 +1187,13 @@
                                             <p class="mt-1 text-xs text-red-500" x-text="itemErrorMessage(row)"></p>
                                         </template>
                                     </td>
-                                    <td class="px-2 sm:px-4 py-2 w-[20%] sm:w-24">
+                                    <td class="px-4 py-2 w-24">
                                         <input type="number" x-model="row.jumlah" :name="`items[${idx}][jumlah]`" min="1" class="w-full text-sm rounded-md border-gray-300">
                                     </td>
-                                    <td class="px-2 sm:px-4 py-2 w-[30%] sm:w-auto">
+                                    <td class="px-4 py-2">
                                         <input type="text" x-model="row.keterangan" :name="`items[${idx}][keterangan]`" placeholder="Opsional..." class="w-full text-sm rounded-md border-gray-300">
                                     </td>
-                                    <td class="px-2 sm:px-4 py-2 text-right w-[5%] sm:w-16">
+                                    <td class="px-4 py-2 text-right w-16">
                                         <button type="button" @click="removeRow(idx)" class="text-red-500 hover:text-red-700">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                         </button>
@@ -1539,7 +1608,40 @@
                         <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
                         <p class="text-xs text-gray-500">Jumlah otomatis penuh sesuai peminjaman.</p>
                     </div>
-                    <div class="overflow-x-auto">
+
+                    {{-- Mobile Card Layout --}}
+                    <div class="sm:hidden">
+                        <template x-if="!selectedPeminjaman()">
+                            <div class="px-4 py-6 text-center text-sm text-gray-500">
+                                Pilih kode peminjaman untuk melihat item.
+                            </div>
+                        </template>
+                        <template x-if="selectedPeminjaman()">
+                            <div class="divide-y divide-gray-200">
+                                <template x-for="(item, idx) in selectedPeminjaman().items" :key="idx">
+                                    <div class="p-3 bg-white">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-xs font-semibold text-gray-500">Item #<span x-text="idx + 1"></span></span>
+                                        </div>
+                                        <p class="font-medium text-sm text-gray-900 mb-2" x-text="item.kode + ' - ' + item.nama"></p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span class="block text-xs text-gray-500">Satuan</span>
+                                                <span class="text-sm text-gray-900" x-text="item.satuan"></span>
+                                            </div>
+                                            <div>
+                                                <span class="block text-xs text-gray-500">Jumlah</span>
+                                                <span class="text-sm font-semibold text-gray-900" x-text="item.jumlah"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
+                    {{-- Desktop Table Layout --}}
+                    <div class="hidden sm:block overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-white">
                                 <tr>
@@ -1570,14 +1672,14 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-3">
+                <div class="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-end">
                     <button type="button"
-                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+                            class="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition text-center"
                             x-on:click="$dispatch('close-modal', 'return-peminjaman')">
                         Batal
                     </button>
                     <button type="submit"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                            class="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition text-center">
                         Simpan dan Selesaikan (Admin)
                     </button>
                 </div>

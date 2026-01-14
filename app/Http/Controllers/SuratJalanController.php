@@ -135,14 +135,6 @@ class SuratJalanController extends Controller
                     ->get(['id', 'name', 'gudang_id', 'jabatan', 'role'])
                 : collect();
 
-            $availableStocks = Schema::hasTable('item_stocks') && $activeGudangId
-                ? ItemStock::query()
-                    ->with('item')
-                    ->where('gudang_id', $activeGudangId)
-                    ->orderBy('item_id')
-                    ->get()
-                : collect();
-
             // Only show peminjaman that have been received (DITERIMA) and not yet returned
             $activePeminjamans = $activeGudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
                 ? Peminjaman::query()
@@ -152,6 +144,33 @@ class SuratJalanController extends Controller
                     ->whereNull('surat_jalan_kembali_id')
                     ->orderByDesc('waktu_pengajuan')
                     ->get()
+                : collect();
+
+            // Calculate borrowed items per item_id
+            $borrowedItems = [];
+            foreach ($activePeminjamans as $peminjaman) {
+                foreach ($peminjaman->items as $peminjamanItem) {
+                    $itemId = $peminjamanItem->item_id;
+                    $jumlah = $peminjamanItem->jumlah_diterima ?? $peminjamanItem->jumlah_dipinjam;
+                    $borrowedItems[$itemId] = ($borrowedItems[$itemId] ?? 0) + $jumlah;
+                }
+            }
+
+            // Get available stocks and subtract borrowed items, hide items with 0 own stock
+            $availableStocks = Schema::hasTable('item_stocks') && $activeGudangId
+                ? ItemStock::query()
+                    ->with('item')
+                    ->where('gudang_id', $activeGudangId)
+                    ->orderBy('item_id')
+                    ->get()
+                    ->map(function ($stock) use ($borrowedItems) {
+                        // Subtract borrowed items from stock
+                        $borrowed = $borrowedItems[$stock->item_id] ?? 0;
+                        $stock->jumlah = max(0, $stock->jumlah - $borrowed);
+                        return $stock;
+                    })
+                    ->filter(fn ($stock) => $stock->jumlah > 0)
+                    ->values()
                 : collect();
         }
 
@@ -895,12 +914,38 @@ class SuratJalanController extends Controller
             ? Pic::query()->with('gudang')->orderBy('nama')->get()
             : collect();
 
+        // Get active borrowed items for this gudang
+        $activePeminjamans = Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
+            ? Peminjaman::query()
+                ->with('items')
+                ->where('gudang_peminjam_id', $gudangId)
+                ->where('status', 'DITERIMA')
+                ->whereNull('surat_jalan_kembali_id')
+                ->get()
+            : collect();
+
+        $borrowedItems = [];
+        foreach ($activePeminjamans as $peminjamanItem) {
+            foreach ($peminjamanItem->items as $item) {
+                $itemId = $item->item_id;
+                $jumlah = $item->jumlah_diterima ?? $item->jumlah_dipinjam;
+                $borrowedItems[$itemId] = ($borrowedItems[$itemId] ?? 0) + $jumlah;
+            }
+        }
+
         $availableStocks = Schema::hasTable('item_stocks')
             ? ItemStock::query()
                 ->with('item')
                 ->where('gudang_id', $gudangId)
                 ->orderBy('item_id')
                 ->get()
+                ->map(function ($stock) use ($borrowedItems) {
+                    $borrowed = $borrowedItems[$stock->item_id] ?? 0;
+                    $stock->jumlah = max(0, $stock->jumlah - $borrowed);
+                    return $stock;
+                })
+                ->filter(fn ($stock) => $stock->jumlah > 0)
+                ->values()
             : collect();
 
         $peminjaman = null;
