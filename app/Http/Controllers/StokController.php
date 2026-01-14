@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StokStoreRequest;
 use App\Http\Requests\StokUpdateRequest;
 use App\Models\Item;
+use App\Models\ItemCategory;
 use App\Models\ItemStock;
+use App\Models\ItemUnit;
 use App\Models\Peminjaman;
 use App\Models\PeminjamanItem;
 use App\Models\StockMovement;
@@ -25,6 +27,8 @@ class StokController extends Controller
         $search = $request->input('search');
         $kategori = $request->input('kategori');
         $status = $request->input('status');
+        $tipe = $request->input('tipe'); // Filter by item tipe (mekanik/listrik)
+        $sort = $request->input('sort', 'terbaru'); // Sorting: terbaru/terlama
 
         // Common data
         $lowStockCount = ItemStock::where('gudang_id', $gudangId)
@@ -43,8 +47,24 @@ class StokController extends Controller
             })
             ->sum('peminjaman_items.jumlah_dipinjam');
 
-        $categories = Item::distinct()->pluck('kategori')->filter();
-        $allItems = Item::select('id', 'nama', 'kode', 'kategori', 'satuan')->orderBy('nama')->get();
+        $categories = ItemCategory::orderBy('nama')->get();
+        $satuans = ItemUnit::orderBy('nama')->get();
+        $allItems = Item::with(['kategori', 'satuan'])
+            ->select('id', 'nama', 'kode', 'kategori_id', 'satuan_id', 'tipe')
+            ->orderBy('nama')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'nama' => $item->nama,
+                    'kode' => $item->kode,
+                    'kategori_id' => $item->kategori_id,
+                    'kategori' => $item->kategori?->nama,
+                    'satuan_id' => $item->satuan_id,
+                    'satuan' => $item->satuan?->nama,
+                    'tipe' => $item->tipe,
+                ];
+            });
 
         // Get items NOT yet in this warehouse (for create modal)
         $existingItemIds = ItemStock::where('gudang_id', $gudangId)->pluck('item_id');
@@ -61,7 +81,7 @@ class StokController extends Controller
         // Tab-specific data
         if ($tab === 'dipinjamkan') {
             // Barang yang dipinjamkan ke gudang lain
-            $peminjamans = $this->getBarangDipinjamkan($gudangId, $search, $status);
+            $peminjamans = $this->getBarangDipinjamkan($gudangId, $search, $status, $sort);
             $totalAktif = Peminjaman::where('gudang_pemilik_id', $gudangId)
                 ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
                 ->count();
@@ -73,12 +93,12 @@ class StokController extends Controller
 
             return view('gudang.stok.index', compact(
                 'tab', 'peminjamans', 'totalAktif', 'totalOverdue',
-                'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'availableItems', 'allItems',
+                'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'satuans', 'availableItems', 'allItems',
                 'countDipinjamkan', 'countPinjaman'
             ));
         } elseif ($tab === 'pinjaman') {
             // Barang yang dipinjam dari gudang lain
-            $peminjamans = $this->getBarangPinjaman($gudangId, $search, $status);
+            $peminjamans = $this->getBarangPinjaman($gudangId, $search, $status, $sort);
             $totalAktif = Peminjaman::where('gudang_peminjam_id', $gudangId)
                 ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN'])
                 ->count();
@@ -90,7 +110,7 @@ class StokController extends Controller
 
             return view('gudang.stok.index', compact(
                 'tab', 'peminjamans', 'totalAktif', 'totalOverdue',
-                'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'availableItems', 'allItems',
+                'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'satuans', 'availableItems', 'allItems',
                 'countDipinjamkan', 'countPinjaman'
             ));
         }
@@ -107,7 +127,12 @@ class StokController extends Controller
             })
             ->when($kategori, function ($query, $kategori) {
                 $query->whereHas('item', function ($q) use ($kategori) {
-                    $q->where('kategori', $kategori);
+                    $q->where('kategori_id', $kategori);
+                });
+            })
+            ->when($tipe, function ($query, $tipe) {
+                $query->whereHas('item', function ($q) use ($tipe) {
+                    $q->where('tipe', $tipe);
                 });
             })
             ->paginate(25)->onEachSide(1)
@@ -138,7 +163,7 @@ class StokController extends Controller
         });
 
         return view('gudang.stok.index', compact(
-            'tab', 'stocks', 'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'availableItems', 'allItems',
+            'tab', 'stocks', 'lowStockCount', 'totalItems', 'totalBorrowed', 'categories', 'satuans', 'availableItems', 'allItems',
             'countDipinjamkan', 'countPinjaman'
         ));
     }
@@ -146,7 +171,7 @@ class StokController extends Controller
     /**
      * Get barang dipinjamkan data
      */
-    private function getBarangDipinjamkan(int $gudangId, ?string $search, ?string $status)
+    private function getBarangDipinjamkan(int $gudangId, ?string $search, ?string $status, string $sort = 'terbaru')
     {
         return Peminjaman::with(['gudangPeminjam', 'items.item'])
             ->where('gudang_pemilik_id', $gudangId)
@@ -172,7 +197,7 @@ class StokController extends Controller
                     $query->where('status', $status);
                 }
             })
-            ->orderBy('created_at', 'desc')
+            ->orderBy('created_at', $sort === 'terlama' ? 'asc' : 'desc')
             ->paginate(25)->onEachSide(1)
             ->withQueryString();
     }
@@ -180,7 +205,7 @@ class StokController extends Controller
     /**
      * Get barang pinjaman data
      */
-    private function getBarangPinjaman(int $gudangId, ?string $search, ?string $status)
+    private function getBarangPinjaman(int $gudangId, ?string $search, ?string $status, string $sort = 'terbaru')
     {
         return Peminjaman::with(['gudangPemilik', 'items.item'])
             ->where('gudang_peminjam_id', $gudangId)
@@ -206,7 +231,7 @@ class StokController extends Controller
                     $query->where('status', $status);
                 }
             })
-            ->orderBy('created_at', 'desc')
+            ->orderBy('created_at', $sort === 'terlama' ? 'asc' : 'desc')
             ->paginate(25)->onEachSide(1)
             ->withQueryString();
     }

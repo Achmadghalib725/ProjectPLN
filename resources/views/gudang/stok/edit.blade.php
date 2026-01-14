@@ -28,11 +28,11 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-600">Satuan</p>
-                            <p class="font-medium text-gray-900">{{ $stock->item->satuan }}</p>
+                            <p class="font-medium text-gray-900">{{ $stock->item->satuan?->nama ?? '-' }}</p>
                         </div>
                         <div>
                             <p class="text-sm text-gray-600">Kategori</p>
-                            <p class="font-medium text-gray-900">{{ $stock->item->kategori ?? '-' }}</p>
+                            <p class="font-medium text-gray-900">{{ $stock->item->kategori?->nama ?? '-' }}</p>
                         </div>
                     </div>
 
@@ -108,7 +108,7 @@
                                 </div>
                                 <div class="ml-3">
                                     <p class="text-sm text-yellow-700">
-                                        Pastikan jumlah pengurangan tidak melebihi stok tersedia ({{ number_format($stock->jumlah) }} {{ $stock->item->satuan }}).
+                                        Pastikan jumlah pengurangan tidak melebihi stok tersedia ({{ number_format($stock->jumlah) }} {{ $stock->item->satuan?->nama ?? '-' }}).
                                     </p>
                                 </div>
                             </div>

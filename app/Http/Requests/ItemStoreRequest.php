@@ -25,8 +25,9 @@ class ItemStoreRequest extends FormRequest
             // kode tidak perlu diinput, akan di-generate otomatis
             'kode' => ['nullable', 'string', 'max:255', 'unique:items,kode'],
             'nama' => ['required', 'string', 'max:255'],
-            'satuan' => ['required', 'string', 'max:50'],
-            'kategori' => ['required', 'string', 'max:100'],
+            'kategori_id' => ['required', 'exists:item_categories,id'],
+            'satuan_id' => ['required', 'exists:item_units,id'],
+            'tipe' => ['required', 'in:mekanik,listrik'],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -43,10 +44,12 @@ class ItemStoreRequest extends FormRequest
             'kode.max' => 'Kode item maksimal 255 karakter',
             'nama.required' => 'Nama item harus diisi',
             'nama.max' => 'Nama item maksimal 255 karakter',
-            'satuan.required' => 'Satuan harus diisi',
-            'satuan.max' => 'Satuan maksimal 50 karakter',
-            'kategori.required' => 'Kategori harus diisi',
-            'kategori.max' => 'Kategori maksimal 100 karakter',
+            'kategori_id.required' => 'Kategori harus dipilih',
+            'kategori_id.exists' => 'Kategori tidak valid',
+            'satuan_id.required' => 'Satuan harus dipilih',
+            'satuan_id.exists' => 'Satuan tidak valid',
+            'tipe.required' => 'Tipe barang harus dipilih',
+            'tipe.in' => 'Tipe barang harus Mekanik atau Listrik',
             'deskripsi.max' => 'Deskripsi maksimal 1000 karakter',
         ];
     }

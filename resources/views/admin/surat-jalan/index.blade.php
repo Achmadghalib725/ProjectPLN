@@ -297,7 +297,7 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                             </svg>
-                            <span>Filter & Urutkan</span>
+                            <span>Filter & Search</span>
                             @if($activeFilters > 0)
                                 <span class="bg-[#035b71] text-white text-xs px-2 py-0.5 rounded-full">{{ $activeFilters }}</span>
                             @endif
@@ -733,7 +733,7 @@
                 },
 
                   // Data Pendukung
-                  itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan ?? '')])),
+                  itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => ($s->item->satuan?->nama ?? '')])),
                   itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(fn($s) => [$s->item_id => (int)($s->jumlah ?? 0)])),
                   itemsCatalog: @js(($availableStocks ?? collect())->map(fn($s) => [
                       'id' => $s->item_id,
@@ -1133,58 +1133,89 @@
                 </div>
 
                 {{-- Lampiran Gambar --}}
-                <div class="border rounded-xl p-4 bg-gray-50" data-camera-capture data-target-input="attachments-create-admin" data-max-files="3">
-                    <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">
-                                Lampiran Gambar @if($isAdmin)<span class="text-red-500">*</span>@endif
-                            </p>
-                            <p class="text-xs text-gray-500">Maks 3 gambar, maks 10MB/gambar.</p>
+                <div class="border border-dashed border-gray-300 rounded-xl bg-gray-50/50 overflow-hidden" data-camera-capture data-target-input="attachments-create-admin" data-max-files="3">
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-700">Lampiran Foto @if($isAdmin)<span class="text-red-500">*</span>@endif</span>
                         </div>
-                        <p class="text-xs text-gray-500" data-camera-status>Dipilih: 0/3</p>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full" data-camera-status>0/3</span>
                     </div>
-                    <div class="mt-4 grid gap-4 md:grid-cols-2">
-                        <div class="space-y-3">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button"
-                                        data-camera-open
-                                        class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light">
-                                    Buka Kamera
-                                </button>
+
+                    {{-- Camera Panel (Hidden by default) --}}
+                    <div data-camera-panel class="hidden bg-black">
+                        <div class="relative">
+                            <video class="w-full h-48 object-cover" playsinline muted></video>
+                            <canvas class="hidden"></canvas>
+                            <div class="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3">
                                 <button type="button"
                                         data-camera-capture-btn
-                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
-                                    Ambil Foto
+                                        class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors">
+                                    <div class="w-10 h-10 bg-red-500 rounded-full"></div>
                                 </button>
                                 <button type="button"
                                         data-camera-close
-                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                                    Tutup Kamera
+                                        class="w-10 h-10 bg-gray-800/80 rounded-full flex items-center justify-center text-white hover:bg-gray-700 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
                                 </button>
-                                <span class="text-xs text-gray-500">atau pilih dari galeri</span>
                             </div>
-                            <div data-camera-panel class="hidden border border-gray-200 rounded-lg overflow-hidden bg-white">
-                                <video class="w-full h-48 sm:h-56 object-cover bg-black" playsinline muted></video>
-                                <canvas class="hidden"></canvas>
-                            </div>
-                            <input type="file"
-                                   id="attachments-create-admin"
-                                   name="attachments[]"
-                                   multiple
-                                   accept="image/jpeg,image/jpg,image/png"
-                                   capture="environment"
-                                   @if($isAdmin) required @endif
-                                   class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                            <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                                <span>Format: JPG, JPEG, PNG.</span>
-                                <span class="hidden sm:inline">|</span>
-                                <span>@if($isAdmin)Lampiran wajib diupload.@else Wajib sebelum mengirim surat jalan.@endif</span>
-                            </div>
-                            <p class="text-xs text-red-600 hidden" data-camera-error></p>
                         </div>
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold text-gray-600">Preview</p>
-                            <div class="grid grid-cols-3 gap-2" data-camera-preview></div>
+                    </div>
+
+                    {{-- Upload Area --}}
+                    <div class="p-4">
+                        <div class="flex flex-col sm:flex-row items-center gap-4">
+                            {{-- Action Buttons --}}
+                            <div class="flex items-center gap-2">
+                                <button type="button"
+                                        data-camera-open
+                                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    Kamera
+                                </button>
+                                <label class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                    </svg>
+                                    Pilih File
+                                    <input type="file"
+                                           id="attachments-create-admin"
+                                           name="attachments[]"
+                                           multiple
+                                           accept="image/jpeg,image/jpg,image/png"
+                                           @if($isAdmin) required @endif
+                                           class="hidden">
+                                </label>
+                            </div>
+                            <p class="text-xs text-gray-500">JPG, PNG. Maks 10MB.@if($isAdmin) Wajib diupload.@endif</p>
+                        </div>
+                        <p class="text-xs text-red-600 hidden mt-2" data-camera-error></p>
+
+                        {{-- Preview Grid --}}
+                        <div class="mt-4 grid grid-cols-3 gap-3" data-camera-preview>
+                            <div class="aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" data-placeholder>
+                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </div>
+                            <div class="aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" data-placeholder>
+                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </div>
+                            <div class="aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" data-placeholder>
+                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1223,7 +1254,7 @@
                     'items' => $p->items->map(fn($item) => [
                         'kode' => $item->item->kode ?? '-',
                         'nama' => $item->item->nama ?? 'Item',
-                        'satuan' => $item->item->satuan ?? '-',
+                        'satuan' => $item->item->satuan?->nama ?? '-',
                         'jumlah' => $item->jumlah_dipinjam,
                     ]),
                 ])->values()),
@@ -1405,59 +1436,98 @@
                 </div>
 
                 {{-- Lampiran Gambar --}}
-                <div class="border rounded-xl p-4 bg-gray-50" data-camera-capture data-target-input="attachments-return-admin" data-max-files="3">
-                    <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">Lampiran Gambar</p>
-                            <p class="text-xs text-gray-500">Opsional, maks 3 gambar, maks 10MB/gambar.</p>
+                <div class="border border-dashed border-gray-300 rounded-xl bg-gray-50/50 overflow-hidden" data-camera-capture data-target-input="attachments-return-admin" data-max-files="3">
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-700">Lampiran Foto <span class="text-gray-400 font-normal">(Opsional)</span></span>
                         </div>
-                        <p class="text-xs text-gray-500" data-camera-status>Dipilih: 0/3</p>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full" data-camera-status>0/3</span>
                     </div>
-                    <div class="mt-4 grid gap-4 md:grid-cols-2">
-                        <div class="space-y-3">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button"
-                                        data-camera-open
-                                        class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light">
-                                    Buka Kamera
-                                </button>
+
+                    {{-- Camera Panel (Hidden by default) --}}
+                    <div data-camera-panel class="hidden bg-black">
+                        <div class="relative">
+                            <video class="w-full h-48 object-cover" playsinline muted></video>
+                            <canvas class="hidden"></canvas>
+                            <div class="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3">
                                 <button type="button"
                                         data-camera-capture-btn
-                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
-                                    Ambil Foto
+                                        class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors">
+                                    <div class="w-10 h-10 bg-red-500 rounded-full"></div>
                                 </button>
                                 <button type="button"
                                         data-camera-close
-                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                                    Tutup Kamera
+                                        class="w-10 h-10 bg-gray-800/80 rounded-full flex items-center justify-center text-white hover:bg-gray-700 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
                                 </button>
-                                <span class="text-xs text-gray-500">atau pilih dari galeri</span>
                             </div>
-                            <div data-camera-panel class="hidden border border-gray-200 rounded-lg overflow-hidden bg-white">
-                                <video class="w-full h-48 sm:h-56 object-cover bg-black" playsinline muted></video>
-                                <canvas class="hidden"></canvas>
-                            </div>
-                            <input type="file"
-                                   id="attachments-return-admin"
-                                   name="attachments[]"
-                                   multiple
-                                   accept="image/jpeg,image/jpg,image/png"
-                                   capture="environment"
-                                   class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                            <p class="text-xs text-gray-500">Format: JPG, JPEG, PNG.</p>
-                            <p class="text-xs text-red-600 hidden" data-camera-error></p>
-                        </div>
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold text-gray-600">Preview</p>
-                            <div class="grid grid-cols-3 gap-2" data-camera-preview></div>
                         </div>
                     </div>
-                    <p class="text-xs text-amber-600 mt-2">
-                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Jika tidak mengupload gambar baru, sistem akan menggunakan lampiran dari surat jalan peminjaman awal.
-                    </p>
+
+                    {{-- Upload Area --}}
+                    <div class="p-4">
+                        <div class="flex flex-col sm:flex-row items-center gap-4">
+                            {{-- Action Buttons --}}
+                            <div class="flex items-center gap-2">
+                                <button type="button"
+                                        data-camera-open
+                                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    Kamera
+                                </button>
+                                <label class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light transition-colors cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                    </svg>
+                                    Pilih File
+                                    <input type="file"
+                                           id="attachments-return-admin"
+                                           name="attachments[]"
+                                           multiple
+                                           accept="image/jpeg,image/jpg,image/png"
+                                           class="hidden">
+                                </label>
+                            </div>
+                            <p class="text-xs text-gray-500">JPG, PNG. Maks 10MB.</p>
+                        </div>
+                        <p class="text-xs text-red-600 hidden mt-2" data-camera-error></p>
+
+                        {{-- Preview Grid --}}
+                        <div class="mt-4 grid grid-cols-3 gap-3" data-camera-preview>
+                            <div class="aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" data-placeholder>
+                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </div>
+                            <div class="aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" data-placeholder>
+                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </div>
+                            <div class="aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" data-placeholder>
+                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        {{-- Info --}}
+                        <p class="text-xs text-amber-600 mt-3 flex items-start gap-1.5">
+                            <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Jika tidak mengupload gambar baru, sistem akan menggunakan lampiran dari surat jalan peminjaman awal.
+                        </p>
+                    </div>
                 </div>
 
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
@@ -1515,17 +1585,19 @@
     {{-- Export Excel Modal --}}
     <x-modal name="export-excel" focusable maxWidth="md">
         <div class="p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold text-gray-900">Export Surat Jalan ke Excel</h3>
+            {{-- Header --}}
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-semibold text-gray-900">Export Excel</h3>
                 <button type="button"
                         @click="$dispatch('close-modal', 'export-excel')"
-                        class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
 
+            {{-- Body --}}
             <form method="GET"
                   action="{{ route('admin.surat-jalan.export-excel') }}"
                   x-data="{
@@ -1534,73 +1606,74 @@
                       updatePeriode() {
                           this.showCustom = this.periode === 'custom';
                       }
-                  }"
-                  class="space-y-5">
+                  }">
 
-                {{-- Type Filter --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Surat Jalan</label>
-                    <select name="tipe"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                        <option value="ALL">Semua Tipe</option>
-                        <option value="TRANSFER">Transfer</option>
-                        <option value="PEMINJAMAN">Peminjaman</option>
-                        <option value="PENGEMBALIAN">Pengembalian</option>
-                    </select>
-                </div>
-
-                {{-- Period Filter --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Periode</label>
-                    <select name="periode"
-                            x-model="periode"
-                            @change="updatePeriode()"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                        <option value="1_minggu">1 Minggu Terakhir</option>
-                        <option value="1_bulan">1 Bulan Terakhir</option>
-                        <option value="3_bulan">3 Bulan Terakhir</option>
-                        <option value="6_bulan">6 Bulan Terakhir</option>
-                        <option value="1_tahun">1 Tahun Terakhir</option>
-                        <option value="custom">Custom (Pilih Tanggal)</option>
-                    </select>
-                </div>
-
-                {{-- Custom Date Range --}}
-                <div x-show="showCustom" x-cloak class="grid grid-cols-2 gap-4">
+                <div class="space-y-4">
+                    {{-- Type Filter --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
-                        <input type="date"
-                               name="tanggal_mulai"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Tipe Surat Jalan</label>
+                        <select name="tipe"
+                                class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
+                            <option value="ALL">Semua Tipe</option>
+                            <option value="TRANSFER">Transfer</option>
+                            <option value="PEMINJAMAN">Peminjaman</option>
+                            <option value="PENGEMBALIAN">Pengembalian</option>
+                        </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
-                        <input type="date"
-                               name="tanggal_selesai"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                    </div>
-                </div>
 
-                {{-- Info --}}
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p class="text-sm text-blue-700">
-                        <span class="font-medium">Info:</span> Data yang diekspor hanya surat keluar.
-                    </p>
+                    {{-- Period Filter --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Periode</label>
+                        <select name="periode"
+                                x-model="periode"
+                                @change="updatePeriode()"
+                                class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
+                            <option value="1_minggu">1 Minggu Terakhir</option>
+                            <option value="1_bulan">1 Bulan Terakhir</option>
+                            <option value="3_bulan">3 Bulan Terakhir</option>
+                            <option value="6_bulan">6 Bulan Terakhir</option>
+                            <option value="1_tahun">1 Tahun Terakhir</option>
+                            <option value="custom">Custom (Pilih Tanggal)</option>
+                        </select>
+                    </div>
+
+                    {{-- Custom Date Range --}}
+                    <div x-show="showCustom" x-collapse x-cloak>
+                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Dari Tanggal</label>
+                                <input type="date"
+                                       name="tanggal_mulai"
+                                       required
+                                       class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Sampai Tanggal</label>
+                                <input type="date"
+                                       name="tanggal_selesai"
+                                       required
+                                       class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Info --}}
+                    <p class="text-xs text-gray-500">Data yang diekspor mencakup semua surat jalan dengan status SELESAI.</p>
                 </div>
 
                 {{-- Action Buttons --}}
-                <div class="flex justify-end gap-3 pt-4 border-t">
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
                     <button type="button"
                             @click="$dispatch('close-modal', 'export-excel')"
-                            class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
                         Batal
                     </button>
                     <button type="submit"
-                            class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                         </svg>
-                        Download Excel
+                        Download
                     </button>
                 </div>
             </form>
@@ -1623,6 +1696,9 @@
             const status = wrapper.querySelector('[data-camera-status]');
             const preview = wrapper.querySelector('[data-camera-preview]');
 
+            // Store collected files separately to prevent browser replacing them
+            wrapper._collectedFiles = [];
+
             const setError = (message) => {
                 if (!error) {
                     return;
@@ -1636,12 +1712,20 @@
                 }
             };
 
+            // Sync collected files to the input element
+            const syncToInput = () => {
+                if (!input) return;
+                const dataTransfer = new DataTransfer();
+                wrapper._collectedFiles.forEach((file) => dataTransfer.items.add(file));
+                input.files = dataTransfer.files;
+            };
+
             const updateStatus = () => {
                 if (!status) {
                     return;
                 }
-                const count = input?.files?.length || 0;
-                status.textContent = `Dipilih: ${count}/${maxFiles}`;
+                const count = wrapper._collectedFiles.length;
+                status.textContent = `${count}/${maxFiles}`;
             };
 
             const clearPreview = () => {
@@ -1655,14 +1739,8 @@
             };
 
             const removeFile = (index) => {
-                if (!input) {
-                    return;
-                }
-                const files = Array.from(input.files || []);
-                files.splice(index, 1);
-                const dataTransfer = new DataTransfer();
-                files.forEach((file) => dataTransfer.items.add(file));
-                input.files = dataTransfer.files;
+                wrapper._collectedFiles.splice(index, 1);
+                syncToInput();
                 renderPreview();
             };
 
@@ -1672,56 +1750,75 @@
                     return;
                 }
                 clearPreview();
-                const files = Array.from(input?.files || []);
-                if (files.length === 0) {
-                    const empty = document.createElement('p');
-                    empty.className = 'col-span-3 text-xs text-gray-400';
-                    empty.textContent = 'Belum ada foto.';
-                    preview.appendChild(empty);
-                    return;
-                }
+                const files = wrapper._collectedFiles;
+                const placeholders = preview.querySelectorAll('[data-placeholder]');
+
+                // Hide placeholders based on file count
+                placeholders.forEach((ph, idx) => {
+                    if (idx < files.length) {
+                        ph.classList.add('hidden');
+                    } else {
+                        ph.classList.remove('hidden');
+                    }
+                });
+
+                // Add file previews before placeholders
                 files.forEach((file, index) => {
                     const url = URL.createObjectURL(file);
                     wrapper._objectUrls.push(url);
 
                     const item = document.createElement('div');
-                    item.className = 'relative';
+                    item.className = 'aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-white relative group';
 
                     const img = document.createElement('img');
-                    img.className = 'w-full h-24 object-cover rounded border border-gray-200';
+                    img.className = 'w-full h-full object-cover';
                     img.src = url;
                     img.alt = file.name;
 
+                    const overlay = document.createElement('div');
+                    overlay.className = 'absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center';
+
                     const removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
-                    removeBtn.className = 'absolute top-1 right-1 text-[10px] px-1.5 py-0.5 bg-black bg-opacity-60 text-white rounded';
-                    removeBtn.textContent = 'Hapus';
+                    removeBtn.className = 'p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white';
+                    removeBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
                     removeBtn.addEventListener('click', () => removeFile(index));
 
-                    const name = document.createElement('p');
-                    name.className = 'mt-1 text-[10px] text-gray-500 truncate';
-                    name.textContent = file.name;
-
+                    overlay.appendChild(removeBtn);
                     item.appendChild(img);
-                    item.appendChild(removeBtn);
-                    item.appendChild(name);
-                    preview.appendChild(item);
+                    item.appendChild(overlay);
+
+                    // Insert before first placeholder
+                    const firstPlaceholder = preview.querySelector('[data-placeholder]');
+                    if (firstPlaceholder) {
+                        preview.insertBefore(item, firstPlaceholder);
+                    } else {
+                        preview.appendChild(item);
+                    }
                 });
             };
 
+            // Merge new files with existing collected files
             const normalizeFiles = () => {
                 if (!input) {
                     return;
                 }
                 setError('');
-                const files = Array.from(input.files || []);
-                if (files.length > maxFiles) {
+                const newFiles = Array.from(input.files || []);
+
+                // Merge new files with existing collected files
+                newFiles.forEach((file) => {
+                    if (wrapper._collectedFiles.length < maxFiles) {
+                        wrapper._collectedFiles.push(file);
+                    }
+                });
+
+                if (wrapper._collectedFiles.length > maxFiles) {
                     setError(`Maksimal ${maxFiles} gambar.`);
+                    wrapper._collectedFiles = wrapper._collectedFiles.slice(0, maxFiles);
                 }
-                const limited = files.slice(0, maxFiles);
-                const dataTransfer = new DataTransfer();
-                limited.forEach((file) => dataTransfer.items.add(file));
-                input.files = dataTransfer.files;
+
+                syncToInput();
                 renderPreview();
             };
 
@@ -1790,8 +1887,7 @@
                     setError('Kamera belum siap.');
                     return;
                 }
-                const existingCount = input.files?.length || 0;
-                if (existingCount >= maxFiles) {
+                if (wrapper._collectedFiles.length >= maxFiles) {
                     setError(`Maksimal ${maxFiles} gambar.`);
                     return;
                 }
@@ -1812,10 +1908,8 @@
                     }
                     const fileName = `camera-${Date.now()}.jpg`;
                     const file = new File([blob], fileName, { type: 'image/jpeg' });
-                    const dataTransfer = new DataTransfer();
-                    Array.from(input.files || []).forEach((existing) => dataTransfer.items.add(existing));
-                    dataTransfer.items.add(file);
-                    input.files = dataTransfer.files;
+                    wrapper._collectedFiles.push(file);
+                    syncToInput();
                     renderPreview();
                 }, 'image/jpeg', 0.9);
             };

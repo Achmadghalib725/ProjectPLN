@@ -18,9 +18,10 @@ class ItemController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-        $kategori = $request->input('kategori');
+        $kategoriId = $request->input('kategori');
 
         $items = Item::query()
+            ->with(['kategori', 'satuan'])
             ->when($search, function ($query, $search) {
                 $searchLower = strtolower($search);
                 $query->where(function ($q) use ($searchLower) {
@@ -28,26 +29,41 @@ class ItemController extends Controller
                       ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
                 });
             })
-            ->when($kategori, function ($query, $kategori) {
-                $query->whereRaw('LOWER(kategori) = ?', [strtolower($kategori)]);
+            ->when($kategoriId, function ($query, $kategoriId) {
+                $query->where('kategori_id', $kategoriId);
             })
             ->orderBy('created_at', 'desc')
             ->paginate(25)->onEachSide(1)
             ->withQueryString();
 
-        // Mengambil kategori dari tabel item_categories untuk filter
-        $categories = ItemCategory::orderBy('nama')->pluck('nama');
+        // Mengambil kategori dari item_categories
+        $categories = ItemCategory::orderBy('nama')->get();
 
-        // Mengambil satuan dari tabel item_units untuk dropdown
-        $satuans = ItemUnit::orderBy('nama')->pluck('nama');
+        // Mengambil satuan dari item_units
+        $satuans = ItemUnit::orderBy('nama')->get();
 
-        $allItems = Item::select('id', 'nama', 'kode', 'kategori', 'satuan', 'deskripsi')
+        // All items untuk pencarian duplikat
+        $allItems = Item::with(['kategori', 'satuan'])
+            ->select('id', 'nama', 'kode', 'kategori_id', 'satuan_id', 'tipe', 'deskripsi')
             ->orderBy('nama')
-            ->get();
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'nama' => $item->nama,
+                    'kode' => $item->kode,
+                    'kategori_id' => $item->kategori_id,
+                    'kategori' => $item->kategori?->nama,
+                    'satuan_id' => $item->satuan_id,
+                    'satuan' => $item->satuan?->nama,
+                    'tipe' => $item->tipe,
+                    'deskripsi' => $item->deskripsi,
+                ];
+            });
 
         // Statistik untuk Dashboard Master Barang
         $totalItems = Item::count();
-        $totalCategories = ItemCategory::count();
+        $totalCategories = $categories->count();
 
         return view('admin.items.index', compact('items', 'categories', 'satuans', 'allItems', 'totalItems', 'totalCategories'));
     }
@@ -89,10 +105,6 @@ class ItemController extends Controller
             }
 
             $data = $request->validated();
-
-            // Normalisasi kategori dan satuan ke lowercase untuk konsistensi
-            $data['kategori'] = strtolower($data['kategori']);
-            $data['satuan'] = strtolower($data['satuan']);
 
             Item::create($data);
 
@@ -136,10 +148,6 @@ class ItemController extends Controller
         try {
             $item = Item::findOrFail($id);
             $data = $request->validated();
-
-            // Normalisasi kategori dan satuan ke lowercase untuk konsistensi
-            $data['kategori'] = strtolower($data['kategori']);
-            $data['satuan'] = strtolower($data['satuan']);
 
             $item->update($data);
 

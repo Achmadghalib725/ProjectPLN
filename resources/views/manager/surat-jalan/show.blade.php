@@ -252,7 +252,7 @@
                                 <tr>
                                     <td class="px-5 py-3 text-sm text-slate-900">{{ $item->item->kode ?? '-' }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-900">{{ $item->item->nama ?? 'Item' }}</td>
-                                    <td class="px-5 py-3 text-sm text-slate-500">{{ $item->item->satuan ?? '-' }}</td>
+                                    <td class="px-5 py-3 text-sm text-slate-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-700 font-semibold">{{ $item->jumlah }}</td>
                                 </tr>
                             @empty

@@ -13,6 +13,11 @@ class Item extends Model
     protected $guarded = ['id'];
 
     /**
+     * Eager load relationships
+     */
+    protected $with = ['kategori', 'satuan'];
+
+    /**
      * Mapping kategori ke prefix kode
      */
     protected static array $kategoriPrefixMap = [
@@ -31,10 +36,45 @@ class Item extends Model
         parent::boot();
 
         static::creating(function ($item) {
-            if (empty($item->kode)) {
-                $item->kode = self::generateKode($item->kategori);
+            if (empty($item->kode) && $item->kategori_id) {
+                $kategori = ItemCategory::find($item->kategori_id);
+                if ($kategori) {
+                    $item->kode = self::generateKode($kategori->nama);
+                }
             }
         });
+    }
+
+    /**
+     * Relasi ke ItemCategory
+     */
+    public function kategori()
+    {
+        return $this->belongsTo(ItemCategory::class, 'kategori_id');
+    }
+
+    /**
+     * Relasi ke ItemUnit
+     */
+    public function satuan()
+    {
+        return $this->belongsTo(ItemUnit::class, 'satuan_id');
+    }
+
+    /**
+     * Accessor untuk nama kategori (backward compatibility)
+     */
+    public function getKategoriNamaAttribute(): ?string
+    {
+        return $this->kategori?->nama;
+    }
+
+    /**
+     * Accessor untuk nama satuan (backward compatibility)
+     */
+    public function getSatuanNamaAttribute(): ?string
+    {
+        return $this->satuan?->nama;
     }
 
     /**
@@ -81,5 +121,31 @@ class Item extends Model
     public function stocks()
     {
         return $this->hasMany(ItemStock::class);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan tipe
+     */
+    public function scopeMekanik($query)
+    {
+        return $query->where('tipe', 'mekanik');
+    }
+
+    public function scopeListrik($query)
+    {
+        return $query->where('tipe', 'listrik');
+    }
+
+    public function scopeByTipe($query, string $tipe)
+    {
+        return $query->where('tipe', $tipe);
+    }
+
+    /**
+     * Get label untuk tipe
+     */
+    public function getTipeLabelAttribute(): string
+    {
+        return $this->tipe === 'mekanik' ? 'Mekanik' : 'Listrik';
     }
 }

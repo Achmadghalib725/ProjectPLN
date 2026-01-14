@@ -5,7 +5,7 @@ CREATE TEMP TABLE items_stock_import (
     satuan text,
     jumlah integer
 );
-\copy items_stock_import (kategori, nama, satuan, jumlah) FROM 'D:\\laragon\\www\\ProjectPLN\\storage\\app\\items_stock_import.csv' WITH (FORMAT csv, HEADER true);
+\copy items_stock_import (kategori, nama, satuan, jumlah) FROM 'C:\\laragon\\www\\ProjectPLN\\storage\\app\\items_stock_import.csv' WITH (FORMAT csv, HEADER true);
 DO $$
 DECLARE
     gid bigint;

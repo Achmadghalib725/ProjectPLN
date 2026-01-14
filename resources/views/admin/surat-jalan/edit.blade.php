@@ -63,7 +63,7 @@
                             no_hp: @js(old('pic_custom_no_hp', $suratJalan->pic_tujuan_custom_no_hp)),
                         },
                         itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
-                            return [$stock->item_id => ($stock->item->satuan ?? '')];
+                            return [$stock->item_id => ($stock->item->satuan?->nama ?? '')];
                         })),
                         itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
                             return [$stock->item_id => (int) ($stock->jumlah ?? 0)];

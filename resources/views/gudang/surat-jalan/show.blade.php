@@ -1334,7 +1334,7 @@
                                 @forelse($peminjaman->items as $item)
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan ?? '-' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $item->jumlah_dipinjam }}</td>
                                     </tr>
                                 @empty

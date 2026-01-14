@@ -7,8 +7,8 @@ CREATE TEMP TABLE items_import (
     satuan text,
     deskripsi text
 );
-\copy items_import (kode, nama, kategori, satuan, deskripsi) FROM 'D:\\laragon\\www\\ProjectPLN\\storage\\app\\items_import_clean.csv' WITH (FORMAT csv, HEADER true);
-INSERT INTO items (kode, nama, kategori, satuan, deskripsi, created_at, updated_at)
-SELECT kode, nama, kategori, satuan, NULLIF(deskripsi, ''), NOW(), NOW()
+\copy items_import (kode, nama, kategori, satuan, deskripsi) FROM 'C:\\laragon\\www\\ProjectPLN\\storage\\app\\items_import_clean.csv' WITH (FORMAT csv, HEADER true);
+INSERT INTO items (kode, nama, kategori, satuan, deskripsi, tipe, created_at, updated_at)
+SELECT kode, nama, kategori, satuan, NULLIF(deskripsi, ''), 'mekanik', NOW(), NOW()
 FROM items_import;
 COMMIT;

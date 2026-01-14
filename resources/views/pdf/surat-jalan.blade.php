@@ -188,20 +188,22 @@
             text-transform: uppercase;
         }
 
-        .items-table th:first-child {
-            width: 40px;
-            text-align: center;
-        }
-
         .items-table td {
             padding: 8px 10px;
             border-bottom: 1px solid #e5e5e5;
             font-size: 10px;
+            vertical-align: top;
         }
 
-        .items-table td:first-child {
-            text-align: center;
-            color: #666;
+        .items-table .col-no { width: 5%; text-align: center; }
+        .items-table .col-kode { width: 12%; }
+        .items-table .col-nama { width: 20%; }
+        .items-table .col-jumlah { width: 8%; text-align: center; }
+        .items-table .col-satuan { width: 10%; }
+        .items-table .col-keterangan {
+            width: 45%;
+            word-wrap: break-word;
+            word-break: break-word;
         }
 
         .items-table tr:nth-child(even) {
@@ -554,29 +556,27 @@
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Kode</th>
-                        <th>Nama Barang</th>
-                        <th>Kategori</th>
-                        <th class="text-center">Jumlah</th>
-                        <th>Satuan</th>
-                        <th>Keterangan</th>
+                        <th class="col-no">No</th>
+                        <th class="col-kode">Kode</th>
+                        <th class="col-nama">Nama Barang</th>
+                        <th class="col-jumlah">Jumlah</th>
+                        <th class="col-satuan">Satuan</th>
+                        <th class="col-keterangan">Keterangan</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($suratJalan->items ?? [] as $index => $item)
                         <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ $item->item->kode ?? '-' }}</td>
-                            <td>{{ $item->item->nama ?? '-' }}</td>
-                            <td>{{ $item->item->kategori ?? '-' }}</td>
-                            <td class="text-center"><strong>{{ number_format($item->jumlah) }}</strong></td>
-                            <td>{{ $item->item->satuan ?? '-' }}</td>
-                            <td>{{ $item->keterangan ?? '-' }}</td>
+                            <td class="col-no">{{ $index + 1 }}</td>
+                            <td class="col-kode">{{ $item->item->kode ?? '-' }}</td>
+                            <td class="col-nama">{{ $item->item->nama ?? '-' }}</td>
+                            <td class="col-jumlah"><strong>{{ number_format($item->jumlah) }}</strong></td>
+                            <td class="col-satuan">{{ $item->item->satuan?->nama ?? '-' }}</td>
+                            <td class="col-keterangan">{{ $item->keterangan ?? '-' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center" style="padding: 20px; color: #999;">
+                            <td colspan="6" class="text-center" style="padding: 20px; color: #999;">
                                 Tidak ada barang
                             </td>
                         </tr>

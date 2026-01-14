@@ -2479,8 +2479,11 @@ class SuratJalanController extends Controller
      */
     public function generatePdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments'])
-            ->findOrFail($id);
+        $suratJalan = SuratJalan::with([
+            'gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat',
+            'items.item.kategori', 'items.item.satuan',
+            'ttdPembuat', 'ttdPenerima', 'attachments'
+        ])->findOrFail($id);
 
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
@@ -2501,8 +2504,11 @@ class SuratJalanController extends Controller
      */
     public function previewPdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments'])
-            ->findOrFail($id);
+        $suratJalan = SuratJalan::with([
+            'gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat',
+            'items.item.kategori', 'items.item.satuan',
+            'ttdPembuat', 'ttdPenerima', 'attachments'
+        ])->findOrFail($id);
 
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {

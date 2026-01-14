@@ -36,10 +36,6 @@ class GudangItemController extends Controller
         try {
             $data = $request->validated();
 
-            // Normalisasi kategori dan satuan ke lowercase untuk konsistensi
-            $data['kategori'] = strtolower($data['kategori']);
-            $data['satuan'] = strtolower($data['satuan']);
-
             Item::create($data);
 
             return redirect()

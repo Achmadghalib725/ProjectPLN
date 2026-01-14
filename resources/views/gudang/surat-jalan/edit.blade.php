@@ -63,7 +63,7 @@
                             no_hp: @js(old('pic_custom_no_hp', $suratJalan->pic_tujuan_custom_no_hp)),
                         },
                         itemUnits: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
-                            return [$stock->item_id => ($stock->item->satuan ?? '')];
+                            return [$stock->item_id => ($stock->item->satuan?->nama ?? '')];
                         })),
                         itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
                             return [$stock->item_id => (int) ($stock->jumlah ?? 0)];
@@ -408,100 +408,130 @@
                         @endif
 
                         {{-- Lampiran Gambar --}}
-                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
-                            <div class="mb-4">
-                                <p class="font-semibold text-gray-900">Lampiran Gambar</p>
-                                <p class="text-xs text-gray-500">Maksimal 3 gambar. Wajib ada minimal 1 gambar sebelum mengirim surat jalan.</p>
+                        <div class="border border-dashed border-gray-300 rounded-xl bg-gray-50/50 overflow-hidden" data-camera-capture data-target-input="attachments-edit-gudang" data-max-files="{{ 3 - $suratJalan->attachments->count() }}">
+                            {{-- Header --}}
+                            <div class="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span class="text-sm font-medium text-gray-700">Lampiran Foto</span>
+                                </div>
+                                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full" data-camera-status>{{ $suratJalan->attachments->count() }}/3</span>
                             </div>
 
                             {{-- Existing Attachments --}}
                             @if($suratJalan->attachments->count() > 0)
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                                    @foreach($suratJalan->attachments as $attachment)
-                                        <div class="border border-gray-200 rounded-lg bg-white p-2" data-attachment-card data-attachment-id="{{ $attachment->id }}">
-                                            <div class="relative">
-                                                <img src="{{ Storage::url($attachment->file_path) }}"
-                                                     alt="{{ $attachment->file_name }}"
-                                                     class="w-full h-32 object-cover rounded-md border border-gray-100">
-                                                <span class="hidden absolute top-2 left-2 rounded bg-red-600/90 text-white text-[10px] px-2 py-0.5" data-attachment-badge>
-                                                    Akan dihapus
-                                                </span>
+                                <div class="p-4 border-b border-gray-100">
+                                    <p class="text-xs font-medium text-gray-600 mb-3">Foto Tersimpan</p>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        @foreach($suratJalan->attachments as $attachment)
+                                            <div class="relative group" data-attachment-card data-attachment-id="{{ $attachment->id }}">
+                                                <div class="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-white">
+                                                    <img src="{{ Storage::url($attachment->file_path) }}"
+                                                         alt="{{ $attachment->file_name }}"
+                                                         class="w-full h-full object-cover">
+                                                    <span class="hidden absolute top-1 left-1 rounded bg-red-600/90 text-white text-[10px] px-1.5 py-0.5" data-attachment-badge>
+                                                        Hapus
+                                                    </span>
+                                                </div>
+                                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                    <button type="button"
+                                                            class="p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white"
+                                                            data-attachment-delete
+                                                            title="Hapus">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                        </svg>
+                                                    </button>
+                                                    <button type="button"
+                                                            class="hidden p-1.5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white ml-2"
+                                                            data-attachment-undo
+                                                            title="Urungkan">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <p class="text-xs text-red-600 mt-1 hidden text-center" data-attachment-status>Akan dihapus</p>
                                             </div>
-                                            <div class="mt-2 flex items-center gap-2">
-                                                <p class="text-xs text-gray-500 truncate flex-1" title="{{ $attachment->file_name }}">{{ $attachment->file_name }}</p>
-                                                <button type="button"
-                                                        class="text-xs font-semibold text-red-600 hover:text-red-700"
-                                                        data-attachment-delete>
-                                                    Hapus
-                                                </button>
-                                                <button type="button"
-                                                        class="hidden text-xs font-semibold text-emerald-600 hover:text-emerald-700"
-                                                        data-attachment-undo>
-                                                    Urungkan
-                                                </button>
-                                            </div>
-                                            <p class="text-xs text-red-600 mt-1 hidden" data-attachment-status>Akan dihapus saat disimpan.</p>
-                                        </div>
-                                    @endforeach
+                                        @endforeach
+                                    </div>
                                 </div>
                             @endif
 
                             <div data-delete-attachments></div>
 
-                            {{-- Upload New --}}
-                            @if($suratJalan->attachments->count() < 3)
-                                <div data-camera-capture data-target-input="attachments-edit-gudang" data-max-files="{{ 3 - $suratJalan->attachments->count() }}">
-                                    <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <p class="text-sm font-semibold text-gray-900">
-                                                Tambah Lampiran <span class="text-gray-400 font-normal">(Sisa {{ 3 - $suratJalan->attachments->count() }} slot)</span>
-                                            </p>
-                                            <p class="text-xs text-gray-500">Maksimal 10MB per file.</p>
-                                        </div>
-                                        <p class="text-xs text-gray-500" data-camera-status>Dipilih: 0/{{ 3 - $suratJalan->attachments->count() }}</p>
+                            {{-- Camera Panel (Hidden by default) --}}
+                            <div data-camera-panel class="hidden bg-black">
+                                <div class="relative">
+                                    <video class="w-full h-48 object-cover" playsinline muted></video>
+                                    <canvas class="hidden"></canvas>
+                                    <div class="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3">
+                                        <button type="button"
+                                                data-camera-capture-btn
+                                                class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors">
+                                            <div class="w-10 h-10 bg-red-500 rounded-full"></div>
+                                        </button>
+                                        <button type="button"
+                                                data-camera-close
+                                                class="w-10 h-10 bg-gray-800/80 rounded-full flex items-center justify-center text-white hover:bg-gray-700 transition-colors">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
                                     </div>
-                                    <div class="mt-4 grid gap-4 md:grid-cols-2">
-                                        <div class="space-y-3">
-                                            <div class="flex flex-wrap items-center gap-2">
-                                                <button type="button"
-                                                        data-camera-open
-                                                        class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light">
-                                                    Buka Kamera
-                                                </button>
-                                                <button type="button"
-                                                        data-camera-capture-btn
-                                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
-                                                    Ambil Foto
-                                                </button>
-                                                <button type="button"
-                                                        data-camera-close
-                                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                                                    Tutup Kamera
-                                                </button>
-                                                <span class="text-xs text-gray-500">atau pilih dari galeri</span>
-                                            </div>
-                                            <div data-camera-panel class="hidden border border-gray-200 rounded-lg overflow-hidden bg-white">
-                                                <video class="w-full h-48 sm:h-56 object-cover bg-black" playsinline muted></video>
-                                                <canvas class="hidden"></canvas>
-                                            </div>
-                                            <input type="file"
-                                                   id="attachments-edit-gudang"
-                                                   name="attachments[]"
-                                                   multiple
-                                                   accept="image/jpeg,image/jpg,image/png"
-                                                   capture="environment"
-                                                   class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                                            <p class="text-xs text-gray-500">Format: JPG, JPEG, PNG.</p>
-                                            <p class="text-xs text-red-600 hidden" data-camera-error></p>
+                                </div>
+                            </div>
+
+                            {{-- Upload Area --}}
+                            @if($suratJalan->attachments->count() < 3)
+                                <div class="p-4">
+                                    <div class="flex flex-col sm:flex-row items-center gap-4">
+                                        {{-- Action Buttons --}}
+                                        <div class="flex items-center gap-2">
+                                            <button type="button"
+                                                    data-camera-open
+                                                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                </svg>
+                                                Kamera
+                                            </button>
+                                            <label class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light transition-colors cursor-pointer">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                                </svg>
+                                                Pilih File
+                                                <input type="file"
+                                                       id="attachments-edit-gudang"
+                                                       name="attachments[]"
+                                                       multiple
+                                                       accept="image/jpeg,image/jpg,image/png"
+                                                       class="hidden">
+                                            </label>
                                         </div>
-                                        <div class="space-y-2">
-                                            <p class="text-xs font-semibold text-gray-600">Preview</p>
-                                            <div class="grid grid-cols-3 gap-2" data-camera-preview></div>
-                                        </div>
+                                        <p class="text-xs text-gray-500">JPG, PNG. Maks 10MB. Sisa {{ 3 - $suratJalan->attachments->count() }} slot.</p>
+                                    </div>
+                                    <p class="text-xs text-red-600 hidden mt-2" data-camera-error></p>
+
+                                    {{-- Preview Grid --}}
+                                    @php $remainingSlots = 3 - $suratJalan->attachments->count(); @endphp
+                                    <div class="mt-4 grid grid-cols-3 gap-3" data-camera-preview>
+                                        @for($i = 0; $i < $remainingSlots; $i++)
+                                            <div class="aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" data-placeholder>
+                                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                            </div>
+                                        @endfor
                                     </div>
                                 </div>
                             @else
-                                <p class="text-sm text-yellow-600">Slot lampiran sudah penuh (3/3). Hapus salah satu untuk menambah yang baru.</p>
+                                <div class="p-4">
+                                    <p class="text-sm text-amber-600 text-center">Slot lampiran penuh. Hapus salah satu untuk menambah yang baru.</p>
+                                </div>
                             @endif
                         </div>
 
