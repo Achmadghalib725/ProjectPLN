@@ -75,15 +75,13 @@
                                        class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                         Edit Draft
                                     </a>
-                                    @if($suratJalan->status !== 'DITOLAK')
-                                        <form method="POST" action="{{ route('gudang.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
-                                            @csrf
-                                            <button type="submit"
-                                                    class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                                {{ $suratJalan->status === 'DITOLAK_PERSETUJUAN' ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
-                                            </button>
-                                        </form>
-                                    @endif
+                                    <form method="POST" action="{{ route('gudang.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                        @csrf
+                                        <button type="submit"
+                                                class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                            {{ in_array($suratJalan->status, ['DITOLAK_PERSETUJUAN', 'DITOLAK'], true) ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
+                                        </button>
+                                    </form>
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="button"
