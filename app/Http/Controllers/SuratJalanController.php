@@ -1535,12 +1535,26 @@ class SuratJalanController extends Controller
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                     ]);
+
+                    // Generate dan simpan hash signature pembuat untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_pembuat' => $suratJalan->generateDocumentHash('pembuat'),
+                        'signature_metadata_pembuat' => SuratJalan::generateSignatureMetadata(),
+                    ]);
                 } else {
                     // PENGEMBALIAN: menunggu pemeriksaan security pengirim
                     $suratJalan->update([
                         'status' => 'DIPERIKSA_PENGIRIM',
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
+                    ]);
+
+                    // Generate dan simpan hash signature pembuat untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_pembuat' => $suratJalan->generateDocumentHash('pembuat'),
+                        'signature_metadata_pembuat' => SuratJalan::generateSignatureMetadata(),
                     ]);
                 }
             });
@@ -1637,6 +1651,13 @@ class SuratJalanController extends Controller
                         'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
                     ]);
 
+                    // Generate dan simpan hash signature penerima untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_penerima' => $suratJalan->generateDocumentHash('penerima'),
+                        'signature_metadata_penerima' => SuratJalan::generateSignatureMetadata(),
+                    ]);
+
                     // Update peminjaman status to SELESAI
                     $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
                     if ($peminjaman) {
@@ -1682,6 +1703,13 @@ class SuratJalanController extends Controller
                         'status' => 'DITERIMA',
                         'ttd_penerima_id' => $suratJalan->ttd_penerima_id ?? Auth::id(),
                         'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
+                    ]);
+
+                    // Generate dan simpan hash signature penerima untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_penerima' => $suratJalan->generateDocumentHash('penerima'),
+                        'signature_metadata_penerima' => SuratJalan::generateSignatureMetadata(),
                     ]);
 
                     // Update peminjaman status if applicable

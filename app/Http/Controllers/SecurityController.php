@@ -326,9 +326,18 @@ class SecurityController extends Controller
         }
 
         DB::transaction(function () use ($suratJalan, $request, $rejectTag) {
+            // Reset TTD dan signature hash karena surat ditolak dan perlu di-approve ulang
             $suratJalan->update([
                 'status' => 'DITOLAK',
                 'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[{$rejectTag}: " . $request->alasan . "]",
+                'ttd_pembuat_id' => null,
+                'waktu_ttd_pembuat' => null,
+                'signature_hash_pembuat' => null,
+                'signature_metadata_pembuat' => null,
+                'ttd_penerima_id' => null,
+                'waktu_ttd_penerima' => null,
+                'signature_hash_penerima' => null,
+                'signature_metadata_penerima' => null,
             ]);
 
             if ($suratJalan->tipe !== 'PENGEMBALIAN') {

@@ -1336,10 +1336,18 @@ class AdminSuratJalanController extends Controller
                 ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
         }
 
-        // Hapus catatan penolakan sebelumnya jika diajukan ulang dari status DITOLAK_PERSETUJUAN
+        // Reset TTD, hash, dan catatan jika diajukan ulang dari status DITOLAK
         $updateData = ['status' => 'MENUNGGU_PERSETUJUAN'];
-        if ($suratJalan->status === 'DITOLAK_PERSETUJUAN') {
+        if (in_array($suratJalan->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN'], true)) {
             $updateData['catatan'] = null;
+            $updateData['ttd_pembuat_id'] = null;
+            $updateData['waktu_ttd_pembuat'] = null;
+            $updateData['signature_hash_pembuat'] = null;
+            $updateData['signature_metadata_pembuat'] = null;
+            $updateData['ttd_penerima_id'] = null;
+            $updateData['waktu_ttd_penerima'] = null;
+            $updateData['signature_hash_penerima'] = null;
+            $updateData['signature_metadata_penerima'] = null;
         }
 
         $suratJalan->update($updateData);
@@ -1507,12 +1515,26 @@ class AdminSuratJalanController extends Controller
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                     ]);
+
+                    // Generate dan simpan hash signature pembuat untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_pembuat' => $suratJalan->generateDocumentHash('pembuat'),
+                        'signature_metadata_pembuat' => SuratJalan::generateSignatureMetadata(),
+                    ]);
                 } else {
                     // PENGEMBALIAN: menunggu pemeriksaan security pengirim
                     $suratJalan->update([
                         'status' => 'DIPERIKSA_PENGIRIM',
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
+                    ]);
+
+                    // Generate dan simpan hash signature pembuat untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_pembuat' => $suratJalan->generateDocumentHash('pembuat'),
+                        'signature_metadata_pembuat' => SuratJalan::generateSignatureMetadata(),
                     ]);
                 }
             });
@@ -1600,6 +1622,13 @@ class AdminSuratJalanController extends Controller
                         'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
                     ]);
 
+                    // Generate dan simpan hash signature penerima untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_penerima' => $suratJalan->generateDocumentHash('penerima'),
+                        'signature_metadata_penerima' => SuratJalan::generateSignatureMetadata(),
+                    ]);
+
                     // Update peminjaman status to SELESAI
                     $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
                     if ($peminjaman) {
@@ -1645,6 +1674,13 @@ class AdminSuratJalanController extends Controller
                         'status' => 'DITERIMA',
                         'ttd_penerima_id' => $suratJalan->ttd_penerima_id ?? Auth::id(),
                         'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
+                    ]);
+
+                    // Generate dan simpan hash signature penerima untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_penerima' => $suratJalan->generateDocumentHash('penerima'),
+                        'signature_metadata_penerima' => SuratJalan::generateSignatureMetadata(),
                     ]);
 
                     // Update peminjaman status if applicable

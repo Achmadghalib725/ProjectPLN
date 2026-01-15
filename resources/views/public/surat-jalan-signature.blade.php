@@ -60,6 +60,58 @@
             color: #fff;
             font-size: 12px;
         }
+        .audit-section {
+            margin-top: 16px;
+            padding: 14px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .audit-title {
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .audit-item {
+            font-size: 11px;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        .audit-item span {
+            color: #888;
+        }
+        .audit-hash {
+            font-family: monospace;
+            font-size: 10px;
+            color: #333;
+            word-break: break-all;
+            background: #fff;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        .audit-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .audit-status.valid {
+            background: #d4edda;
+            color: #155724;
+        }
+        .audit-status.invalid {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .audit-status.unknown {
+            background: #fff3cd;
+            color: #856404;
+        }
     </style>
 </head>
 <body>
@@ -68,7 +120,15 @@
             <img src="{{ asset('Logo_PLN_800.png') }}" alt="Logo PLN">
             <div class="header-subtitle">ULPLTD/G Tanjung Karang</div>
         </div>
-        <div class="title">DATA SURAT JALAN VALID</div>
+
+        @if($isHashValid === true)
+            <div class="title">DATA SURAT JALAN VALID</div>
+        @elseif($isHashValid === false)
+            <div class="title" style="color: #dc3545;">DATA SURAT JALAN TIDAK VALID</div>
+            <div style="font-size: 12px; color: #dc3545; margin-bottom: 12px;">Dokumen telah dimodifikasi setelah ditandatangani</div>
+        @else
+            <div class="title">DATA SURAT JALAN</div>
+        @endif
 
         <div class="label">Judul</div>
         <div class="value">Surat Jalan</div>
@@ -84,6 +144,40 @@
 
         <div class="label">Tanggal Approval</div>
         <div class="value">{{ $waktuApproval->translatedFormat('d F Y H:i') }} WIB</div>
+
+        @if($isAuditMode)
+            <div class="audit-section">
+                <div class="audit-title">Informasi Audit</div>
+
+                <div class="audit-item">
+                    <span>Status Verifikasi:</span>
+                    @if($isHashValid === true)
+                        <span class="audit-status valid">TERVERIFIKASI</span>
+                    @elseif($isHashValid === false)
+                        <span class="audit-status invalid">TIDAK VALID</span>
+                    @else
+                        <span class="audit-status unknown">TIDAK TERSEDIA</span>
+                    @endif
+                </div>
+
+                @if($signatureMetadata)
+                    @if(isset($signatureMetadata['ip_address']))
+                        <div class="audit-item"><span>IP Address:</span> {{ $signatureMetadata['ip_address'] }}</div>
+                    @endif
+                    @if(isset($signatureMetadata['signed_at']))
+                        <div class="audit-item"><span>Waktu Signing:</span> {{ $signatureMetadata['signed_at'] }}</div>
+                    @endif
+                    @if(isset($signatureMetadata['user_agent']))
+                        <div class="audit-item"><span>User Agent:</span> {{ Str::limit($signatureMetadata['user_agent'], 50) }}</div>
+                    @endif
+                @endif
+
+                @if($signatureHash)
+                    <div class="audit-item"><span>Hash Dokumen (SHA-256):</span></div>
+                    <div class="audit-hash">{{ $signatureHash }}</div>
+                @endif
+            </div>
+        @endif
     </div>
 </body>
 </html>
