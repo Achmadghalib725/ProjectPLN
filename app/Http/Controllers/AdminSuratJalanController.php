@@ -771,8 +771,10 @@ class AdminSuratJalanController extends Controller
 
                 // Also update the original surat jalan kirim status to SELESAI
                 if ($peminjaman->surat_jalan_kirim_id) {
-                    SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                        ->update(['status' => 'SELESAI']);
+                    $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
+                    if ($suratJalanKirim) {
+                        $suratJalanKirim->update(['status' => 'SELESAI']);
+                    }
                 }
             }
 
@@ -806,7 +808,7 @@ class AdminSuratJalanController extends Controller
     {
         $cacheKey = $this->buildSuratJalanDetailCacheKey((int) $id);
         [$suratJalan, $peminjaman] = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($id) {
-            $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'])
+            $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments', 'statusHistories.actor'])
                 ->findOrFail($id);
 
             $peminjaman = null;
@@ -815,9 +817,11 @@ class AdminSuratJalanController extends Controller
                     'suratJalanKirim.gudangAsal',
                     'suratJalanKirim.gudangTujuan',
                     'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
                     'suratJalanKembali.gudangAsal',
                     'suratJalanKembali.gudangTujuan',
                     'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
                     'items.item',
@@ -827,9 +831,11 @@ class AdminSuratJalanController extends Controller
                     'suratJalanKirim.gudangAsal',
                     'suratJalanKirim.gudangTujuan',
                     'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
                     'suratJalanKembali.gudangAsal',
                     'suratJalanKembali.gudangTujuan',
                     'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
                     'items.item',
@@ -1610,8 +1616,10 @@ class AdminSuratJalanController extends Controller
 
                         // Also update the original surat jalan kirim status to SELESAI
                         if ($peminjaman->surat_jalan_kirim_id) {
-                            SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                                ->update(['status' => 'SELESAI']);
+                            $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
+                            if ($suratJalanKirim) {
+                                $suratJalanKirim->update(['status' => 'SELESAI']);
+                            }
                         }
                     }
                 } else {
@@ -2556,7 +2564,7 @@ class AdminSuratJalanController extends Controller
      */
     public function generatePdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments', 'statusHistories.actor'])
             ->findOrFail($id);
 
         $peminjaman = null;
@@ -2578,7 +2586,7 @@ class AdminSuratJalanController extends Controller
      */
     public function previewPdf(string $id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat', 'items.item', 'ttdPembuat', 'ttdPenerima', 'attachments', 'statusHistories.actor'])
             ->findOrFail($id);
 
         $peminjaman = null;

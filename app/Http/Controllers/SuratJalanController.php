@@ -769,8 +769,10 @@ class SuratJalanController extends Controller
 
                 // Also update the original surat jalan kirim status to SELESAI
                 if ($peminjaman->surat_jalan_kirim_id) {
-                    SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                        ->update(['status' => 'SELESAI']);
+                    $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
+                    if ($suratJalanKirim) {
+                        $suratJalanKirim->update(['status' => 'SELESAI']);
+                    }
                 }
             }
 
@@ -803,7 +805,7 @@ class SuratJalanController extends Controller
     public function show(Request $request, $id)
     {
         $loadDetail = function () use ($id) {
-            $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'])
+            $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments', 'statusHistories.actor'])
                 ->findOrFail($id);
 
             $peminjaman = null;
@@ -812,9 +814,11 @@ class SuratJalanController extends Controller
                     'suratJalanKirim.gudangAsal',
                     'suratJalanKirim.gudangTujuan',
                     'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
                     'suratJalanKembali.gudangAsal',
                     'suratJalanKembali.gudangTujuan',
                     'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
                     'items.item',
@@ -824,9 +828,11 @@ class SuratJalanController extends Controller
                     'suratJalanKirim.gudangAsal',
                     'suratJalanKirim.gudangTujuan',
                     'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
                     'suratJalanKembali.gudangAsal',
                     'suratJalanKembali.gudangTujuan',
                     'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
                     'items.item',
@@ -1647,8 +1653,10 @@ class SuratJalanController extends Controller
 
                         // Also update the original surat jalan kirim status to SELESAI
                         if ($peminjaman->surat_jalan_kirim_id) {
-                            SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                                ->update(['status' => 'SELESAI']);
+                            $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
+                            if ($suratJalanKirim) {
+                                $suratJalanKirim->update(['status' => 'SELESAI']);
+                            }
                         }
                     }
                 } else {
@@ -2565,7 +2573,7 @@ class SuratJalanController extends Controller
         $suratJalan = SuratJalan::with([
             'gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat',
             'items.item.kategori', 'items.item.satuan',
-            'ttdPembuat', 'ttdPenerima', 'attachments'
+            'ttdPembuat', 'ttdPenerima', 'attachments', 'statusHistories'
         ])->findOrFail($id);
 
         $peminjaman = null;
@@ -2590,7 +2598,7 @@ class SuratJalanController extends Controller
         $suratJalan = SuratJalan::with([
             'gudangAsal', 'gudangTujuan', 'picTujuan', 'pembuat',
             'items.item.kategori', 'items.item.satuan',
-            'ttdPembuat', 'ttdPenerima', 'attachments'
+            'ttdPembuat', 'ttdPenerima', 'attachments', 'statusHistories'
         ])->findOrFail($id);
 
         $peminjaman = null;

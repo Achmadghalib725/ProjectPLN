@@ -148,10 +148,41 @@
 
                 // Helper untuk format waktu
                 $formatWaktu = fn($waktu) => $waktu ? \Carbon\Carbon::parse($waktu)->format('d M Y, H:i') : null;
+                $historyFor = function ($surat) {
+                    if (!$surat || !$surat->relationLoaded('statusHistories')) {
+                        return collect();
+                    }
+                    return $surat->statusHistories->groupBy('status');
+                };
+                $historyTime = function ($historyMap, $statuses) {
+                    $statusList = is_array($statuses) ? $statuses : [$statuses];
+                    foreach ($statusList as $status) {
+                        $entry = $historyMap->get($status)?->last();
+                        if ($entry && $entry->occurred_at) {
+                            return $entry->occurred_at;
+                        }
+                    }
+                    return null;
+                };
+                $historyTimeText = function ($historyMap, $statuses, $fallback = null) use ($historyTime, $formatWaktu) {
+                    $time = $historyTime($historyMap, $statuses) ?? $fallback;
+                    return $formatWaktu($time);
+                };
+                $historyActor = function ($historyMap, $statuses) {
+                    $statusList = is_array($statuses) ? $statuses : [$statuses];
+                    foreach ($statusList as $status) {
+                        $entry = $historyMap->get($status)?->last();
+                        if ($entry?->actor?->name) {
+                            return $entry->actor->name;
+                        }
+                    }
+                    return null;
+                };
 
                 if ($tipe === 'TRANSFER') {
                     // TRANSFER: Dikirim -> Diperiksa -> Selesai
                     $sjKirim = $suratJalan;
+                    $sjKirimHistory = $historyFor($sjKirim);
                     if ($suratJalan->gudang_tujuan_is_custom) {
                         $steps = [
                             [
@@ -161,7 +192,7 @@
                                     ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
-                                    ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, ['DIKIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'], $sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
                                     : null,
                                 'by' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? $sjKirim->pembuat?->name
@@ -174,9 +205,11 @@
                                     ? "Dikirim ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => $sjKirim->status === 'SELESAI'
-                                    ? $formatWaktu($sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, 'SELESAI', $sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
                                     : null,
-                                'by' => null,
+                                'by' => $sjKirim->status === 'SELESAI'
+                                    ? $historyActor($sjKirimHistory, 'SELESAI')
+                                    : null,
                             ],
                         ];
                         // currentStep menunjukkan step yang SEDANG aktif (in progress)
@@ -199,7 +232,7 @@
                                     ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
-                                    ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, ['DIKIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'], $sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
                                     : null,
                                 'by' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? $sjKirim->pembuat?->name
@@ -212,9 +245,11 @@
                                     ? "Diperiksa oleh Security di <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
-                                    ? $formatWaktu($sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], $sjKirim->updated_at)
                                     : null,
-                                'by' => null,
+                                'by' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                    ? $historyActor($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'])
+                                    : null,
                             ],
                             [
                                 'label' => 'Selesai',
@@ -223,9 +258,11 @@
                                     ? "Diterima di <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => $sjKirim->status === 'SELESAI'
-                                    ? $formatWaktu($sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, 'SELESAI', $sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
                                     : null,
-                                'by' => null,
+                                'by' => $sjKirim->status === 'SELESAI'
+                                    ? $historyActor($sjKirimHistory, 'SELESAI')
+                                    : null,
                             ],
                         ];
                         // currentStep menunjukkan step yang SEDANG aktif (in progress)
@@ -259,8 +296,15 @@
                     $peminjamanStatus = $peminjaman?->status ?? 'DIAJUKAN';
                     $sjKirimStatus = $sjKirim?->status ?? 'DRAFT';
                     $sjKembaliStatus = $sjKembali?->status ?? null;
+                    $sjKirimHistory = $historyFor($sjKirim);
+                    $sjKembaliHistory = $historyFor($sjKembali);
 
                     if ($suratJalan->gudang_tujuan_is_custom) {
+                        $menungguDikembalikanAt = $historyTime($sjKirimHistory, 'MENUNGGU_DIKEMBALIKAN');
+                        $showMenungguDikembalikan = (bool) $menungguDikembalikanAt
+                            || $suratStatus === 'MENUNGGU_DIKEMBALIKAN'
+                            || $suratStatus === 'SELESAI'
+                            || $peminjamanStatus === 'SELESAI';
                         $steps = [
                             [
                                 'label' => 'Dikirim',
@@ -268,26 +312,28 @@
                                 'detail' => $sjKirim && !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? "Dikirim dari <strong>{$gudangPemilikNama}</strong> ke <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_kirim ? $formatWaktu($peminjaman->waktu_kirim) : null,
+                                'time' => $historyTimeText($sjKirimHistory, ['DIKIRIM', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'SELESAI'], $peminjaman?->waktu_kirim),
                                 'by' => $sjKirim?->pembuat?->name,
                             ],
                             [
                                 'label' => 'Menunggu Dikembalikan',
                                 'desc' => 'Menunggu konfirmasi pengembalian',
-                                'detail' => $suratStatus === 'MENUNGGU_DIKEMBALIKAN'
+                                'detail' => $showMenungguDikembalikan
                                     ? "Menunggu pengembalian dari <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $suratStatus === 'MENUNGGU_DIKEMBALIKAN' ? $formatWaktu($suratJalan->updated_at) : null,
+                                'time' => $showMenungguDikembalikan
+                                    ? $historyTimeText($sjKirimHistory, 'MENUNGGU_DIKEMBALIKAN', $suratJalan->updated_at)
+                                    : null,
                                 'by' => null,
                             ],
                             [
                                 'label' => 'Selesai',
                                 'desc' => 'Pengembalian dikonfirmasi',
-                                'detail' => $peminjamanStatus === 'SELESAI'
+                                'detail' => ($peminjamanStatus === 'SELESAI' || $suratStatus === 'SELESAI')
                                     ? "Barang telah dikembalikan ke <strong>{$gudangPemilikNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_selesai ? $formatWaktu($peminjaman->waktu_selesai) : null,
-                                'by' => null,
+                                'time' => $historyTimeText($sjKirimHistory, 'SELESAI', $peminjaman?->waktu_selesai),
+                                'by' => $historyActor($sjKirimHistory, 'SELESAI'),
                             ],
                         ];
 
@@ -303,6 +349,7 @@
                             $currentStep = 0; // belum dikirim, step 0 active
                         }
                     } else {
+                        $kirimCheckedAt = $historyTime($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA']);
                         $steps = [
                             [
                                 'label' => 'Dikirim',
@@ -310,18 +357,21 @@
                                 'detail' => $sjKirim && !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? "Dikirim dari <strong>{$gudangPemilikNama}</strong> ke <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_kirim ? $formatWaktu($peminjaman->waktu_kirim) : null,
+                                'time' => $historyTimeText($sjKirimHistory, ['DIKIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN'], $peminjaman?->waktu_kirim),
                                 'by' => $sjKirim?->pembuat?->name,
                             ],
                             [
                                 'label' => 'Diperiksa',
                                 'desc' => 'Security gudang tujuan',
-                                'detail' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                'detail' => $sjKirim && $kirimCheckedAt
                                     ? "Diperiksa oleh Security di <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
-                                    ? $formatWaktu($sjKirim->updated_at) : null,
-                                'by' => null,
+                                'time' => $kirimCheckedAt
+                                    ? $formatWaktu($kirimCheckedAt)
+                                    : null,
+                                'by' => $kirimCheckedAt
+                                    ? $historyActor($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'])
+                                    : null,
                             ],
                             [
                                 'label' => 'Diterima',
@@ -329,8 +379,8 @@
                                 'detail' => $peminjaman && in_array($peminjaman->status, ['DITERIMA', 'DIKEMBALIKAN', 'SELESAI'])
                                     ? "Diterima di <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_diterima ? $formatWaktu($peminjaman->waktu_diterima) : null,
-                                'by' => null,
+                                'time' => $historyTimeText($sjKirimHistory, 'DITERIMA', $peminjaman?->waktu_diterima),
+                                'by' => $historyActor($sjKirimHistory, 'DITERIMA'),
                             ],
                             [
                                 'label' => 'Dikembalikan',
@@ -338,7 +388,7 @@
                                 'detail' => $sjKembali && in_array($sjKembali->status, ['DIKEMBALIKAN', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
                                     ? "Dikembalikan dari <strong>{$gudangPeminjamNama}</strong> ke <strong>{$gudangPemilikNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_pengembalian ? $formatWaktu($peminjaman->waktu_pengembalian) : null,
+                                'time' => $historyTimeText($sjKembaliHistory, ['DIKEMBALIKAN', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'], $peminjaman?->waktu_pengembalian),
                                 'by' => $sjKembali?->pembuat?->name,
                             ],
                             [
@@ -348,8 +398,8 @@
                                     ? "Diperiksa oleh Security di <strong>{$gudangPemilikNama}</strong>"
                                     : null,
                                 'time' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
-                                    ? $formatWaktu($sjKembali->updated_at) : null,
-                                'by' => null,
+                                    ? $historyTimeText($sjKembaliHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], $sjKembali->updated_at) : null,
+                                'by' => $historyActor($sjKembaliHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA']),
                             ],
                             [
                                 'label' => 'Selesai',
@@ -357,8 +407,8 @@
                                 'detail' => $peminjaman && $peminjaman->status === 'SELESAI'
                                     ? "Barang telah dikembalikan ke <strong>{$gudangPemilikNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_selesai ? $formatWaktu($peminjaman->waktu_selesai) : null,
-                                'by' => null,
+                                'time' => $historyTimeText($sjKembaliHistory, 'SELESAI', $peminjaman?->waktu_selesai),
+                                'by' => $historyActor($sjKembaliHistory, 'SELESAI'),
                             ],
                         ];
 
@@ -380,10 +430,6 @@
                         }
                     }
 
-                    // Handle rejection
-                    if ($isRejected || $peminjaman?->status === 'DITOLAK') {
-                        $isRejected = true;
-                    }
                 }
 
                 if ($isRejected) {

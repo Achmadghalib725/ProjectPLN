@@ -49,7 +49,8 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
                 'pembuat',
                 'picTujuan',
                 'items.item',
-                'peminjaman'
+                'peminjaman',
+                'statusHistories'
             ])
             ->withCount('items')
             ->withSum('items', 'jumlah');
@@ -118,6 +119,11 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
         $gudangTujuanNama = $suratJalan->gudang_tujuan_is_custom
             ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya')
             : ($suratJalan->gudangTujuan->nama ?? '-');
+        $historyMap = $suratJalan->statusHistories?->groupBy('status') ?? collect();
+        $waktuPembuat = $this->historyTime($historyMap, ['DIPERIKSA_PENGIRIM', 'DIKIRIM'])
+            ?? $suratJalan->waktu_ttd_pembuat;
+        $waktuPenerima = $this->historyTime($historyMap, ['DITERIMA', 'SELESAI'])
+            ?? $suratJalan->waktu_ttd_penerima;
 
         return [
             $this->rowNumber,
@@ -134,8 +140,8 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
             $suratJalan->picTujuan->jabatan ?? '-',
             $suratJalan->picTujuan->no_hp ?? '-',
             $suratJalan->pembuat->name ?? '-',
-            $suratJalan->waktu_ttd_pembuat?->format('Y-m-d H:i:s') ?? '-',
-            $suratJalan->waktu_ttd_penerima?->format('Y-m-d H:i:s') ?? '-',
+            $waktuPembuat?->format('Y-m-d H:i:s') ?? '-',
+            $waktuPenerima?->format('Y-m-d H:i:s') ?? '-',
             $this->calculateLamaPeminjaman($suratJalan),
             $suratJalan->catatan ?? '-',
             $suratJalan->items_count ?? 0,
@@ -271,5 +277,19 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
             'SELESAI' => 'Selesai',
             default => $status ?? '-',
         };
+    }
+
+    private function historyTime($historyMap, array $statuses): ?Carbon
+    {
+        foreach ($statuses as $status) {
+            $entry = $historyMap->get($status)?->last();
+            if ($entry?->occurred_at) {
+                return $entry->occurred_at instanceof Carbon
+                    ? $entry->occurred_at
+                    : Carbon::parse($entry->occurred_at);
+            }
+        }
+
+        return null;
     }
 }
