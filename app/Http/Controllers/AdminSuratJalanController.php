@@ -1336,10 +1336,10 @@ class AdminSuratJalanController extends Controller
                 ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
         }
 
-        // Reset TTD, hash, dan catatan jika diajukan ulang dari status DITOLAK
+        // Reset TTD, hash, dan catatan penolakan jika diajukan ulang dari status DITOLAK
         $updateData = ['status' => 'MENUNGGU_PERSETUJUAN'];
         if (in_array($suratJalan->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN'], true)) {
-            $updateData['catatan'] = null;
+            $updateData['catatan_penolakan'] = null;
             $updateData['ttd_pembuat_id'] = null;
             $updateData['waktu_ttd_pembuat'] = null;
             $updateData['signature_hash_pembuat'] = null;
@@ -1396,7 +1396,7 @@ class AdminSuratJalanController extends Controller
         $alasan = trim((string) $validated['alasan']);
         $suratJalan->update([
             'status' => 'DITOLAK_PERSETUJUAN',
-            'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[DITOLAK PERSETUJUAN: {$alasan}]",
+            'catatan_penolakan' => "[DITOLAK PERSETUJUAN: {$alasan}]",
         ]);
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);

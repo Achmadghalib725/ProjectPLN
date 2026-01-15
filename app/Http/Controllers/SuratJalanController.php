@@ -1364,10 +1364,10 @@ class SuratJalanController extends Controller
                 ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
         }
 
-        // Hapus catatan penolakan sebelumnya jika diajukan ulang dari status DITOLAK_PERSETUJUAN
+        // Reset catatan penolakan jika diajukan ulang dari status DITOLAK
         $updateData = ['status' => 'MENUNGGU_PERSETUJUAN'];
-        if ($suratJalan->status === 'DITOLAK_PERSETUJUAN') {
-            $updateData['catatan'] = null;
+        if (in_array($suratJalan->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN'], true)) {
+            $updateData['catatan_penolakan'] = null;
         }
 
         $suratJalan->update($updateData);
@@ -1416,7 +1416,7 @@ class SuratJalanController extends Controller
         $alasan = trim((string) $validated['alasan']);
         $suratJalan->update([
             'status' => 'DITOLAK_PERSETUJUAN',
-            'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[DITOLAK PERSETUJUAN: {$alasan}]",
+            'catatan_penolakan' => "[DITOLAK PERSETUJUAN: {$alasan}]",
         ]);
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);

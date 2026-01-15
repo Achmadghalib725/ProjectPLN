@@ -430,8 +430,8 @@
                         @php
                             $rejectTitle = 'Surat Jalan Ditolak oleh Security';
                             $rejectReason = null;
-                            $catatanText = (string) ($suratJalan->catatan ?? '');
-                            if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                            $catatanPenolakan = (string) ($suratJalan->catatan_penolakan ?? '');
+                            if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
                                 $rejectStage = strtolower($matches[1] ?? '');
                                 $rejectReason = trim($matches[2] ?? '');
                                 if ($rejectStage === 'pengirim') {
@@ -606,12 +606,14 @@
             @else
             {{-- DRAFT Status Card with Blurred Progress Background --}}
             @php
-                $securityRejectMessage = null;
+                $rejectMessage = null;
+                $catatanPenolakan = (string) ($suratJalan->catatan_penolakan ?? '');
+
                 if ($suratStatus === 'DITOLAK') {
+                    // Security rejection
                     $rejectStageLabel = 'security';
                     $rejectReason = null;
-                    $catatanText = (string) ($suratJalan->catatan ?? '');
-                    if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                    if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
                         $rejectStage = strtolower($matches[1] ?? '');
                         $rejectReason = trim($matches[2] ?? '');
                         if ($rejectStage === 'pengirim') {
@@ -620,13 +622,25 @@
                             $rejectStageLabel = 'security penerima';
                         }
                     }
-                    $securityRejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
+                    $rejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
                     if ($rejectReason) {
-                        $securityRejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                        $rejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    }
+                } elseif ($suratStatus === 'DITOLAK_PERSETUJUAN') {
+                    // Manager rejection
+                    $rejectReason = null;
+                    if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK PERSETUJUAN:\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
+                        $rejectReason = trim($matches[1] ?? '');
+                    }
+                    $rejectMessage = 'Status: DITOLAK PERSETUJUAN - Ditolak oleh manager.';
+                    if ($rejectReason) {
+                        $rejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    } else {
+                        $rejectMessage .= ' Silakan perbaiki dan ajukan ulang.';
                     }
                 }
 
-                $draftMessage = $securityRejectMessage ?? match ($suratStatus) {
+                $draftMessage = $rejectMessage ?? match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
                     'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
                     'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',

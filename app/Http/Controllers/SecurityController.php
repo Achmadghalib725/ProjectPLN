@@ -329,7 +329,7 @@ class SecurityController extends Controller
             // Reset TTD dan signature hash karena surat ditolak dan perlu di-approve ulang
             $suratJalan->update([
                 'status' => 'DITOLAK',
-                'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[{$rejectTag}: " . $request->alasan . "]",
+                'catatan_penolakan' => "[{$rejectTag}: " . $request->alasan . "]",
                 'ttd_pembuat_id' => null,
                 'waktu_ttd_pembuat' => null,
                 'signature_hash_pembuat' => null,
