@@ -18,6 +18,8 @@ class SuratJalan extends Model
         'waktu_ttd_pembuat' => 'datetime',
         'waktu_ttd_penerima' => 'datetime',
         'gudang_tujuan_is_custom' => 'boolean',
+        'signature_metadata_pembuat' => 'array',
+        'signature_metadata_penerima' => 'array',
     ];
 
     protected static function booted()
@@ -92,5 +94,90 @@ class SuratJalan extends Model
     public function peminjamanKembali()
     {
         return $this->hasOne(Peminjaman::class, 'surat_jalan_kembali_id');
+    }
+
+    /**
+     * Generate hash SHA256 dari data dokumen untuk tanda tangan elektronik.
+     * Hash ini akan digunakan untuk memverifikasi integritas dokumen.
+     *
+     * @param string $role 'pembuat' atau 'penerima'
+     * @return string Hash SHA256 (64 karakter hex)
+     */
+    public function generateDocumentHash(string $role = 'pembuat'): string
+    {
+        // Data inti dokumen yang tidak boleh berubah setelah ditandatangani
+        $data = [
+            'nomor' => $this->nomor,
+            'tanggal' => $this->tanggal?->format('Y-m-d'),
+            'tipe' => $this->tipe,
+            'gudang_asal_id' => $this->gudang_asal_id,
+            'gudang_tujuan_id' => $this->gudang_tujuan_id,
+            'gudang_tujuan_is_custom' => $this->gudang_tujuan_is_custom,
+            'gudang_tujuan_custom_nama' => $this->gudang_tujuan_custom_nama,
+            'pic_tujuan_id' => $this->pic_tujuan_id,
+            'catatan' => $this->catatan,
+        ];
+
+        // Tambahkan data items (sorted by item_id untuk konsistensi)
+        $items = $this->items()->orderBy('item_id')->get()->map(function ($item) {
+            return [
+                'item_id' => $item->item_id,
+                'jumlah' => $item->jumlah,
+                'keterangan' => $item->keterangan,
+            ];
+        })->toArray();
+        $data['items'] = $items;
+
+        // Tambahkan data TTD pembuat
+        $data['ttd_pembuat_id'] = $this->ttd_pembuat_id;
+        $data['waktu_ttd_pembuat'] = $this->waktu_ttd_pembuat?->format('Y-m-d H:i:s');
+
+        // Jika role penerima, tambahkan juga data TTD penerima
+        if ($role === 'penerima') {
+            $data['ttd_penerima_id'] = $this->ttd_penerima_id;
+            $data['waktu_ttd_penerima'] = $this->waktu_ttd_penerima?->format('Y-m-d H:i:s');
+        }
+
+        // Sort keys untuk konsistensi hash
+        ksort($data);
+
+        // Generate SHA256 hash
+        return hash('sha256', json_encode($data, JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * Verifikasi apakah hash signature masih valid (dokumen belum dimodifikasi).
+     *
+     * @param string $role 'pembuat' atau 'penerima'
+     * @return bool|null True jika valid, False jika tidak valid, Null jika belum ada signature
+     */
+    public function verifySignatureHash(string $role = 'pembuat'): ?bool
+    {
+        $storedHash = $role === 'penerima'
+            ? $this->signature_hash_penerima
+            : $this->signature_hash_pembuat;
+
+        if (!$storedHash) {
+            return null;
+        }
+
+        $currentHash = $this->generateDocumentHash($role);
+
+        return hash_equals($storedHash, $currentHash);
+    }
+
+    /**
+     * Generate metadata signature untuk audit trail.
+     *
+     * @return array
+     */
+    public static function generateSignatureMetadata(): array
+    {
+        return [
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'signed_at' => now()->format('Y-m-d H:i:s'),
+            'timezone' => config('app.timezone', 'Asia/Jakarta'),
+        ];
     }
 }
