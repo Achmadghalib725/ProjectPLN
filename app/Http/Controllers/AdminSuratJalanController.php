@@ -976,8 +976,35 @@ class AdminSuratJalanController extends Controller
             $validated = $request->validate([
                 'pic_tujuan_id' => [
                     'required',
-                    'integer',
-                    Rule::exists('pics', 'id')->where(fn ($q) => $q->where('gudang_id', $suratJalan->gudang_tujuan_id)),
+                    Rule::when(
+                        $request->input('pic_tujuan_id') !== 'lainnya',
+                        [
+                            'integer',
+                            Rule::exists('pics', 'id')->where(fn ($q) => $q->where('gudang_id', $suratJalan->gudang_tujuan_id)),
+                        ]
+                    ),
+                    Rule::when(
+                        $request->input('pic_tujuan_id') === 'lainnya',
+                        ['in:lainnya']
+                    ),
+                ],
+                'pic_custom_nama' => [
+                    'exclude_unless:pic_tujuan_id,lainnya',
+                    'required_if:pic_tujuan_id,lainnya',
+                    'string',
+                    'max:255',
+                ],
+                'pic_custom_jabatan' => [
+                    'exclude_unless:pic_tujuan_id,lainnya',
+                    'nullable',
+                    'string',
+                    'max:255',
+                ],
+                'pic_custom_no_hp' => [
+                    'exclude_unless:pic_tujuan_id,lainnya',
+                    'nullable',
+                    'string',
+                    'max:50',
                 ],
                 'tanggal_kirim' => ['required', 'date'],
                 'catatan' => ['nullable', 'string'],
@@ -993,7 +1020,19 @@ class AdminSuratJalanController extends Controller
             ], [
                 'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
+                'pic_custom_nama.required_if' => 'Nama PIC wajib diisi jika memilih Lainnya.',
             ]);
+
+            $picTujuanId = $validated['pic_tujuan_id'];
+            $picCustomData = null;
+            if ($picTujuanId === 'lainnya') {
+                $picCustomData = [
+                    'nama' => $validated['pic_custom_nama'],
+                    'jabatan' => $validated['pic_custom_jabatan'] ?? null,
+                    'no_hp' => $validated['pic_custom_no_hp'] ?? null,
+                ];
+                $picTujuanId = null;
+            }
 
             $catatanValue = $validated['catatan'] ?? null;
             if ($resetAfterReject) {
@@ -1001,10 +1040,10 @@ class AdminSuratJalanController extends Controller
             }
 
             $updatePayload = [
-                'pic_tujuan_id' => $validated['pic_tujuan_id'],
-                'pic_tujuan_custom_nama' => null,
-                'pic_tujuan_custom_jabatan' => null,
-                'pic_tujuan_custom_no_hp' => null,
+                'pic_tujuan_id' => $picTujuanId,
+                'pic_tujuan_custom_nama' => $picCustomData['nama'] ?? null,
+                'pic_tujuan_custom_jabatan' => $picCustomData['jabatan'] ?? null,
+                'pic_tujuan_custom_no_hp' => $picCustomData['no_hp'] ?? null,
                 'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
                 'catatan' => $catatanValue,
                 'nama_driver' => $validated['nama_driver'] ?? null,
