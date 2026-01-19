@@ -13,12 +13,8 @@ class PublicSuratJalanController extends Controller
             abort(404);
         }
 
-<<<<<<< HEAD
-        // Load dengan items untuk verifikasi hash
-        $suratJalan = SuratJalan::with(['ttdPembuat', 'ttdPenerima', 'items'])
-=======
-        $suratJalan = SuratJalan::with(['ttdPembuat', 'ttdPenerima', 'statusHistories'])
->>>>>>> 983435c9a0cce3673fdeee8fd26077214b54445f
+        // Load dengan items untuk verifikasi hash dan statusHistories untuk timestamp
+        $suratJalan = SuratJalan::with(['ttdPembuat', 'ttdPenerima', 'items', 'statusHistories'])
             ->where('id', $id)
             ->where('qr_token', $token)
             ->firstOrFail();
@@ -35,21 +31,14 @@ class PublicSuratJalanController extends Controller
 
         if ($role === 'pengirim') {
             $nama = $suratJalan->ttdPembuat?->name;
-<<<<<<< HEAD
-            $waktuApproval = $suratJalan->waktu_ttd_pembuat;
+            $waktuApproval = $resolveHistoryTime(['DIPERIKSA_PENGIRIM', 'DIKIRIM']) ?? $suratJalan->waktu_ttd_pembuat;
             $signatureMetadata = $suratJalan->signature_metadata_pembuat;
             $signatureHash = $suratJalan->signature_hash_pembuat;
         } else {
             $nama = $suratJalan->ttdPenerima?->name;
-            $waktuApproval = $suratJalan->waktu_ttd_penerima;
+            $waktuApproval = $resolveHistoryTime(['DITERIMA', 'SELESAI']) ?? $suratJalan->waktu_ttd_penerima;
             $signatureMetadata = $suratJalan->signature_metadata_penerima;
             $signatureHash = $suratJalan->signature_hash_penerima;
-=======
-            $waktuApproval = $resolveHistoryTime(['DIPERIKSA_PENGIRIM', 'DIKIRIM']) ?? $suratJalan->waktu_ttd_pembuat;
-        } else {
-            $nama = $suratJalan->ttdPenerima?->name;
-            $waktuApproval = $resolveHistoryTime(['DITERIMA', 'SELESAI']) ?? $suratJalan->waktu_ttd_penerima;
->>>>>>> 983435c9a0cce3673fdeee8fd26077214b54445f
         }
 
         if (!$nama || !$waktuApproval) {
