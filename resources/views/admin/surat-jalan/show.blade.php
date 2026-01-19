@@ -1294,10 +1294,8 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
-                        <input type="hidden" name="tanggal_kirim" value="{{ now()->toDateString() }}">
-                        <div class="w-full px-3 py-[10px] bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm shadow-sm">
-                            {{ now()->translatedFormat('d F Y') }}
-                        </div>
+                        <input type="date" name="tanggal_kirim" value="{{ now()->toDateString() }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary text-sm">
                     </div>
 
                     {{-- Form PIC Lainnya (di dalam grid) --}}
