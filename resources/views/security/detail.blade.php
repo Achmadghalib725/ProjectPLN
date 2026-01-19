@@ -698,7 +698,7 @@
                                         'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
                                         'DITOLAK_PERSETUJUAN' => 'Persetujuan Ditolak',
                                         'DIKIRIM' => 'Dikirim',
-                                        'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan Pengirim',
+                                        'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan',
                                         'DIPERIKSA_PENERIMA' => 'Diperiksa Penerima',
                                         'DIPERIKSA' => 'Diperiksa',
                                         'DITERIMA' => 'Diterima',
