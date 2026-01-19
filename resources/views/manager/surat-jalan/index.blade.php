@@ -15,7 +15,6 @@
 
             @php
                 $statusLabels = [
-                    'ALL' => 'Semua Status',
                     'DRAFT' => 'Draft',
                     'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
                     'DITOLAK_PERSETUJUAN' => 'Ditolak Persetujuan',
@@ -28,6 +27,12 @@
                     'DIKEMBALIKAN' => 'Dikembalikan',
                     'SELESAI' => 'Selesai',
                     'DITOLAK' => 'Ditolak',
+                ];
+                $statusFilterOptions = [
+                    'MENUNGGU_PERSETUJUAN' => 'Meminta Persetujuan',
+                    'BERLANGSUNG' => 'Sedang Berlangsung',
+                    'SELESAI' => 'Selesai',
+                    'ALL' => 'Semua Status',
                 ];
                 $statusStyles = [
                     'DRAFT' => 'bg-slate-100 text-slate-700',
@@ -64,7 +69,7 @@
                         <p class="text-sm text-slate-500">Pantau pengiriman dari gudang yang Anda kelola.</p>
                     </div>
                     <div class="text-xs text-slate-500">
-                        Status default: <span class="font-semibold text-slate-700">Menunggu Persetujuan</span>
+                        Status default: <span class="font-semibold text-slate-700">{{ $statusFilterOptions['MENUNGGU_PERSETUJUAN'] }}</span>
                     </div>
                 </div>
             </div>
@@ -106,7 +111,7 @@
                         <label class="block text-xs font-semibold text-slate-500 uppercase">Status</label>
                         <select name="status"
                                 class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                            @foreach($statusLabels as $statusValue => $label)
+                            @foreach($statusFilterOptions as $statusValue => $label)
                                 <option value="{{ $statusValue }}" {{ $selectedStatus === $statusValue ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
@@ -253,6 +258,15 @@
                 SELESAI: 'bg-emerald-100 text-emerald-700',
                 DITOLAK: 'bg-red-100 text-red-700',
             };
+            const ongoingStatuses = new Set([
+                'DIKIRIM',
+                'DIPERIKSA_PENGIRIM',
+                'DIPERIKSA_PENERIMA',
+                'DIPERIKSA',
+                'DITERIMA',
+                'MENUNGGU_DIKEMBALIKAN',
+                'DIKEMBALIKAN',
+            ]);
             const gudangIds = @json(($gudangs ?? collect())->pluck('id')->all());
 
             const refreshList = async () => {
@@ -299,7 +313,13 @@
                     });
                 });
                 const statusFilter = document.querySelector('select[name="status"]')?.value;
-                if (statusFilter && statusFilter !== 'ALL' && statusFilter !== status) {
+                if (!statusFilter || statusFilter === 'ALL') {
+                    return;
+                }
+                const matchesFilter = statusFilter === 'BERLANGSUNG'
+                    ? ongoingStatuses.has(status)
+                    : statusFilter === status;
+                if (!matchesFilter) {
                     refreshList();
                 }
             };

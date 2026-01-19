@@ -60,6 +60,26 @@
                 $gudangTujuanTelepon = $suratJalan->gudang_tujuan_is_custom
                     ? ($suratJalan->gudang_tujuan_custom_telepon ?? '-')
                     : ($suratJalan->gudangTujuan->telepon ?? '-');
+                $historyMap = $suratJalan->relationLoaded('statusHistories')
+                    ? $suratJalan->statusHistories->groupBy('status')
+                    : collect();
+                $historyTime = function ($statuses) use ($historyMap) {
+                    $statusList = is_array($statuses) ? $statuses : [$statuses];
+                    foreach ($statusList as $status) {
+                        $entry = $historyMap->get($status)?->last();
+                        if ($entry?->occurred_at) {
+                            return $entry->occurred_at;
+                        }
+                    }
+                    return null;
+                };
+                $approvalTime = $historyTime(['DIPERIKSA_PENGIRIM', 'DIKIRIM']) ?? $suratJalan->waktu_ttd_pembuat;
+                $pengembalianKirimAt = $suratJalan->tipe === 'PENGEMBALIAN'
+                    ? ($historyTime(['DIKEMBALIKAN']) ?? $peminjaman?->waktu_pengembalian)
+                    : null;
+                $waktuKirim = $suratJalan->tipe === 'PENGEMBALIAN'
+                    ? $pengembalianKirimAt
+                    : $peminjaman?->waktu_kirim;
             @endphp
 
             <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6" data-surat-jalan-header>
@@ -202,8 +222,8 @@
                             <dt class="text-slate-500">Tanda Tangan Persetujuan</dt>
                             <dd class="font-semibold text-slate-900">
                                 {{ $suratJalan->ttdPembuat->name ?? '-' }}
-                                @if($suratJalan->waktu_ttd_pembuat)
-                                    <div class="text-xs text-slate-500">{{ $suratJalan->waktu_ttd_pembuat->format('d M Y H:i') }}</div>
+                                @if($approvalTime)
+                                    <div class="text-xs text-slate-500">{{ $approvalTime->format('d M Y H:i') }}</div>
                                 @endif
                             </dd>
                         </div>
@@ -224,8 +244,8 @@
                             <p class="font-semibold text-slate-900" data-peminjaman-status>{{ $peminjaman->status }}</p>
                         </div>
                         <div>
-                            <p class="text-slate-500">Waktu Kirim</p>
-                            <p class="font-semibold text-slate-900">{{ $peminjaman->waktu_kirim?->format('d M Y H:i') ?? '-' }}</p>
+                            <p class="text-slate-500">{{ $suratJalan->tipe === 'PENGEMBALIAN' ? 'Waktu Pengembalian' : 'Waktu Kirim' }}</p>
+                            <p class="font-semibold text-slate-900">{{ $waktuKirim?->format('d M Y H:i') ?? '-' }}</p>
                         </div>
                     </div>
                 </div>

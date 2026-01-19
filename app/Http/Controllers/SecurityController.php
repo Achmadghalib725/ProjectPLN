@@ -27,7 +27,7 @@ class SecurityController extends Controller
         $nomor = $request->input('nomor');
 
         $nomorLower = strtolower($nomor);
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item', 'statusHistories.actor'])
             ->whereRaw('LOWER(nomor) LIKE ?', ['%' . $nomorLower . '%'])
             ->first();
 
@@ -37,28 +37,32 @@ class SecurityController extends Controller
 
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
-            $peminjaman = Peminjaman::with([
-                'suratJalanKirim.gudangAsal',
-                'suratJalanKirim.gudangTujuan',
-                'suratJalanKirim.pembuat',
-                'suratJalanKembali.gudangAsal',
-                'suratJalanKembali.gudangTujuan',
-                'suratJalanKembali.pembuat',
-                'gudangPeminjam',
-                'gudangPemilik',
-            ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
-        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-            $peminjaman = Peminjaman::with([
-                'suratJalanKirim.gudangAsal',
-                'suratJalanKirim.gudangTujuan',
-                'suratJalanKirim.pembuat',
-                'suratJalanKembali.gudangAsal',
-                'suratJalanKembali.gudangTujuan',
-                'suratJalanKembali.pembuat',
-                'gudangPeminjam',
-                'gudangPemilik',
-            ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
-        }
+                $peminjaman = Peminjaman::with([
+                    'suratJalanKirim.gudangAsal',
+                    'suratJalanKirim.gudangTujuan',
+                    'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
+                    'suratJalanKembali.gudangAsal',
+                    'suratJalanKembali.gudangTujuan',
+                    'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
+                    'gudangPeminjam',
+                    'gudangPemilik',
+                ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+            } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::with([
+                    'suratJalanKirim.gudangAsal',
+                    'suratJalanKirim.gudangTujuan',
+                    'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
+                    'suratJalanKembali.gudangAsal',
+                    'suratJalanKembali.gudangTujuan',
+                    'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
+                    'gudangPeminjam',
+                    'gudangPemilik',
+                ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            }
 
         return view('security.detail', compact('suratJalan', 'peminjaman'));
     }
@@ -68,33 +72,37 @@ class SecurityController extends Controller
      */
     public function show($id)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item', 'pembuat'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item', 'pembuat', 'statusHistories.actor'])
             ->findOrFail($id);
 
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
-            $peminjaman = Peminjaman::with([
-                'suratJalanKirim.gudangAsal',
-                'suratJalanKirim.gudangTujuan',
-                'suratJalanKirim.pembuat',
-                'suratJalanKembali.gudangAsal',
-                'suratJalanKembali.gudangTujuan',
-                'suratJalanKembali.pembuat',
-                'gudangPeminjam',
-                'gudangPemilik',
-            ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
-        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-            $peminjaman = Peminjaman::with([
-                'suratJalanKirim.gudangAsal',
-                'suratJalanKirim.gudangTujuan',
-                'suratJalanKirim.pembuat',
-                'suratJalanKembali.gudangAsal',
-                'suratJalanKembali.gudangTujuan',
-                'suratJalanKembali.pembuat',
-                'gudangPeminjam',
-                'gudangPemilik',
-            ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
-        }
+                $peminjaman = Peminjaman::with([
+                    'suratJalanKirim.gudangAsal',
+                    'suratJalanKirim.gudangTujuan',
+                    'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
+                    'suratJalanKembali.gudangAsal',
+                    'suratJalanKembali.gudangTujuan',
+                    'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
+                    'gudangPeminjam',
+                    'gudangPemilik',
+                ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+            } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::with([
+                    'suratJalanKirim.gudangAsal',
+                    'suratJalanKirim.gudangTujuan',
+                    'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
+                    'suratJalanKembali.gudangAsal',
+                    'suratJalanKembali.gudangTujuan',
+                    'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
+                    'gudangPeminjam',
+                    'gudangPemilik',
+                ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            }
 
         return view('security.detail', compact('suratJalan', 'peminjaman'));
     }
@@ -104,35 +112,39 @@ class SecurityController extends Controller
      */
     public function showByToken($id, $token)
     {
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item', 'pembuat'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'picTujuan', 'items.item', 'pembuat', 'statusHistories.actor'])
             ->where('id', $id)
             ->where('qr_token', $token)
             ->firstOrFail();
 
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
-            $peminjaman = Peminjaman::with([
-                'suratJalanKirim.gudangAsal',
-                'suratJalanKirim.gudangTujuan',
-                'suratJalanKirim.pembuat',
-                'suratJalanKembali.gudangAsal',
-                'suratJalanKembali.gudangTujuan',
-                'suratJalanKembali.pembuat',
-                'gudangPeminjam',
-                'gudangPemilik',
-            ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
-        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-            $peminjaman = Peminjaman::with([
-                'suratJalanKirim.gudangAsal',
-                'suratJalanKirim.gudangTujuan',
-                'suratJalanKirim.pembuat',
-                'suratJalanKembali.gudangAsal',
-                'suratJalanKembali.gudangTujuan',
-                'suratJalanKembali.pembuat',
-                'gudangPeminjam',
-                'gudangPemilik',
-            ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
-        }
+                $peminjaman = Peminjaman::with([
+                    'suratJalanKirim.gudangAsal',
+                    'suratJalanKirim.gudangTujuan',
+                    'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
+                    'suratJalanKembali.gudangAsal',
+                    'suratJalanKembali.gudangTujuan',
+                    'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
+                    'gudangPeminjam',
+                    'gudangPemilik',
+                ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+            } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::with([
+                    'suratJalanKirim.gudangAsal',
+                    'suratJalanKirim.gudangTujuan',
+                    'suratJalanKirim.pembuat',
+                    'suratJalanKirim.statusHistories.actor',
+                    'suratJalanKembali.gudangAsal',
+                    'suratJalanKembali.gudangTujuan',
+                    'suratJalanKembali.pembuat',
+                    'suratJalanKembali.statusHistories.actor',
+                    'gudangPeminjam',
+                    'gudangPemilik',
+                ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+            }
 
         return view('security.detail', compact('suratJalan', 'peminjaman'));
     }
@@ -240,8 +252,10 @@ class SecurityController extends Controller
 
                         // Sync status surat jalan peminjaman (kirim)
                         if ($peminjaman->surat_jalan_kirim_id) {
-                            SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                                ->update(['status' => 'DIKEMBALIKAN']);
+                            $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
+                            if ($suratJalanKirim) {
+                                $suratJalanKirim->update(['status' => 'DIKEMBALIKAN']);
+                            }
                         }
                     }
                 }
@@ -262,8 +276,10 @@ class SecurityController extends Controller
 
                     // Sync status surat jalan peminjaman (kirim)
                     if ($peminjaman->surat_jalan_kirim_id) {
-                        SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                            ->update(['status' => 'DIPERIKSA']);
+                        $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
+                        if ($suratJalanKirim) {
+                            $suratJalanKirim->update(['status' => 'DIPERIKSA']);
+                        }
                     }
                 }
             }
@@ -378,9 +394,10 @@ class SecurityController extends Controller
 
                     // Sync status surat jalan peminjaman (kirim)
                     if ($peminjaman->surat_jalan_kirim_id) {
-                        SuratJalan::where('id', $peminjaman->surat_jalan_kirim_id)
-                            ->where('status', 'DIKEMBALIKAN')
-                            ->update(['status' => 'DITERIMA']);
+                        $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
+                        if ($suratJalanKirim && $suratJalanKirim->status === 'DIKEMBALIKAN') {
+                            $suratJalanKirim->update(['status' => 'DITERIMA']);
+                        }
                     }
                 }
             }
