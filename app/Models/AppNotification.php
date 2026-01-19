@@ -87,10 +87,38 @@ class AppNotification extends Model
     }
 
     // Create notification for operators of a gudang
-    public static function notifyGudangOperators(int $gudangId, string $type, string $title, string $message, ?int $suratJalanId = null, ?string $url = null): void
+    public static function notifyGudangOperators(
+        int $gudangId,
+        string $type,
+        string $title,
+        string $message,
+        ?int $suratJalanId = null,
+        ?string $url = null,
+        ?array $roles = null,
+        ?string $penerimaJabatan = null
+    ): void
     {
+        $roles = $roles ?: ['operator_gudang', 'penerima'];
+        if (empty($roles)) {
+            return;
+        }
+
         $operators = User::where('gudang_id', $gudangId)
-            ->whereIn('role', ['operator_gudang', 'penerima'])
+            ->whereIn('role', $roles)
+            ->when($penerimaJabatan !== null && in_array('penerima', $roles, true), function ($query) use ($penerimaJabatan) {
+                $jabatan = strtolower(trim($penerimaJabatan));
+                if ($jabatan === '') {
+                    $query->where('role', '!=', 'penerima');
+                    return;
+                }
+                $query->where(function ($subQuery) use ($jabatan) {
+                    $subQuery->where('role', '!=', 'penerima')
+                        ->orWhere(function ($penerimaQuery) use ($jabatan) {
+                            $penerimaQuery->where('role', 'penerima')
+                                ->whereRaw('LOWER(jabatan) = ?', [$jabatan]);
+                        });
+                });
+            })
             ->get();
 
         foreach ($operators as $operator) {
@@ -104,5 +132,33 @@ class AppNotification extends Model
                 'link' => $url, // Support both columns
             ]);
         }
+    }
+
+    public static function notifyUser(
+        int $userId,
+        string $type,
+        string $title,
+        string $message,
+        ?int $suratJalanId = null,
+        ?string $url = null
+    ): void {
+        $exists = self::query()
+            ->where('user_id', $userId)
+            ->where('type', $type)
+            ->where('surat_jalan_id', $suratJalanId)
+            ->exists();
+        if ($exists) {
+            return;
+        }
+
+        self::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'surat_jalan_id' => $suratJalanId,
+            'url' => $url,
+            'link' => $url, // Support both columns
+        ]);
     }
 }
