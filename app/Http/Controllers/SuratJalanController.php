@@ -805,38 +805,40 @@ class SuratJalanController extends Controller
     public function show(Request $request, $id)
     {
         $loadDetail = function () use ($id) {
-            $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments', 'statusHistories.actor'])
+            $withStatusHistories = Schema::hasTable('surat_jalan_status_histories');
+            $suratJalanRelations = ['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'];
+            if ($withStatusHistories) {
+                $suratJalanRelations[] = 'statusHistories.actor';
+            }
+
+            $suratJalan = SuratJalan::with($suratJalanRelations)
                 ->findOrFail($id);
 
             $peminjaman = null;
+            $peminjamanRelations = [
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+                'items.item',
+            ];
+            if ($withStatusHistories) {
+                $peminjamanRelations[] = 'suratJalanKirim.statusHistories.actor';
+                $peminjamanRelations[] = 'suratJalanKembali.statusHistories.actor';
+            }
+
             if ($suratJalan->tipe === 'PEMINJAMAN') {
-                $peminjaman = Peminjaman::with([
-                    'suratJalanKirim.gudangAsal',
-                    'suratJalanKirim.gudangTujuan',
-                    'suratJalanKirim.pembuat',
-                    'suratJalanKirim.statusHistories.actor',
-                    'suratJalanKembali.gudangAsal',
-                    'suratJalanKembali.gudangTujuan',
-                    'suratJalanKembali.pembuat',
-                    'suratJalanKembali.statusHistories.actor',
-                    'gudangPeminjam',
-                    'gudangPemilik',
-                    'items.item',
-                ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with($peminjamanRelations)
+                    ->where('surat_jalan_kirim_id', $suratJalan->id)
+                    ->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-                $peminjaman = Peminjaman::with([
-                    'suratJalanKirim.gudangAsal',
-                    'suratJalanKirim.gudangTujuan',
-                    'suratJalanKirim.pembuat',
-                    'suratJalanKirim.statusHistories.actor',
-                    'suratJalanKembali.gudangAsal',
-                    'suratJalanKembali.gudangTujuan',
-                    'suratJalanKembali.pembuat',
-                    'suratJalanKembali.statusHistories.actor',
-                    'gudangPeminjam',
-                    'gudangPemilik',
-                    'items.item',
-                ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with($peminjamanRelations)
+                    ->where('surat_jalan_kembali_id', $suratJalan->id)
+                    ->first();
             }
 
             return [$suratJalan, $peminjaman];
@@ -1331,13 +1333,7 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak meminta persetujuan surat jalan gudang lain.');
         }
 
-        if ($suratJalan->status === 'DITOLAK') {
-            return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Surat Jalan ini ditolak oleh security. Silakan edit terlebih dahulu sebelum ajukan ulang.');
-        }
-
-        if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true)) {
+        if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true)) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini tidak dapat diajukan untuk persetujuan.');
@@ -1370,13 +1366,23 @@ class SuratJalanController extends Controller
                 ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
         }
 
-        // Reset catatan penolakan jika diajukan ulang dari status DITOLAK
+        $wasSecurityRejected = $suratJalan->status === 'DITOLAK';
+
+        // Reset catatan penolakan jika diajukan ulang dari status DITOLAK/DITOLAK_PERSETUJUAN
         $updateData = ['status' => 'MENUNGGU_PERSETUJUAN'];
         if (in_array($suratJalan->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN'], true)) {
             $updateData['catatan_penolakan'] = null;
         }
+        if ($wasSecurityRejected) {
+            $updateData['catatan'] = $this->stripSecurityRejectTags($suratJalan->catatan);
+            $updateData['ttd_pembuat_id'] = null;
+            $updateData['waktu_ttd_pembuat'] = null;
+        }
 
         $suratJalan->update($updateData);
+        if ($wasSecurityRejected) {
+            $this->resetSuratJalanAfterSecurityReject($suratJalan);
+        }
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);

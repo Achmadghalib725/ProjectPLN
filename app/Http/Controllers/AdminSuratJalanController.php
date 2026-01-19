@@ -1316,13 +1316,7 @@ class AdminSuratJalanController extends Controller
             abort(403, 'Anda tidak berhak meminta persetujuan surat jalan gudang lain.');
         }
 
-        if ($suratJalan->status === 'DITOLAK') {
-            return redirect()
-                ->route('admin.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Surat Jalan ini ditolak oleh security. Silakan edit terlebih dahulu sebelum ajukan ulang.');
-        }
-
-        if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true)) {
+        if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true)) {
             return redirect()
                 ->route('admin.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini tidak dapat diajukan untuk persetujuan.');
@@ -1355,6 +1349,8 @@ class AdminSuratJalanController extends Controller
                 ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
         }
 
+        $wasSecurityRejected = $suratJalan->status === 'DITOLAK';
+
         // Reset TTD, hash, dan catatan penolakan jika diajukan ulang dari status DITOLAK
         $updateData = ['status' => 'MENUNGGU_PERSETUJUAN'];
         if (in_array($suratJalan->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN'], true)) {
@@ -1368,8 +1364,16 @@ class AdminSuratJalanController extends Controller
             $updateData['signature_hash_penerima'] = null;
             $updateData['signature_metadata_penerima'] = null;
         }
+        if ($wasSecurityRejected) {
+            $updateData['catatan'] = $this->stripSecurityRejectTags($suratJalan->catatan);
+            $updateData['ttd_pembuat_id'] = null;
+            $updateData['waktu_ttd_pembuat'] = null;
+        }
 
         $suratJalan->update($updateData);
+        if ($wasSecurityRejected) {
+            $this->resetSuratJalanAfterSecurityReject($suratJalan);
+        }
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
