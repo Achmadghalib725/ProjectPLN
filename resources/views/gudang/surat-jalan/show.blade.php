@@ -472,8 +472,8 @@
                         @php
                             $rejectTitle = 'Surat Jalan Ditolak oleh Security';
                             $rejectReason = null;
-                            $catatanText = (string) ($suratJalan->catatan ?? '');
-                            if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                            $catatanPenolakan = (string) ($suratJalan->catatan_penolakan ?? '');
+                            if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
                                 $rejectStage = strtolower($matches[1] ?? '');
                                 $rejectReason = trim($matches[2] ?? '');
                                 if ($rejectStage === 'pengirim') {
@@ -649,12 +649,14 @@
             @else
             {{-- DRAFT Status Card with Blurred Progress Background --}}
             @php
-                $securityRejectMessage = null;
+                $rejectMessage = null;
+                $catatanPenolakan = (string) ($suratJalan->catatan_penolakan ?? '');
+
                 if ($suratStatus === 'DITOLAK') {
+                    // Security rejection
                     $rejectStageLabel = 'security';
                     $rejectReason = null;
-                    $catatanText = (string) ($suratJalan->catatan ?? '');
-                    if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                    if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
                         $rejectStage = strtolower($matches[1] ?? '');
                         $rejectReason = trim($matches[2] ?? '');
                         if ($rejectStage === 'pengirim') {
@@ -663,13 +665,25 @@
                             $rejectStageLabel = 'security penerima';
                         }
                     }
-                    $securityRejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
+                    $rejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
                     if ($rejectReason) {
-                        $securityRejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                        $rejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    }
+                } elseif ($suratStatus === 'DITOLAK_PERSETUJUAN') {
+                    // Manager rejection
+                    $rejectReason = null;
+                    if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK PERSETUJUAN:\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
+                        $rejectReason = trim($matches[1] ?? '');
+                    }
+                    $rejectMessage = 'Status: DITOLAK PERSETUJUAN - Ditolak oleh manager.';
+                    if ($rejectReason) {
+                        $rejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    } else {
+                        $rejectMessage .= ' Silakan perbaiki dan ajukan ulang.';
                     }
                 }
 
-                $draftMessage = $securityRejectMessage ?? match ($suratStatus) {
+                $draftMessage = $rejectMessage ?? match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
                     'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
                     'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
@@ -1400,7 +1414,7 @@
                         <div class="flex flex-col sm:flex-row items-center gap-4">
                             {{-- Action Buttons --}}
                             <div class="flex items-center gap-2">
-                                <button type="button" data-camera-open class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                                <button type="button" data-camera-open class="md:hidden inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
                                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
