@@ -1023,7 +1023,7 @@
 
                     <div x-show="mode === 'peminjaman'">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kembali</label>
-                        <input type="date" name="tanggal_kembali" min="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
+                        <input type="date" name="tanggal_kembali" class="w-full rounded-md border-gray-300">
                     </div>
 
                     <div>
@@ -1319,11 +1319,15 @@
                 selectedPic: @js(old('pic_tujuan_id', '')),
                 labelPic: '',
                 picOpen: false,
+                tanggalKirim: @js(old('tanggal_kirim', now()->toDateString())),
                 peminjamans: @js(($activePeminjamans ?? collect())->map(fn($p) => [
                     'id' => $p->id,
                     'kode' => $p->kode,
                     'gudang_pemilik_id' => $p->gudang_pemilik_id,
                     'gudang_pemilik_nama' => $p->gudangPemilik->nama ?? '-',
+                    'batas_waktu_kembali' => $p->batas_waktu_kembali?->format('Y-m-d'),
+                    'tanggal_kirim' => $p->suratJalanKirim?->tanggal?->format('Y-m-d')
+                        ?? $p->waktu_kirim?->format('Y-m-d'),
                     'items' => $p->items->map(fn($item) => [
                         'kode' => $item->item->kode ?? '-',
                         'nama' => $item->item->nama ?? 'Item',
@@ -1359,8 +1363,16 @@
                         this.selectedPic = '';
                         this.labelPic = '';
                     }
+                    const peminjaman = this.selectedPeminjaman();
+                    if (peminjaman?.batas_waktu_kembali) {
+                        this.tanggalKirim = peminjaman.batas_waktu_kembali;
+                    } else if (peminjaman?.tanggal_kirim) {
+                        this.tanggalKirim = peminjaman.tanggal_kirim;
+                    }
                 }
-             }">
+             }"
+             x-init="handlePeminjamanChange()"
+             x-effect="selectedPeminjamanId && handlePeminjamanChange()">
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h3 class="text-lg font-bold text-gray-900">Pengembalian Peminjaman Barang</h3>
@@ -1438,8 +1450,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
                         <input type="date"
                                name="tanggal_kirim"
-                               value="{{ old('tanggal_kirim', now()->toDateString()) }}"
-                               min="{{ date('Y-m-d') }}"
+                               x-model="tanggalKirim"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 
