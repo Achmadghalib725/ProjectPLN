@@ -10,8 +10,8 @@
             metaSuccess: '',
             categories: [],
             units: [],
-            categoryOptions: @js($categories),
-            unitOptions: @js($satuans),
+            categoryOptions: @js($categories->map(fn($c) => ['id' => $c->id, 'nama' => $c->nama])),
+            unitOptions: @js($satuans->map(fn($s) => ['id' => $s->id, 'nama' => $s->nama])),
             newCategoryName: '',
             newUnitName: '',
             showDeleteConfirm: false,
@@ -26,8 +26,9 @@
                 id: @js(old('id')),
                 kode: @js(old('kode')),
                 nama: @js(old('nama')),
-                kategori: @js(old('kategori')),
-                satuan: @js(old('satuan')),
+                kategori_id: @js(old('kategori_id')),
+                satuan_id: @js(old('satuan_id')),
+                tipe: @js(old('tipe', 'mekanik')),
                 deskripsi: @js(old('deskripsi')),
             },
             searchTerm: @js(old('search_term')),
@@ -37,6 +38,7 @@
                 nama: '',
                 kategori: '',
                 satuan: '',
+                tipe: '',
                 deskripsi: '',
             },
             get normalizedSearch() {
@@ -59,7 +61,7 @@
             },
             openCreate() {
                 this.isEdit = false;
-                this.form = { id: '', kode: '', nama: '', kategori: '', satuan: '', deskripsi: '' };
+                this.form = { id: '', kode: '', nama: '', kategori_id: '', satuan_id: '', tipe: 'mekanik', deskripsi: '' };
                 this.searchTerm = '';
                 this.kategoriSearch = '';
                 this.satuanSearch = '';
@@ -69,7 +71,15 @@
             },
             openEdit(item) {
                 this.isEdit = true;
-                this.form = { ...item };
+                this.form = {
+                    id: item.id,
+                    kode: item.kode,
+                    nama: item.nama,
+                    kategori_id: item.kategori_id,
+                    satuan_id: item.satuan_id,
+                    tipe: item.tipe,
+                    deskripsi: item.deskripsi
+                };
                 this.searchTerm = '';
                 this.kategoriSearch = item.kategori || '';
                 this.satuanSearch = item.satuan || '';
@@ -83,6 +93,7 @@
                     nama: item.nama || '-',
                     kategori: item.kategori || '-',
                     satuan: item.satuan || '-',
+                    tipe: item.tipe || 'mekanik',
                     deskripsi: item.deskripsi || '',
                 };
                 this.showModal = false;
@@ -125,8 +136,8 @@
                         this.categories.push(data.data);
                         this.categories.sort((a, b) => a.nama.localeCompare(b.nama));
                         // Update categoryOptions for combobox and filter
-                        this.categoryOptions.push(data.data.nama);
-                        this.categoryOptions.sort((a, b) => a.localeCompare(b));
+                        this.categoryOptions.push({ id: data.data.id, nama: data.data.nama });
+                        this.categoryOptions.sort((a, b) => a.nama.localeCompare(b.nama));
                         this.newCategoryName = '';
                         this.metaSuccess = data.message;
                         setTimeout(() => this.metaSuccess = '', 3000);
@@ -154,12 +165,9 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        const deletedNama = this.categories.find(c => c.id === id)?.nama;
                         this.categories = this.categories.filter(c => c.id !== id);
                         // Update categoryOptions for combobox and filter
-                        if (deletedNama) {
-                            this.categoryOptions = this.categoryOptions.filter(n => n.toLowerCase() !== deletedNama.toLowerCase());
-                        }
+                        this.categoryOptions = this.categoryOptions.filter(opt => opt.id !== id);
                         this.metaSuccess = data.message;
                         setTimeout(() => this.metaSuccess = '', 3000);
                     } else {
@@ -189,8 +197,8 @@
                         this.units.push(data.data);
                         this.units.sort((a, b) => a.nama.localeCompare(b.nama));
                         // Update unitOptions for combobox
-                        this.unitOptions.push(data.data.nama);
-                        this.unitOptions.sort((a, b) => a.localeCompare(b));
+                        this.unitOptions.push({ id: data.data.id, nama: data.data.nama });
+                        this.unitOptions.sort((a, b) => a.nama.localeCompare(b.nama));
                         this.newUnitName = '';
                         this.metaSuccess = data.message;
                         setTimeout(() => this.metaSuccess = '', 3000);
@@ -218,12 +226,9 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        const deletedNama = this.units.find(u => u.id === id)?.nama;
                         this.units = this.units.filter(u => u.id !== id);
                         // Update unitOptions for combobox
-                        if (deletedNama) {
-                            this.unitOptions = this.unitOptions.filter(n => n.toLowerCase() !== deletedNama.toLowerCase());
-                        }
+                        this.unitOptions = this.unitOptions.filter(opt => opt.id !== id);
                         this.metaSuccess = data.message;
                         setTimeout(() => this.metaSuccess = '', 3000);
                     } else {
@@ -250,21 +255,21 @@
             get filteredKategori() {
                 const search = (this.kategoriSearch || '').toLowerCase();
                 if (!search) return this.categoryOptions;
-                return this.categoryOptions.filter(opt => opt && opt.toLowerCase().includes(search));
+                return this.categoryOptions.filter(opt => opt && opt.nama && opt.nama.toLowerCase().includes(search));
             },
             get filteredSatuan() {
                 const search = (this.satuanSearch || '').toLowerCase();
                 if (!search) return this.unitOptions;
-                return this.unitOptions.filter(opt => opt && opt.toLowerCase().includes(search));
+                return this.unitOptions.filter(opt => opt && opt.nama && opt.nama.toLowerCase().includes(search));
             },
-            selectKategori(value) {
-                this.kategoriSearch = value;
-                this.form.kategori = value;
+            selectKategori(option) {
+                this.kategoriSearch = option.nama;
+                this.form.kategori_id = option.id;
                 this.kategoriOpen = false;
             },
-            selectSatuan(value) {
-                this.satuanSearch = value;
-                this.form.satuan = value;
+            selectSatuan(option) {
+                this.satuanSearch = option.nama;
+                this.form.satuan_id = option.id;
                 this.satuanOpen = false;
             }
          }"
@@ -387,9 +392,9 @@
                         <div class="flex items-center space-x-3 w-full md:w-auto">
                             <select name="kategori" onchange="this.form.submit()" class="border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-[#035b71] focus:border-[#035b71] block w-full md:w-48 p-2.5 cursor-pointer hover:bg-gray-50 transition-colors">
                                 <option value="">Semua Kategori</option>
-                                <template x-for="cat in categoryOptions" :key="cat">
-                                    <option :value="cat" :selected="'{{ request('kategori') }}' === cat" x-text="cat"></option>
-                                </template>
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat->id }}" {{ request('kategori') == $cat->id ? 'selected' : '' }}>{{ ucfirst($cat->nama) }}</option>
+                                @endforeach
                             </select>
 
                             @if(request('search') || request('kategori'))
@@ -408,6 +413,7 @@
                             <tr>
                                 <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Informasi Barang</th>
                                 <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
+                                <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
                                 <th scope="col" class="px-4 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
                                 <th scope="col" class="px-4 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
@@ -420,20 +426,38 @@
                                     <div class="text-xs text-gray-500">{{ $item->kode ?? '-' }}</div>
                                 </td>
                                 <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
-                                    {{ ucfirst($item->kategori ?? '-') }}
+                                    {{ ucfirst($item->kategori?->nama ?? '-') }}
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    <span class="text-xs text-gray-600">
+                                        {{ ucfirst($item->tipe ?? 'mekanik') }}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
-                                    {{ $item->satuan }}
+                                    {{ $item->satuan?->nama ?? '-' }}
                                 </td>
                                 <td class="px-4 py-2 whitespace-nowrap text-center text-sm font-medium">
                                     <div class="flex items-center justify-center space-x-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <button @click='openDetail(@json($item))' class="text-blue-600 hover:text-blue-900 p-1.5 rounded-md transition-all duration-200" title="Lihat Detail">
+                                        @php
+                                            $itemData = [
+                                                'id' => $item->id,
+                                                'kode' => $item->kode,
+                                                'nama' => $item->nama,
+                                                'kategori_id' => $item->kategori_id,
+                                                'kategori' => $item->kategori?->nama,
+                                                'satuan_id' => $item->satuan_id,
+                                                'satuan' => $item->satuan?->nama,
+                                                'tipe' => $item->tipe,
+                                                'deskripsi' => $item->deskripsi,
+                                            ];
+                                        @endphp
+                                        <button @click='openDetail(@json($itemData))' class="text-blue-600 hover:text-blue-900 p-1.5 rounded-md transition-all duration-200" title="Lihat Detail">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                             </svg>
                                         </button>
-                                        <button @click='openEdit(@json($item))' class="text-yellow-600 hover:text-yellow-900 p-1.5 rounded-md transition-all duration-200" title="Edit Barang">
+                                        <button @click='openEdit(@json($itemData))' class="text-yellow-600 hover:text-yellow-900 p-1.5 rounded-md transition-all duration-200" title="Edit Barang">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
@@ -454,7 +478,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                                <td colspan="5" class="px-6 py-10 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                                         <p class="text-base font-medium">Belum ada data barang ditemukan.</p>
@@ -566,68 +590,94 @@
 
                             {{-- Kategori --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Kategori</label>
+                                <label class="block text-sm font-medium text-gray-700">Kategori *</label>
+                                <input type="hidden" name="kategori_id" x-model="form.kategori_id">
                                 <div class="relative" @click.outside="kategoriOpen = false">
                                     <input type="text"
-                                           name="kategori"
                                            x-model="kategoriSearch"
-                                           @focus="kategoriOpen = true; kategoriSearch = form.kategori || ''"
-                                           @input="form.kategori = kategoriSearch; kategoriOpen = true"
+                                           @focus="kategoriOpen = true"
+                                           @input="kategoriOpen = true"
                                            @keydown.escape="kategoriOpen = false"
                                            @keydown.tab="kategoriOpen = false"
-                                           required
                                            autocomplete="off"
                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
-                                           placeholder="Ketik atau pilih kategori...">
+                                           placeholder="Pilih kategori...">
                                     <button type="button" @click="kategoriOpen = !kategoriOpen" class="absolute inset-y-0 right-0 flex items-center pr-3">
                                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                         </svg>
                                     </button>
-                                    <div x-show="kategoriOpen && filteredKategori.length > 0"
+                                    <div x-show="kategoriOpen"
                                          x-transition
                                          class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                        <template x-for="option in filteredKategori" :key="option">
+                                        <template x-for="option in filteredKategori" :key="option.id">
                                             <div @click="selectKategori(option)"
                                                  class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
-                                                 x-text="option"></div>
+                                                 :class="form.kategori_id == option.id ? 'bg-cyan-50 text-cyan-700' : ''"
+                                                 x-text="option.nama"></div>
                                         </template>
+                                        <div x-show="filteredKategori.length === 0" class="px-4 py-3 text-sm text-gray-500">
+                                            <span x-show="categoryOptions.length === 0">Belum ada kategori. Buat di menu "Kelola Kategori & Satuan"</span>
+                                            <span x-show="categoryOptions.length > 0">Tidak ditemukan</span>
+                                        </div>
                                     </div>
                                 </div>
-                                @error('kategori') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                @error('kategori_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- Satuan --}}
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Satuan</label>
+                                <label class="block text-sm font-medium text-gray-700">Satuan *</label>
+                                <input type="hidden" name="satuan_id" x-model="form.satuan_id">
                                 <div class="relative" @click.outside="satuanOpen = false">
                                     <input type="text"
-                                           name="satuan"
                                            x-model="satuanSearch"
-                                           @focus="satuanOpen = true; satuanSearch = form.satuan || ''"
-                                           @input="form.satuan = satuanSearch; satuanOpen = true"
+                                           @focus="satuanOpen = true"
+                                           @input="satuanOpen = true"
                                            @keydown.escape="satuanOpen = false"
                                            @keydown.tab="satuanOpen = false"
-                                           required
                                            autocomplete="off"
                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
-                                           placeholder="Ketik atau pilih satuan...">
+                                           placeholder="Pilih satuan...">
                                     <button type="button" @click="satuanOpen = !satuanOpen" class="absolute inset-y-0 right-0 flex items-center pr-3">
                                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                         </svg>
                                     </button>
-                                    <div x-show="satuanOpen && filteredSatuan.length > 0"
+                                    <div x-show="satuanOpen"
                                          x-transition
                                          class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                        <template x-for="option in filteredSatuan" :key="option">
+                                        <template x-for="option in filteredSatuan" :key="option.id">
                                             <div @click="selectSatuan(option)"
                                                  class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
-                                                 x-text="option"></div>
+                                                 :class="form.satuan_id == option.id ? 'bg-cyan-50 text-cyan-700' : ''"
+                                                 x-text="option.nama"></div>
                                         </template>
+                                        <div x-show="filteredSatuan.length === 0" class="px-4 py-3 text-sm text-gray-500">
+                                            <span x-show="unitOptions.length === 0">Belum ada satuan. Buat di menu "Kelola Kategori & Satuan"</span>
+                                            <span x-show="unitOptions.length > 0">Tidak ditemukan</span>
+                                        </div>
                                     </div>
                                 </div>
-                                @error('satuan') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                @error('satuan_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            {{-- Tipe Barang --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Tipe Barang *</label>
+                                <div class="mt-2 flex gap-4">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="tipe" value="mekanik" x-model="form.tipe"
+                                               class="w-4 h-4 text-[#035b71] border-gray-300 focus:ring-[#035b71]">
+                                        <span class="ml-2 text-sm text-gray-700">Mekanik</span>
+                                    </label>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="tipe" value="listrik" x-model="form.tipe"
+                                               class="w-4 h-4 text-[#035b71] border-gray-300 focus:ring-[#035b71]">
+                                        <span class="ml-2 text-sm text-gray-700">Listrik</span>
+                                    </label>
+                                </div>
+                                @error('tipe') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- Deskripsi --}}
@@ -686,6 +736,10 @@
                             <div>
                                 <p class="text-gray-500">Kategori</p>
                                 <p class="font-medium text-gray-900" x-text="detail.kategori"></p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500">Tipe</p>
+                                <p class="font-medium text-gray-900" x-text="detail.tipe === 'mekanik' ? 'Mekanik' : 'Listrik'"></p>
                             </div>
                             <div>
                                 <p class="text-gray-500">Satuan</p>

@@ -186,7 +186,7 @@
 
                 // Set selected item untuk create-stock modal via custom event
                 window.dispatchEvent(new CustomEvent('preset-stock-item', {
-                    detail: { id: item.id, nama: item.nama, kategori: item.kategori }
+                    detail: { id: item.id, nama: item.nama, kategori: item.kategori, tipe: item.tipe || 'mekanik' }
                 }));
 
                 this.$dispatch('close-modal', 'create-item');
@@ -231,7 +231,7 @@
                                 :class="availableIds.includes(item.id) ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'"
                                 :disabled="!availableIds.includes(item.id)">
                             <div class="font-semibold" x-text="item.nama"></div>
-                            <div class="text-xs text-gray-500" x-text="`${item.kode || '-'} • ${item.kategori || '-'} • ${item.satuan || '-'}`"></div>
+                            <div class="text-xs text-gray-500" x-text="`${item.kode || '-'} · ${item.kategori || '-'} · ${item.satuan || '-'} · ${(item.tipe || 'mekanik') === 'mekanik' ? 'Mekanik' : 'Listrik'}`"></div>
                             <div class="text-xs text-gray-500 mt-1" x-show="!availableIds.includes(item.id)">
                                 Sudah ada di gudang
                             </div>
@@ -277,96 +277,144 @@
 
                     <div class="space-y-2" x-data="{
                         open: false,
-                        search: '{{ old('kategori') }}',
-                        options: @js($allItems->pluck('kategori')->unique()->filter()->values()),
+                        search: '',
+                        selectedId: @js(old('kategori_id', '')),
+                        options: @js($categories->map(fn($c) => ['id' => $c->id, 'nama' => $c->nama])),
+                        init() {
+                            if (this.selectedId) {
+                                const found = this.options.find(o => o.id == this.selectedId);
+                                if (found) this.search = found.nama;
+                            }
+                        },
                         get filtered() {
                             if (!this.search) return this.options;
-                            return this.options.filter(opt => opt.toLowerCase().includes(this.search.toLowerCase()));
+                            return this.options.filter(opt => opt.nama.toLowerCase().includes(this.search.toLowerCase()));
                         },
-                        select(value) {
-                            this.search = value;
+                        select(option) {
+                            this.search = option.nama;
+                            this.selectedId = option.id;
                             this.open = false;
                         }
                     }">
                         <x-input-label for="kategori" :value="'Kategori *'" class="text-gray-700 font-semibold" />
+                        <input type="hidden" name="kategori_id" x-model="selectedId">
                         <div class="relative" @click.outside="open = false">
                             <input type="text"
                                    id="kategori"
-                                   name="kategori"
                                    x-model="search"
                                    @focus="open = true"
                                    @click="open = true"
-                                   @input="open = true"
+                                   @input="open = true; selectedId = ''"
                                    @keydown.escape="open = false"
                                    @keydown.tab="open = false"
                                    autocomplete="off"
                                    class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all"
-                                   placeholder="Ketik atau pilih kategori..."
-                                   required />
+                                   placeholder="Pilih kategori..."
+                                   readonly />
                             <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                 </svg>
                             </button>
-                            <div x-show="open && filtered.length > 0"
+                            <div x-show="open && options.length > 0"
                                  x-transition
                                  class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                <template x-for="option in filtered" :key="option">
+                                <template x-for="option in filtered" :key="option.id">
                                     <div @click="select(option)"
                                          class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
-                                         x-text="option"></div>
+                                         x-text="option.nama"></div>
                                 </template>
+                                <div x-show="filtered.length === 0" class="px-4 py-2 text-sm text-gray-500">Tidak ada kategori ditemukan</div>
+                            </div>
+                            <div x-show="open && options.length === 0"
+                                 x-transition
+                                 class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-4">
+                                <p class="text-sm text-gray-500">Belum ada kategori. Tambahkan melalui menu Admin.</p>
                             </div>
                         </div>
-                        <p class="text-[10px] text-gray-400 italic">Ketik untuk mencari atau membuat kategori baru</p>
-                        <x-input-error :messages="$errors->get('kategori')" />
+                        <p class="text-[10px] text-gray-400 italic">Pilih dari daftar kategori yang tersedia</p>
+                        <x-input-error :messages="$errors->get('kategori_id')" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <x-input-label for="tipe" :value="'Tipe Barang *'" class="text-gray-700 font-semibold" />
+                        <div class="flex gap-4">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="tipe" value="mekanik"
+                                       class="w-4 h-4 text-[#035b71] border-gray-300 focus:ring-[#035b71]"
+                                       {{ old('tipe', 'mekanik') === 'mekanik' ? 'checked' : '' }}>
+                                <span class="ml-2 text-sm text-gray-700">Mekanik</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="tipe" value="listrik"
+                                       class="w-4 h-4 text-[#035b71] border-gray-300 focus:ring-[#035b71]"
+                                       {{ old('tipe') === 'listrik' ? 'checked' : '' }}>
+                                <span class="ml-2 text-sm text-gray-700">Listrik</span>
+                            </label>
+                        </div>
+                        <p class="text-[10px] text-gray-400 italic">Pilih kepemilikan barang</p>
+                        <x-input-error :messages="$errors->get('tipe')" />
                     </div>
 
                     <div class="space-y-2" x-data="{
                         open: false,
-                        search: '{{ old('satuan') }}',
-                        options: @js($allItems->pluck('satuan')->unique()->filter()->values()),
+                        search: '',
+                        selectedId: @js(old('satuan_id', '')),
+                        options: @js($satuans->map(fn($s) => ['id' => $s->id, 'nama' => $s->nama])),
+                        init() {
+                            if (this.selectedId) {
+                                const found = this.options.find(o => o.id == this.selectedId);
+                                if (found) this.search = found.nama;
+                            }
+                        },
                         get filtered() {
                             if (!this.search) return this.options;
-                            return this.options.filter(opt => opt.toLowerCase().includes(this.search.toLowerCase()));
+                            return this.options.filter(opt => opt.nama.toLowerCase().includes(this.search.toLowerCase()));
                         },
-                        select(value) {
-                            this.search = value;
+                        select(option) {
+                            this.search = option.nama;
+                            this.selectedId = option.id;
                             this.open = false;
                         }
                     }">
                         <x-input-label for="satuan" :value="'Satuan *'" class="text-gray-700 font-semibold" />
+                        <input type="hidden" name="satuan_id" x-model="selectedId">
                         <div class="relative" @click.outside="open = false">
                             <input type="text"
                                    id="satuan"
-                                   name="satuan"
                                    x-model="search"
                                    @focus="open = true"
                                    @click="open = true"
-                                   @input="open = true"
+                                   @input="open = true; selectedId = ''"
                                    @keydown.escape="open = false"
                                    @keydown.tab="open = false"
                                    autocomplete="off"
                                    class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all"
-                                   placeholder="Ketik atau pilih satuan..."
-                                   required />
+                                   placeholder="Pilih satuan..."
+                                   readonly />
                             <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                 </svg>
                             </button>
-                            <div x-show="open && filtered.length > 0"
+                            <div x-show="open && options.length > 0"
                                  x-transition
                                  class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                <template x-for="option in filtered" :key="option">
+                                <template x-for="option in filtered" :key="option.id">
                                     <div @click="select(option)"
                                          class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
-                                         x-text="option"></div>
+                                         x-text="option.nama"></div>
                                 </template>
+                                <div x-show="filtered.length === 0" class="px-4 py-2 text-sm text-gray-500">Tidak ada satuan ditemukan</div>
+                            </div>
+                            <div x-show="open && options.length === 0"
+                                 x-transition
+                                 class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-4">
+                                <p class="text-sm text-gray-500">Belum ada satuan. Tambahkan melalui menu Admin.</p>
                             </div>
                         </div>
-                        <p class="text-[10px] text-gray-400 italic">Ketik untuk mencari atau membuat satuan baru</p>
-                        <x-input-error :messages="$errors->get('satuan')" />
+                        <p class="text-[10px] text-gray-400 italic">Pilih dari daftar satuan yang tersedia</p>
+                        <x-input-error :messages="$errors->get('satuan_id')" />
                     </div>
 
                     <div class="col-span-1 md:col-span-2 space-y-2">
@@ -403,19 +451,23 @@
             search: '',
             selectedId: '',
             selectedName: '',
-            items: @js($availableItems->map(fn($i) => ['id' => $i->id, 'nama' => $i->nama, 'kategori' => $i->kategori, 'kode' => $i->kode])),
+            items: @js($availableItems->map(fn($i) => ['id' => $i->id, 'nama' => $i->nama, 'kategori' => $i->kategori?->nama, 'kode' => $i->kode, 'tipe' => $i->tipe ?? 'mekanik'])),
             get filtered() {
                 if (!this.search) return this.items;
                 const term = this.search.toLowerCase();
                 return this.items.filter(item =>
                     (item.nama || '').toLowerCase().includes(term) ||
                     (item.kode || '').toLowerCase().includes(term) ||
-                    (item.kategori || '').toLowerCase().includes(term)
+                    (item.kategori || '').toLowerCase().includes(term) ||
+                    (item.tipe || '').toLowerCase().includes(term)
                 );
+            },
+            tipeLabel(tipe) {
+                return tipe === 'mekanik' ? 'Mekanik' : 'Listrik';
             },
             select(item) {
                 this.selectedId = item.id;
-                this.selectedName = item.nama + ' (' + (item.kategori || '-') + ')';
+                this.selectedName = item.nama + ' · ' + this.tipeLabel(item.tipe);
                 this.search = this.selectedName;
                 this.open = false;
             },
@@ -426,7 +478,7 @@
             },
             preset(detail) {
                 this.selectedId = detail.id;
-                this.selectedName = detail.nama + ' (' + (detail.kategori || '-') + ')';
+                this.selectedName = detail.nama + ' · ' + this.tipeLabel(detail.tipe || 'mekanik');
                 this.search = this.selectedName;
             }
         }" @preset-stock-item.window="preset($event.detail)">
@@ -495,7 +547,7 @@
                                 <div @click="select(item)"
                                      class="px-4 py-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
                                     <div class="font-medium text-gray-900" x-text="item.nama"></div>
-                                    <div class="text-xs text-gray-500" x-text="(item.kode || '-') + ' • ' + (item.kategori || '-')"></div>
+                                    <div class="text-xs text-gray-500" x-text="(item.kode || '-') + ' · ' + (item.kategori || '-') + ' · ' + tipeLabel(item.tipe)"></div>
                                 </div>
                             </template>
                         </div>

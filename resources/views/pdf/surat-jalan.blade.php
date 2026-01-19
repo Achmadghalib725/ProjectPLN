@@ -188,20 +188,22 @@
             text-transform: uppercase;
         }
 
-        .items-table th:first-child {
-            width: 40px;
-            text-align: center;
-        }
-
         .items-table td {
             padding: 8px 10px;
             border-bottom: 1px solid #e5e5e5;
             font-size: 10px;
+            vertical-align: top;
         }
 
-        .items-table td:first-child {
-            text-align: center;
-            color: #666;
+        .items-table .col-no { width: 5%; text-align: center; }
+        .items-table .col-kode { width: 12%; }
+        .items-table .col-nama { width: 20%; }
+        .items-table .col-jumlah { width: 8%; text-align: center; }
+        .items-table .col-satuan { width: 10%; }
+        .items-table .col-keterangan {
+            width: 45%;
+            word-wrap: break-word;
+            word-break: break-word;
         }
 
         .items-table tr:nth-child(even) {
@@ -358,6 +360,20 @@
 
                 return 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
             };
+            $historyMap = $suratJalan->relationLoaded('statusHistories')
+                ? $suratJalan->statusHistories->groupBy('status')
+                : collect();
+            $resolveHistoryTime = function (array $statuses) use ($historyMap) {
+                foreach ($statuses as $status) {
+                    $entry = $historyMap->get($status)?->last();
+                    if ($entry?->occurred_at) {
+                        return $entry->occurred_at;
+                    }
+                }
+                return null;
+            };
+            $pengirimSignedAt = $resolveHistoryTime(['DIPERIKSA_PENGIRIM', 'DIKIRIM']) ?? $suratJalan->waktu_ttd_pembuat;
+            $penerimaSignedAt = $resolveHistoryTime(['DITERIMA', 'SELESAI']) ?? $suratJalan->waktu_ttd_penerima;
         @endphp
         <!-- Header -->
         <div class="header">
@@ -554,29 +570,27 @@
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>Kode</th>
-                        <th>Nama Barang</th>
-                        <th>Kategori</th>
-                        <th class="text-center">Jumlah</th>
-                        <th>Satuan</th>
-                        <th>Keterangan</th>
+                        <th class="col-no">No</th>
+                        <th class="col-kode">Kode</th>
+                        <th class="col-nama">Nama Barang</th>
+                        <th class="col-jumlah">Jumlah</th>
+                        <th class="col-satuan">Satuan</th>
+                        <th class="col-keterangan">Keterangan</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($suratJalan->items ?? [] as $index => $item)
                         <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ $item->item->kode ?? '-' }}</td>
-                            <td>{{ $item->item->nama ?? '-' }}</td>
-                            <td>{{ $item->item->kategori ?? '-' }}</td>
-                            <td class="text-center"><strong>{{ number_format($item->jumlah) }}</strong></td>
-                            <td>{{ $item->item->satuan ?? '-' }}</td>
-                            <td>{{ $item->keterangan ?? '-' }}</td>
+                            <td class="col-no">{{ $index + 1 }}</td>
+                            <td class="col-kode">{{ $item->item->kode ?? '-' }}</td>
+                            <td class="col-nama">{{ $item->item->nama ?? '-' }}</td>
+                            <td class="col-jumlah"><strong>{{ number_format($item->jumlah) }}</strong></td>
+                            <td class="col-satuan">{{ $item->item->satuan?->nama ?? '-' }}</td>
+                            <td class="col-keterangan">{{ $item->keterangan ?? '-' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center" style="padding: 20px; color: #999;">
+                            <td colspan="6" class="text-center" style="padding: 20px; color: #999;">
                                 Tidak ada barang
                             </td>
                         </tr>
@@ -590,6 +604,11 @@
                     <strong>{{ number_format($suratJalan->items->sum('jumlah')) }}</strong> unit
                 </div>
             @endif
+
+            <!-- Redaksi -->
+            <div style="intro-section">
+                <p>Sebagai perhatian, segala resiko selama dalam perjalanan menjadi tanggung jawab pihak pembawa barang. Demikian Surat Jalan ini dibuat dengan sebenarnya dan untuk dapat digunakan sebagaimana mestinya.</p>
+            </div>
         </div>
 
         <!-- Notes -->
@@ -606,7 +625,7 @@
                 <div class="signature-title">Pengirim</div>
                 @php
                     $pengirimQr = null;
-                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $suratJalan->waktu_ttd_pembuat) {
+                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $pengirimSignedAt) {
                         $pengirimUrl = route('surat-jalan.signature', [
                             'id' => $suratJalan->id,
                             'token' => $suratJalan->qr_token,
@@ -650,7 +669,7 @@
                 <div class="signature-title">Penerima</div>
                 @php
                     $penerimaQr = null;
-                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $suratJalan->waktu_ttd_penerima) {
+                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $penerimaSignedAt) {
                         $penerimaUrl = route('surat-jalan.signature', [
                             'id' => $suratJalan->id,
                             'token' => $suratJalan->qr_token,

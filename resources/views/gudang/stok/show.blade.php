@@ -43,11 +43,11 @@
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600 mb-1">Kategori</p>
-                                    <p class="font-medium text-gray-900">{{ $stock->item->kategori ?? '-' }}</p>
+                                    <p class="font-medium text-gray-900">{{ $stock->item->kategori?->nama ?? '-' }}</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600 mb-1">Satuan</p>
-                                    <p class="font-medium text-gray-900">{{ $stock->item->satuan }}</p>
+                                    <p class="font-medium text-gray-900">{{ $stock->item->satuan?->nama ?? '-' }}</p>
                                 </div>
                             </div>
 
@@ -74,7 +74,7 @@
                                 <p class="text-4xl font-bold text-[#035b71]">
                                     {{ number_format($stock->own_qty ?? $stock->jumlah) }}
                                 </p>
-                                <p class="text-sm text-gray-500 mt-1">{{ $stock->item->satuan }}</p>
+                                <p class="text-sm text-gray-500 mt-1">{{ $stock->item->satuan?->nama ?? '-' }}</p>
                             </div>
 
                             <div class="mb-6">
@@ -82,7 +82,7 @@
                                 <p class="text-2xl font-bold text-gray-700">
                                     {{ number_format($stock->borrowed_qty ?? 0) }}
                                 </p>
-                                <p class="text-sm text-gray-500 mt-1">{{ $stock->item->satuan }}</p>
+                                <p class="text-sm text-gray-500 mt-1">{{ $stock->item->satuan?->nama ?? '-' }}</p>
                             </div>
 
                             {{-- Minimum Stock --}}
@@ -91,7 +91,7 @@
                                 <p class="text-2xl font-bold text-gray-700">
                                     {{ number_format($stock->stok_minimum) }}
                                 </p>
-                                <p class="text-sm text-gray-500 mt-1">{{ $stock->item->satuan }}</p>
+                                <p class="text-sm text-gray-500 mt-1">{{ $stock->item->satuan?->nama ?? '-' }}</p>
                             </div>
 
                             {{-- Status Badge --}}
@@ -239,11 +239,11 @@
                     </div>
                     <div>
                         <p class="text-gray-500">Satuan</p>
-                        <p class="font-medium text-gray-900">{{ $stock->item->satuan }}</p>
+                        <p class="font-medium text-gray-900">{{ $stock->item->satuan?->nama ?? '-' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-500">Kategori</p>
-                        <p class="font-medium text-gray-900">{{ $stock->item->kategori ?? '-' }}</p>
+                        <p class="font-medium text-gray-900">{{ $stock->item->kategori?->nama ?? '-' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-500">Stok Saat Ini</p>
@@ -300,7 +300,7 @@
                 <div x-show="adjustmentType === 'subtract'" x-transition
                      class="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r">
                     <p class="text-sm text-yellow-700">
-                        Pastikan jumlah pengurangan tidak melebihi stok tersedia ({{ number_format($stock->jumlah) }} {{ $stock->item->satuan }}).
+                        Pastikan jumlah pengurangan tidak melebihi stok tersedia ({{ number_format($stock->jumlah) }} {{ $stock->item->satuan?->nama ?? '-' }}).
                     </p>
                 </div>
 

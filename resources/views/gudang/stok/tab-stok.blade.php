@@ -58,63 +58,125 @@
     </div>
 </div>
 
-{{-- Search and Filter --}}
-<div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg mb-4 sm:mb-6" x-data="{ showFilter: false }">
-    {{-- Mobile Filter Toggle --}}
-    <div class="sm:hidden p-4 border-b border-gray-200">
-        <button @click="showFilter = !showFilter" type="button" class="w-full flex items-center justify-between text-gray-700">
-            <span class="flex items-center gap-2 font-medium">
+{{-- Filter & Sort Section --}}
+@php
+    $activeFilters = collect(['search', 'kategori', 'tipe'])->filter(fn($f) => !empty(request($f)))->count();
+@endphp
+<div class="bg-white overflow-hidden shadow-sm rounded-xl mb-4 sm:mb-6" x-data="{ showFilter: false }">
+    {{-- Filter Toggle Button --}}
+    <div class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <button @click="showFilter = !showFilter"
+                    type="button"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition font-medium text-sm">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                 </svg>
-                Filter & Pencarian
-                @if(request('search') || request('kategori'))
-                    <span class="bg-[#035b71] text-white text-xs px-2 py-0.5 rounded-full">Aktif</span>
+                <span>Filter & Search</span>
+                @if($activeFilters > 0)
+                    <span class="bg-[#035b71] text-white text-xs px-2 py-0.5 rounded-full">{{ $activeFilters }}</span>
                 @endif
-            </span>
-            <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': showFilter }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
-        </button>
+                <svg class="w-4 h-4 transition-transform duration-200" :class="showFilter ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+
+            @if($activeFilters > 0)
+                <a href="{{ route('gudang.stok.index', ['tab' => 'stok']) }}"
+                   class="text-sm text-gray-500 hover:text-red-600 transition flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    Hapus Filter
+                </a>
+            @endif
+        </div>
+
+        {{-- Quick Tipe Toggle --}}
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-500">Tipe:</span>
+            <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
+                <a href="{{ route('gudang.stok.index', array_merge(request()->except('tipe'), ['tab' => 'stok'])) }}"
+                   class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ !request('tipe') ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                    Semua
+                </a>
+                <a href="{{ route('gudang.stok.index', array_merge(request()->except('tipe'), ['tab' => 'stok', 'tipe' => 'mekanik'])) }}"
+                   class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ request('tipe') === 'mekanik' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                    Mekanik
+                </a>
+                <a href="{{ route('gudang.stok.index', array_merge(request()->except('tipe'), ['tab' => 'stok', 'tipe' => 'listrik'])) }}"
+                   class="px-3 py-1.5 text-xs font-medium rounded-md transition {{ request('tipe') === 'listrik' ? 'bg-white text-[#035b71] shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                    Listrik
+                </a>
+            </div>
+        </div>
     </div>
 
-    {{-- Filter Form - Hidden on mobile by default, always visible on desktop --}}
-    <div class="p-4 sm:p-6 hidden sm:!block" :class="{ 'hidden': !showFilter, 'block': showFilter }">
-        <form method="GET" action="{{ route('gudang.stok.index') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4" data-ajax-form data-ajax-target="#stok-content">
-            <input type="hidden" name="tab" value="stok">
-            <div class="sm:col-span-2">
-                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari Item</label>
-                <input type="text"
-                       name="search"
-                       id="search"
-                       value="{{ request('search') }}"
-                       placeholder="Nama atau kode item..."
-                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50">
-            </div>
-            <div>
-                <label for="kategori" class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                <select name="kategori"
-                        id="kategori"
-                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50">
-                    <option value="">Semua Kategori</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category }}" {{ request('kategori') == $category ? 'selected' : '' }}>
-                            {{ $category }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="flex items-end gap-2">
-                <button type="submit" class="flex-1 bg-[#035b71] hover:bg-[#00aff0] text-white font-medium py-2.5 sm:py-2 px-4 rounded-md transition duration-150">
-                    Cari
-                </button>
-                @if(request('search') || request('kategori'))
-                    <a href="{{ route('gudang.stok.index', ['tab' => 'stok']) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2.5 sm:py-2 px-4 rounded-md transition duration-150">
-                        Reset
-                    </a>
+    {{-- Expandable Filter Panel --}}
+    <div x-show="showFilter" x-collapse x-cloak>
+        <div class="px-4 pb-4 border-t border-gray-100 pt-4">
+            <form method="GET" action="{{ route('gudang.stok.index') }}" data-ajax-form data-ajax-target="#stok-content">
+                <input type="hidden" name="tab" value="stok">
+                @if(request('tipe'))
+                    <input type="hidden" name="tipe" value="{{ request('tipe') }}">
                 @endif
-            </div>
-        </form>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {{-- Search Input --}}
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Cari Item</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                            <input type="text"
+                                   name="search"
+                                   value="{{ request('search') }}"
+                                   class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition"
+                                   placeholder="Nama atau kode item...">
+                        </div>
+                    </div>
+
+                    {{-- Kategori Filter --}}
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Kategori</label>
+                        <select name="kategori"
+                                class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                            <option value="">Semua Kategori</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ request('kategori') == $category->id ? 'selected' : '' }}>
+                                    {{ $category->nama }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Tipe Filter (in expanded panel) --}}
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Tipe Barang</label>
+                        <select name="tipe"
+                                class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
+                            <option value="">Semua Tipe</option>
+                            <option value="mekanik" {{ request('tipe') === 'mekanik' ? 'selected' : '' }}>Mekanik</option>
+                            <option value="listrik" {{ request('tipe') === 'listrik' ? 'selected' : '' }}>Listrik</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Apply Button --}}
+                <div class="mt-4 flex justify-end">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-5 py-2 bg-[#035b71] hover:bg-[#024a5c] text-white text-sm font-medium rounded-lg transition shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Terapkan Filter
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -128,7 +190,7 @@
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex-1">
                         <h3 class="font-semibold text-gray-900 text-sm">{{ $stock->item->nama }}</h3>
-                        <p class="text-xs text-gray-500">{{ ucfirst($stock->item->kategori ?? '-') }}</p>
+                        <p class="text-xs text-gray-500">{{ ucfirst($stock->item->kategori?->nama ?? '-') }} · {{ ucfirst($stock->item->tipe ?? 'mekanik') }}</p>
                     </div>
                     @if($stock->jumlah < $stock->stok_minimum)
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -159,7 +221,7 @@
                     </div>
                     <div class="bg-gray-50 rounded p-2 text-center">
                         <p class="text-xs text-gray-500">Satuan</p>
-                        <p class="font-medium text-gray-700">{{ $stock->item->satuan }}</p>
+                        <p class="font-medium text-gray-700">{{ $stock->item->satuan?->nama ?? '-' }}</p>
                     </div>
                 </div>
 
@@ -170,8 +232,8 @@
                             id: {{ $stock->id }},
                             kode: '{{ $stock->item->kode }}',
                             nama: '{{ $stock->item->nama }}',
-                            satuan: '{{ $stock->item->satuan }}',
-                            kategori: '{{ $stock->item->kategori ?? '-' }}',
+                            satuan: '{{ $stock->item->satuan?->nama ?? '-' }}',
+                            kategori: '{{ $stock->item->kategori?->nama ?? '-' }}',
                             jumlah: {{ $stock->jumlah }},
                             stok_minimum: {{ $stock->stok_minimum }},
                             url: '{{ route('gudang.stok.update', $stock->id) }}'
@@ -219,6 +281,7 @@
                 <tr>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Item</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Sendiri</th>
@@ -239,10 +302,13 @@
                             {{ $stock->item->nama }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ ucfirst($stock->item->kategori ?? '-') }}
+                            {{ ucfirst($stock->item->tipe ?? 'mekanik') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ $stock->item->satuan }}
+                            {{ ucfirst($stock->item->kategori?->nama ?? '-') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ $stock->item->satuan?->nama ?? '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold {{ $stock->jumlah < $stock->stok_minimum ? 'text-red-600' : 'text-gray-900' }}">
                             {{ number_format($stock->own_qty ?? $stock->jumlah) }}
@@ -278,8 +344,8 @@
                                         id: {{ $stock->id }},
                                         kode: '{{ $stock->item->kode }}',
                                         nama: '{{ $stock->item->nama }}',
-                                        satuan: '{{ $stock->item->satuan }}',
-                                        kategori: '{{ $stock->item->kategori ?? '-' }}',
+                                        satuan: '{{ $stock->item->satuan?->nama ?? '-' }}',
+                                        kategori: '{{ $stock->item->kategori?->nama ?? '-' }}',
                                         jumlah: {{ $stock->jumlah }},
                                         stok_minimum: {{ $stock->stok_minimum }},
                                         url: '{{ route('gudang.stok.update', $stock->id) }}'
@@ -312,7 +378,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-6 py-10 text-center text-gray-500">
+                        <td colspan="10" class="px-6 py-10 text-center text-gray-500">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                             </svg>

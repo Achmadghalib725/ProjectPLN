@@ -20,6 +20,8 @@
                     'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
                     'DITOLAK_PERSETUJUAN' => 'Persetujuan Ditolak',
                     'DIKIRIM' => 'Dikirim',
+                    'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan Pengirim',
+                    'DIPERIKSA_PENERIMA' => 'Diperiksa Penerima',
                     'DIPERIKSA' => 'Diperiksa',
                     'DITERIMA' => 'Diterima',
                     'MENUNGGU_DIKEMBALIKAN' => 'Menunggu Dikembalikan',
@@ -32,6 +34,8 @@
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-700',
                     'DIKIRIM' => 'bg-blue-100 text-blue-700',
+                    'DIPERIKSA_PENGIRIM' => 'bg-cyan-100 text-cyan-700',
+                    'DIPERIKSA_PENERIMA' => 'bg-indigo-100 text-indigo-700',
                     'DIPERIKSA' => 'bg-indigo-100 text-indigo-700',
                     'DITERIMA' => 'bg-emerald-100 text-emerald-700',
                     'MENUNGGU_DIKEMBALIKAN' => 'bg-amber-100 text-amber-800',
@@ -56,6 +60,26 @@
                 $gudangTujuanTelepon = $suratJalan->gudang_tujuan_is_custom
                     ? ($suratJalan->gudang_tujuan_custom_telepon ?? '-')
                     : ($suratJalan->gudangTujuan->telepon ?? '-');
+                $historyMap = $suratJalan->relationLoaded('statusHistories')
+                    ? $suratJalan->statusHistories->groupBy('status')
+                    : collect();
+                $historyTime = function ($statuses) use ($historyMap) {
+                    $statusList = is_array($statuses) ? $statuses : [$statuses];
+                    foreach ($statusList as $status) {
+                        $entry = $historyMap->get($status)?->last();
+                        if ($entry?->occurred_at) {
+                            return $entry->occurred_at;
+                        }
+                    }
+                    return null;
+                };
+                $approvalTime = $historyTime(['DIPERIKSA_PENGIRIM', 'DIKIRIM']) ?? $suratJalan->waktu_ttd_pembuat;
+                $pengembalianKirimAt = $suratJalan->tipe === 'PENGEMBALIAN'
+                    ? ($historyTime(['DIKEMBALIKAN']) ?? $peminjaman?->waktu_pengembalian)
+                    : null;
+                $waktuKirim = $suratJalan->tipe === 'PENGEMBALIAN'
+                    ? $pengembalianKirimAt
+                    : $peminjaman?->waktu_kirim;
             @endphp
 
             <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6" data-surat-jalan-header>
@@ -198,8 +222,8 @@
                             <dt class="text-slate-500">Tanda Tangan Persetujuan</dt>
                             <dd class="font-semibold text-slate-900">
                                 {{ $suratJalan->ttdPembuat->name ?? '-' }}
-                                @if($suratJalan->waktu_ttd_pembuat)
-                                    <div class="text-xs text-slate-500">{{ $suratJalan->waktu_ttd_pembuat->format('d M Y H:i') }}</div>
+                                @if($approvalTime)
+                                    <div class="text-xs text-slate-500">{{ $approvalTime->format('d M Y H:i') }}</div>
                                 @endif
                             </dd>
                         </div>
@@ -220,8 +244,8 @@
                             <p class="font-semibold text-slate-900" data-peminjaman-status>{{ $peminjaman->status }}</p>
                         </div>
                         <div>
-                            <p class="text-slate-500">Waktu Kirim</p>
-                            <p class="font-semibold text-slate-900">{{ $peminjaman->waktu_kirim?->format('d M Y H:i') ?? '-' }}</p>
+                            <p class="text-slate-500">{{ $suratJalan->tipe === 'PENGEMBALIAN' ? 'Waktu Pengembalian' : 'Waktu Kirim' }}</p>
+                            <p class="font-semibold text-slate-900">{{ $waktuKirim?->format('d M Y H:i') ?? '-' }}</p>
                         </div>
                     </div>
                 </div>
@@ -252,7 +276,7 @@
                                 <tr>
                                     <td class="px-5 py-3 text-sm text-slate-900">{{ $item->item->kode ?? '-' }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-900">{{ $item->item->nama ?? 'Item' }}</td>
-                                    <td class="px-5 py-3 text-sm text-slate-500">{{ $item->item->satuan ?? '-' }}</td>
+                                    <td class="px-5 py-3 text-sm text-slate-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-700 font-semibold">{{ $item->jumlah }}</td>
                                 </tr>
                             @empty
@@ -325,6 +349,8 @@
                 MENUNGGU_PERSETUJUAN: 'Menunggu Persetujuan',
                 DITOLAK_PERSETUJUAN: 'Persetujuan Ditolak',
                 DIKIRIM: 'Dikirim',
+                DIPERIKSA_PENGIRIM: 'Menunggu Pemeriksaan Pengirim',
+                DIPERIKSA_PENERIMA: 'Diperiksa Penerima',
                 DIPERIKSA: 'Diperiksa',
                 DITERIMA: 'Diterima',
                 MENUNGGU_DIKEMBALIKAN: 'Menunggu Dikembalikan',
@@ -337,6 +363,8 @@
                 MENUNGGU_PERSETUJUAN: 'bg-orange-100 text-orange-800',
                 DITOLAK_PERSETUJUAN: 'bg-red-100 text-red-700',
                 DIKIRIM: 'bg-blue-100 text-blue-700',
+                DIPERIKSA_PENGIRIM: 'bg-cyan-100 text-cyan-700',
+                DIPERIKSA_PENERIMA: 'bg-indigo-100 text-indigo-700',
                 DIPERIKSA: 'bg-indigo-100 text-indigo-700',
                 DITERIMA: 'bg-emerald-100 text-emerald-700',
                 MENUNGGU_DIKEMBALIKAN: 'bg-amber-100 text-amber-800',

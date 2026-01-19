@@ -61,20 +61,22 @@
                                     <span>Download</span>
                                 </a>
                             </div>
-                            @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $canEditDraft)
+                            @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true) && $canEditDraft)
                                 {{-- Draft Actions Row --}}
                                 <div class="flex gap-2">
                                     <a href="{{ route('admin.surat-jalan.edit', $suratJalan->id) }}"
                                        class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                         Edit Draft
                                     </a>
-                                    <form method="POST" action="{{ route('admin.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
-                                        @csrf
-                                        <button type="submit"
-                                                class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                            {{ $suratJalan->status === 'DITOLAK_PERSETUJUAN' ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
-                                        </button>
-                                    </form>
+                                    @if($suratJalan->status !== 'DITOLAK')
+                                        <form method="POST" action="{{ route('admin.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                                {{ $suratJalan->status === 'DITOLAK_PERSETUJUAN' ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="button"
@@ -117,7 +119,7 @@
                                         <button type="button"
                                             @click="$dispatch('open-delete-modal', {
                                                 title: 'Batalkan Surat Jalan',
-                                                message: 'Apakah Anda yakin ingin membatalkan surat jalan {{ $suratJalan->nomor }}? {{ in_array($suratJalan->status, ['DIKIRIM', 'DITERIMA', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'DIPERIKSA']) ? 'Semua pergerakan stok akan di-rollback.' : '' }}',
+                                                message: 'Apakah Anda yakin ingin membatalkan surat jalan {{ $suratJalan->nomor }}? {{ in_array($suratJalan->status, ['DIKIRIM', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DITERIMA', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'DIPERIKSA']) ? 'Semua pergerakan stok akan di-rollback.' : '' }}',
                                                 action: '{{ route('admin.surat-jalan.destroy', $suratJalan->id) }}'
                                             })"
                                             class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
@@ -157,10 +159,41 @@
 
                 // Helper untuk format waktu
                 $formatWaktu = fn($waktu) => $waktu ? \Carbon\Carbon::parse($waktu)->format('d M Y, H:i') : null;
+                $historyFor = function ($surat) {
+                    if (!$surat || !$surat->relationLoaded('statusHistories')) {
+                        return collect();
+                    }
+                    return $surat->statusHistories->groupBy('status');
+                };
+                $historyTime = function ($historyMap, $statuses) {
+                    $statusList = is_array($statuses) ? $statuses : [$statuses];
+                    foreach ($statusList as $status) {
+                        $entry = $historyMap->get($status)?->last();
+                        if ($entry && $entry->occurred_at) {
+                            return $entry->occurred_at;
+                        }
+                    }
+                    return null;
+                };
+                $historyTimeText = function ($historyMap, $statuses, $fallback = null) use ($historyTime, $formatWaktu) {
+                    $time = $historyTime($historyMap, $statuses) ?? $fallback;
+                    return $formatWaktu($time);
+                };
+                $historyActor = function ($historyMap, $statuses) {
+                    $statusList = is_array($statuses) ? $statuses : [$statuses];
+                    foreach ($statusList as $status) {
+                        $entry = $historyMap->get($status)?->last();
+                        if ($entry?->actor?->name) {
+                            return $entry->actor->name;
+                        }
+                    }
+                    return null;
+                };
 
                 if ($tipe === 'TRANSFER') {
                     // TRANSFER: Dikirim -> Diperiksa -> Selesai
                     $sjKirim = $suratJalan;
+                    $sjKirimHistory = $historyFor($sjKirim);
                     if ($suratJalan->gudang_tujuan_is_custom) {
                         $steps = [
                             [
@@ -170,7 +203,7 @@
                                     ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
-                                    ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, ['DIKIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'], $sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
                                     : null,
                                 'by' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? $sjKirim->pembuat?->name
@@ -183,9 +216,11 @@
                                     ? "Dikirim ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => $sjKirim->status === 'SELESAI'
-                                    ? $formatWaktu($sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, 'SELESAI', $sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
                                     : null,
-                                'by' => null,
+                                'by' => $sjKirim->status === 'SELESAI'
+                                    ? $historyActor($sjKirimHistory, 'SELESAI')
+                                    : null,
                             ],
                         ];
                         $statusIndexMap = [
@@ -206,7 +241,7 @@
                                     ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
-                                    ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, ['DIKIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'], $sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
                                     : null,
                                 'by' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? $sjKirim->pembuat?->name
@@ -215,13 +250,15 @@
                             [
                                 'label' => 'Diperiksa',
                                 'desc' => 'Security memeriksa',
-                                'detail' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI'])
+                                'detail' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
                                     ? "Diperiksa oleh Security di <strong>{$gudangTujuanNama}</strong>"
                                     : null,
-                                'time' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI'])
-                                    ? $formatWaktu($sjKirim->updated_at)
+                                'time' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                    ? $historyTimeText($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], $sjKirim->updated_at)
                                     : null,
-                                'by' => null,
+                                'by' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                    ? $historyActor($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'])
+                                    : null,
                             ],
                             [
                                 'label' => 'Selesai',
@@ -230,9 +267,11 @@
                                     ? "Diterima di <strong>{$gudangTujuanNama}</strong>"
                                     : null,
                                 'time' => $sjKirim->status === 'SELESAI'
-                                    ? $formatWaktu($sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
+                                    ? $historyTimeText($sjKirimHistory, 'SELESAI', $sjKirim->waktu_ttd_penerima ?? $sjKirim->updated_at)
                                     : null,
-                                'by' => null,
+                                'by' => $sjKirim->status === 'SELESAI'
+                                    ? $historyActor($sjKirimHistory, 'SELESAI')
+                                    : null,
                             ],
                         ];
                         $statusIndexMap = [
@@ -240,6 +279,8 @@
                             'MENUNGGU_PERSETUJUAN' => 0,
                             'DITOLAK_PERSETUJUAN' => 0,
                             'DIKIRIM' => 1,
+                            'DIPERIKSA_PENGIRIM' => 1,
+                            'DIPERIKSA_PENERIMA' => 2,
                             'DIPERIKSA' => 2,
                             'DITERIMA' => 3,
                             'SELESAI' => 3,
@@ -257,12 +298,19 @@
                     $gudangPeminjamNama = $peminjaman?->gudang_peminjam_is_custom
                         ? ($peminjaman->gudang_peminjam_custom_nama ?? 'Gudang Lainnya')
                         : ($gudangPeminjam?->nama ?? '-');
+                    $sjKirimHistory = $historyFor($sjKirim);
+                    $sjKembaliHistory = $historyFor($sjKembali);
 
                     $peminjamanStatus = $peminjaman?->status ?? 'DIAJUKAN';
                     $sjKirimStatus = $sjKirim?->status ?? 'DRAFT';
                     $sjKembaliStatus = $sjKembali?->status ?? null;
 
                     if ($suratJalan->gudang_tujuan_is_custom) {
+                        $menungguDikembalikanAt = $historyTime($sjKirimHistory, 'MENUNGGU_DIKEMBALIKAN');
+                        $showMenungguDikembalikan = (bool) $menungguDikembalikanAt
+                            || $suratStatus === 'MENUNGGU_DIKEMBALIKAN'
+                            || $suratStatus === 'SELESAI'
+                            || $peminjamanStatus === 'SELESAI';
                         $steps = [
                             [
                                 'label' => 'Dikirim',
@@ -270,39 +318,42 @@
                                 'detail' => $sjKirim && !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? "Dikirim dari <strong>{$gudangPemilikNama}</strong> ke <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_kirim ? $formatWaktu($peminjaman->waktu_kirim) : null,
+                                'time' => $historyTimeText($sjKirimHistory, ['DIKIRIM', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'SELESAI'], $peminjaman?->waktu_kirim),
                                 'by' => $sjKirim?->pembuat?->name,
                             ],
                             [
                                 'label' => 'Menunggu Dikembalikan',
                                 'desc' => 'Menunggu konfirmasi pengembalian',
-                                'detail' => $suratStatus === 'MENUNGGU_DIKEMBALIKAN'
+                                'detail' => $showMenungguDikembalikan
                                     ? "Menunggu pengembalian dari <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $suratStatus === 'MENUNGGU_DIKEMBALIKAN' ? $formatWaktu($suratJalan->updated_at) : null,
+                                'time' => $showMenungguDikembalikan
+                                    ? $historyTimeText($sjKirimHistory, 'MENUNGGU_DIKEMBALIKAN', $suratJalan->updated_at)
+                                    : null,
                                 'by' => null,
                             ],
                             [
                                 'label' => 'Selesai',
                                 'desc' => 'Pengembalian dikonfirmasi',
-                                'detail' => $peminjamanStatus === 'SELESAI'
+                                'detail' => ($peminjamanStatus === 'SELESAI' || $suratStatus === 'SELESAI')
                                     ? "Barang telah dikembalikan ke <strong>{$gudangPemilikNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_selesai ? $formatWaktu($peminjaman->waktu_selesai) : null,
-                                'by' => null,
+                                'time' => $historyTimeText($sjKirimHistory, 'SELESAI', $peminjaman?->waktu_selesai),
+                                'by' => $historyActor($sjKirimHistory, 'SELESAI'),
                             ],
                         ];
 
                         if ($peminjamanStatus === 'SELESAI' || $suratStatus === 'SELESAI') {
                             $currentStep = 3;
                         } elseif ($suratStatus === 'MENUNGGU_DIKEMBALIKAN') {
-                            $currentStep = 1;
+                            $currentStep = 2;
                         } elseif (!in_array($sjKirimStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)) {
-                            $currentStep = 0;
+                            $currentStep = 1;
                         } else {
                             $currentStep = 0;
                         }
                     } else {
+                        $kirimCheckedAt = $historyTime($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA']);
                         $steps = [
                             [
                                 'label' => 'Dikirim',
@@ -310,18 +361,21 @@
                                 'detail' => $sjKirim && !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                     ? "Dikirim dari <strong>{$gudangPemilikNama}</strong> ke <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_kirim ? $formatWaktu($peminjaman->waktu_kirim) : null,
+                                'time' => $historyTimeText($sjKirimHistory, ['DIKIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN'], $peminjaman?->waktu_kirim),
                                 'by' => $sjKirim?->pembuat?->name,
                             ],
                             [
                                 'label' => 'Diperiksa',
                                 'desc' => 'Security gudang tujuan',
-                                'detail' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                'detail' => $sjKirim && $kirimCheckedAt
                                     ? "Diperiksa oleh Security di <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA', 'DITERIMA', 'SELESAI'])
-                                    ? $formatWaktu($sjKirim->updated_at) : null,
-                                'by' => null,
+                                'time' => $kirimCheckedAt
+                                    ? $formatWaktu($kirimCheckedAt)
+                                    : null,
+                                'by' => $kirimCheckedAt
+                                    ? $historyActor($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'])
+                                    : null,
                             ],
                             [
                                 'label' => 'Diterima',
@@ -329,27 +383,27 @@
                                 'detail' => $peminjaman && in_array($peminjaman->status, ['DITERIMA', 'DIKEMBALIKAN', 'SELESAI'])
                                     ? "Diterima di <strong>{$gudangPeminjamNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_diterima ? $formatWaktu($peminjaman->waktu_diterima) : null,
-                                'by' => null,
+                                'time' => $historyTimeText($sjKirimHistory, 'DITERIMA', $peminjaman?->waktu_diterima),
+                                'by' => $historyActor($sjKirimHistory, 'DITERIMA'),
                             ],
                             [
                                 'label' => 'Dikembalikan',
                                 'desc' => 'Barang dikembalikan',
-                                'detail' => $sjKembali && in_array($sjKembali->status, ['DIKEMBALIKAN', 'DIPERIKSA', 'SELESAI'])
+                                'detail' => $sjKembali && in_array($sjKembali->status, ['DIKEMBALIKAN', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
                                     ? "Dikembalikan dari <strong>{$gudangPeminjamNama}</strong> ke <strong>{$gudangPemilikNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_pengembalian ? $formatWaktu($peminjaman->waktu_pengembalian) : null,
+                                'time' => $historyTimeText($sjKembaliHistory, ['DIKEMBALIKAN', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'], $peminjaman?->waktu_pengembalian),
                                 'by' => $sjKembali?->pembuat?->name,
                             ],
                             [
                                 'label' => 'Diperiksa',
                                 'desc' => 'Security gudang pemilik',
-                                'detail' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA', 'SELESAI'])
+                                'detail' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
                                     ? "Diperiksa oleh Security di <strong>{$gudangPemilikNama}</strong>"
                                     : null,
-                                'time' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA', 'SELESAI'])
-                                    ? $formatWaktu($sjKembali->updated_at) : null,
-                                'by' => null,
+                                'time' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
+                                    ? $historyTimeText($sjKembaliHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], $sjKembali->updated_at) : null,
+                                'by' => $historyActor($sjKembaliHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA']),
                             ],
                             [
                                 'label' => 'Selesai',
@@ -357,39 +411,35 @@
                                 'detail' => $peminjaman && $peminjaman->status === 'SELESAI'
                                     ? "Barang telah dikembalikan ke <strong>{$gudangPemilikNama}</strong>"
                                     : null,
-                                'time' => $peminjaman?->waktu_selesai ? $formatWaktu($peminjaman->waktu_selesai) : null,
-                                'by' => null,
+                                'time' => $historyTimeText($sjKembaliHistory, 'SELESAI', $peminjaman?->waktu_selesai),
+                                'by' => $historyActor($sjKembaliHistory, 'SELESAI'),
                             ],
                         ];
 
                         // Map status ke step (step yang SEDANG aktif, bukan yang sudah selesai)
                         if ($peminjamanStatus === 'SELESAI' || $sjKembaliStatus === 'SELESAI') {
                             $currentStep = 6; // Semua selesai (di luar range = semua hijau)
-                        } elseif ($sjKembaliStatus === 'DIPERIKSA') {
-                            $currentStep = 5; // Sedang di step Selesai (menunggu operator approve)
-                        } elseif ($sjKembaliStatus === 'DIKEMBALIKAN' || $peminjamanStatus === 'DIKEMBALIKAN') {
-                            $currentStep = 4; // Sedang di step Diperiksa pengembalian (menunggu security)
+                        } elseif (in_array($sjKembaliStatus, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], true)) {
+                            $currentStep = 5; // Menunggu operator menerima pengembalian
+                        } elseif (in_array($sjKembaliStatus, ['DIKEMBALIKAN', 'DIPERIKSA_PENGIRIM'], true) || $peminjamanStatus === 'DIKEMBALIKAN') {
+                            $currentStep = 4; // Menunggu security penerima (gudang pemilik)
                         } elseif ($peminjamanStatus === 'DITERIMA' || $sjKirimStatus === 'DITERIMA') {
-                            $currentStep = 3; // Sedang di step Dikembalikan (menunggu pengembalian)
-                        } elseif ($sjKirimStatus === 'DIPERIKSA' || $peminjamanStatus === 'DIPERIKSA') {
-                            $currentStep = 2; // Sedang di step Diterima (menunggu operator approve)
-                        } elseif ($sjKirimStatus === 'DIKIRIM' || $peminjamanStatus === 'DIKIRIM') {
-                            $currentStep = 1; // Sedang di step Diperiksa (menunggu security)
+                            $currentStep = 3; // Menunggu pengembalian barang
+                        } elseif (in_array($sjKirimStatus, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], true) || $peminjamanStatus === 'DIPERIKSA') {
+                            $currentStep = 2; // Menunggu operator menerima
+                        } elseif (in_array($sjKirimStatus, ['DIKIRIM', 'DIPERIKSA_PENGIRIM'], true) || $peminjamanStatus === 'DIKIRIM') {
+                            $currentStep = 1; // Menunggu security penerima (gudang tujuan)
                         } else {
                             $currentStep = 0; // Belum dikirim
                         }
                     }
 
-                    // Handle rejection
-                    if ($isRejected || $peminjaman?->status === 'DITOLAK') {
-                        $isRejected = true;
-                    }
                 }
 
                 if ($isRejected) {
                     $periksaIndexes = collect($steps)
                         ->keys()
-                        ->filter(fn ($index) => ($steps[$index]['label'] ?? '') === 'Diperiksa')
+                        ->filter(fn ($index) => str_starts_with(($steps[$index]['label'] ?? ''), 'Diperiksa'))
                         ->values();
 
                     if ($periksaIndexes->count() > 1) {
@@ -408,7 +458,7 @@
 
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN'))
+            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK'))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -423,12 +473,31 @@
                     </div>
 
                     @if($isRejected)
+                        @php
+                            $rejectTitle = 'Surat Jalan Ditolak oleh Security';
+                            $rejectReason = null;
+                            $catatanText = (string) ($suratJalan->catatan ?? '');
+                            if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                                $rejectStage = strtolower($matches[1] ?? '');
+                                $rejectReason = trim($matches[2] ?? '');
+                                if ($rejectStage === 'pengirim') {
+                                    $rejectTitle = 'Surat Jalan Ditolak oleh Security Pengirim';
+                                } elseif ($rejectStage === 'penerima') {
+                                    $rejectTitle = 'Surat Jalan Ditolak oleh Security Penerima';
+                                }
+                            }
+                        @endphp
                         <div class="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
-                            <div class="flex items-center gap-2 text-red-700 text-sm sm:text-base">
-                                <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <div class="flex items-start gap-2 text-red-700 text-sm sm:text-base">
+                                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                 </svg>
-                                <span class="font-semibold">Surat Jalan Ditolak oleh Security</span>
+                                <div>
+                                    <span class="font-semibold">{{ $rejectTitle }}</span>
+                                    @if($rejectReason)
+                                        <p class="text-xs sm:text-sm text-red-700 mt-1">Alasan: {{ $rejectReason }}</p>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -583,33 +652,63 @@
             @else
             {{-- DRAFT Status Card with Blurred Progress Background --}}
             @php
-                $draftMessage = match ($suratStatus) {
+                $securityRejectMessage = null;
+                if ($suratStatus === 'DITOLAK') {
+                    $rejectStageLabel = 'security';
+                    $rejectReason = null;
+                    $catatanText = (string) ($suratJalan->catatan ?? '');
+                    if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                        $rejectStage = strtolower($matches[1] ?? '');
+                        $rejectReason = trim($matches[2] ?? '');
+                        if ($rejectStage === 'pengirim') {
+                            $rejectStageLabel = 'security pengirim';
+                        } elseif ($rejectStage === 'penerima') {
+                            $rejectStageLabel = 'security penerima';
+                        }
+                    }
+                    $securityRejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
+                    if ($rejectReason) {
+                        $securityRejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    }
+                }
+
+                $draftMessage = $securityRejectMessage ?? match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                    'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
                     'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                    'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
                     default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
                 };
 
                 $draftIcon = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
+                    'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
+                    'DITOLAK' => 'x-circle',
                     default => 'document',
                 };
 
                 $draftBgClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
+                    'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
+                    'DITOLAK' => 'bg-red-50 border-red-200',
                     default => 'bg-gray-50 border-gray-200',
                 };
 
                 $draftTextClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
+                    'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
+                    'DITOLAK' => 'text-red-800',
                     default => 'text-gray-700',
                 };
 
                 $draftIconBgClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
+                    'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
+                    'DITOLAK' => 'bg-red-100 text-red-600',
                     default => 'bg-gray-100 text-gray-600',
                 };
             @endphp
@@ -854,7 +953,7 @@
                                              class="w-full h-28 sm:h-40 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition">
                                     </a>
                                     <p class="text-[10px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2 truncate">{{ $attachment->file_name }}</p>
-                                    @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $isGudangAsalView)
+                                    @if(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true) && $isGudangAsalView)
                                         <form action="{{ route('admin.surat-jalan.delete-attachment', $attachment->id) }}"
                                               method="POST"
                                               class="absolute top-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition">
@@ -874,7 +973,7 @@
                         </div>
                     </div>
                 </div>
-            @elseif(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true) && $isGudangAsalView)
+            @elseif(in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true) && $isGudangAsalView)
                 <div class="bg-yellow-50 border border-yellow-200 rounded-xl mt-4 sm:mt-6 p-4">
                     <p class="text-yellow-800 text-xs sm:text-sm">
                         <strong>Perhatian:</strong> Belum ada lampiran gambar. Upload minimal 1 gambar sebelum meminta persetujuan.
@@ -890,7 +989,7 @@
             @endphp
 
             {{-- Tombol Terima Barang untuk Operator Gudang Tujuan (status DIPERIKSA) --}}
-            @if($suratJalan->status === 'DIPERIKSA' && $isGudangTujuan && !$isManagerView)
+            @if(in_array($suratJalan->status, ['DIPERIKSA', 'DIPERIKSA_PENERIMA'], true) && $isGudangTujuan && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Penerimaan</h3>
@@ -996,7 +1095,7 @@
             @endif
 
             {{-- Info Pengembalian Menunggu Diterima (untuk PEMINJAMAN ketika surat kembali sudah DIPERIKSA) --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman?->suratJalanKembali?->status === 'DIPERIKSA')
+            @if($suratJalan->tipe === 'PEMINJAMAN' && in_array(($peminjaman?->suratJalanKembali?->status ?? ''), ['DIPERIKSA', 'DIPERIKSA_PENERIMA'], true))
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Menunggu Diterima</h3>
@@ -1234,59 +1333,85 @@
                 </div>
 
                 {{-- Lampiran Gambar --}}
-                <div class="border rounded-xl p-4 bg-gray-50" data-camera-capture data-target-input="attachments-return-detail-admin" data-max-files="3">
-                    <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">Lampiran Gambar</p>
-                            <p class="text-xs text-gray-500">Opsional, maks 3 gambar, maks 10MB/gambar.</p>
+                <div class="border border-dashed border-gray-300 rounded-xl bg-gray-50/50 overflow-hidden" data-camera-capture data-target-input="attachments-return-detail-admin" data-max-files="3">
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-700">Lampiran Foto</span>
+                            <span class="text-xs text-gray-400">(Opsional)</span>
                         </div>
-                        <p class="text-xs text-gray-500" data-camera-status>Dipilih: 0/3</p>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full" data-camera-status>0/3</span>
                     </div>
-                    <div class="mt-4 grid gap-4 md:grid-cols-2">
-                        <div class="space-y-3">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button"
-                                        data-camera-open
-                                        class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-pln-primary rounded-md hover:bg-pln-light">
-                                    Buka Kamera
-                                </button>
+
+                    {{-- Camera Panel (Hidden by default) --}}
+                    <div data-camera-panel class="hidden bg-black">
+                        <div class="relative">
+                            <video class="w-full h-48 object-cover" playsinline muted></video>
+                            <canvas class="hidden"></canvas>
+                            <div class="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3">
                                 <button type="button"
                                         data-camera-capture-btn
-                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
-                                    Ambil Foto
+                                        class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors">
+                                    <div class="w-10 h-10 bg-red-500 rounded-full"></div>
                                 </button>
                                 <button type="button"
                                         data-camera-close
-                                        class="hidden inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                                    Tutup Kamera
+                                        class="w-10 h-10 bg-gray-800/80 rounded-full flex items-center justify-center text-white hover:bg-gray-700 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
                                 </button>
-                                <span class="text-xs text-gray-500">atau pilih dari galeri</span>
                             </div>
-                            <div data-camera-panel class="hidden border border-gray-200 rounded-lg overflow-hidden bg-white">
-                                <video class="w-full h-48 sm:h-56 object-cover bg-black" playsinline muted></video>
-                                <canvas class="hidden"></canvas>
-                            </div>
-                            <input type="file"
-                                   id="attachments-return-detail-admin"
-                                   name="attachments[]"
-                                   multiple
-                                   accept="image/jpeg,image/jpg,image/png"
-                                   capture="environment"
-                                   class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-pln-primary file:text-white hover:file:bg-pln-light">
-                            <p class="text-xs text-gray-500">Format: JPG, JPEG, PNG.</p>
-                            <p class="text-xs text-red-600 hidden" data-camera-error></p>
-                        </div>
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold text-gray-600">Preview</p>
-                            <div class="grid grid-cols-3 gap-2" data-camera-preview></div>
                         </div>
                     </div>
-                    <p class="text-xs text-amber-600 mt-2">
-                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Jika tidak mengupload gambar baru, sistem akan menggunakan lampiran dari surat jalan peminjaman awal.
-                    </p>
+
+                    {{-- Upload Area --}}
+                    <div class="p-4">
+                        <div class="flex flex-col sm:flex-row items-center gap-4">
+                            {{-- Action Buttons --}}
+                            <div class="flex items-center gap-2">
+                                <button type="button" data-camera-open class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    Kamera
+                                </button>
+                                <label class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light cursor-pointer transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    Pilih File
+                                    <input type="file"
+                                           id="attachments-return-detail-admin"
+                                           name="attachments[]"
+                                           multiple
+                                           accept="image/jpeg,image/jpg,image/png"
+                                           capture="environment"
+                                           class="hidden">
+                                </label>
+                            </div>
+                            {{-- Info --}}
+                            <p class="text-xs text-gray-500">JPG, PNG. Maks 10MB.</p>
+                        </div>
+
+                        {{-- Preview Grid (empty by default, populated dynamically) --}}
+                        <div class="mt-4 grid grid-cols-3 gap-3 hidden" data-camera-preview></div>
+
+                        {{-- Error message --}}
+                        <p class="text-xs text-red-600 mt-2 hidden" data-camera-error></p>
+
+                        {{-- Info note --}}
+                        <p class="text-xs text-amber-600 mt-3 flex items-start gap-1">
+                            <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>Jika tidak upload, sistem akan gunakan lampiran dari surat jalan peminjaman awal.</span>
+                        </p>
+                    </div>
                 </div>
 
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
@@ -1294,7 +1419,37 @@
                         <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
                         <p class="text-xs text-gray-500">Jumlah otomatis penuh sesuai peminjaman.</p>
                     </div>
-                    <div class="overflow-x-auto">
+
+                    {{-- Mobile Card Layout --}}
+                    <div class="sm:hidden">
+                        @forelse($peminjaman->items as $index => $item)
+                            <div class="p-3 bg-white border-t border-gray-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-semibold text-gray-500">Item #{{ $index + 1 }}</span>
+                                </div>
+                                <p class="font-medium text-sm text-gray-900 mb-2">
+                                    {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}
+                                </p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span class="block text-xs text-gray-500">Satuan</span>
+                                        <span class="text-sm text-gray-900">{{ $item->item->satuan?->nama ?? '-' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-xs text-gray-500">Jumlah</span>
+                                        <span class="text-sm font-semibold text-gray-900">{{ $item->jumlah_dipinjam }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="px-4 py-6 text-center text-sm text-gray-500">
+                                Tidak ada data item.
+                            </div>
+                        @endforelse
+                    </div>
+
+                    {{-- Desktop Table Layout --}}
+                    <div class="hidden sm:block overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-white">
                                 <tr>
@@ -1307,7 +1462,7 @@
                                 @forelse($peminjaman->items as $item)
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan ?? '-' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $item->jumlah_dipinjam }}</td>
                                     </tr>
                                 @empty
@@ -1322,14 +1477,14 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-3">
+                <div class="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-end">
                     <button type="button"
-                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150"
+                            class="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition text-center"
                             @click="$dispatch('close-modal', 'return-peminjaman-modal')">
                         Batal
                     </button>
                     <button type="submit"
-                            class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150">
+                            class="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-md hover:bg-orange-600 transition text-center">
                         {{ ($isAdmin ?? false) ? 'Simpan dan Selesaikan (Admin)' : 'Simpan Draft Pengembalian' }}
                     </button>
                 </div>
@@ -1395,6 +1550,9 @@
             const status = wrapper.querySelector('[data-camera-status]');
             const preview = wrapper.querySelector('[data-camera-preview]');
 
+            // Store collected files separately to prevent browser replacing them
+            wrapper._collectedFiles = [];
+
             const setError = (message) => {
                 if (!error) {
                     return;
@@ -1412,8 +1570,17 @@
                 if (!status) {
                     return;
                 }
-                const count = input?.files?.length || 0;
-                status.textContent = `Dipilih: ${count}/${maxFiles}`;
+                const count = wrapper._collectedFiles.length;
+                status.textContent = `${count}/${maxFiles}`;
+            };
+
+            const syncToInput = () => {
+                if (!input) {
+                    return;
+                }
+                const dataTransfer = new DataTransfer();
+                wrapper._collectedFiles.forEach((file) => dataTransfer.items.add(file));
+                input.files = dataTransfer.files;
             };
 
             const clearPreview = () => {
@@ -1427,14 +1594,8 @@
             };
 
             const removeFile = (index) => {
-                if (!input) {
-                    return;
-                }
-                const files = Array.from(input.files || []);
-                files.splice(index, 1);
-                const dataTransfer = new DataTransfer();
-                files.forEach((file) => dataTransfer.items.add(file));
-                input.files = dataTransfer.files;
+                wrapper._collectedFiles.splice(index, 1);
+                syncToInput();
                 renderPreview();
             };
 
@@ -1444,39 +1605,40 @@
                     return;
                 }
                 clearPreview();
-                const files = Array.from(input?.files || []);
+                const files = wrapper._collectedFiles;
+
+                // Hide preview grid if no files
                 if (files.length === 0) {
-                    const empty = document.createElement('p');
-                    empty.className = 'col-span-3 text-xs text-gray-400';
-                    empty.textContent = 'Belum ada foto.';
-                    preview.appendChild(empty);
+                    preview.classList.add('hidden');
                     return;
                 }
+
+                // Show preview grid and add file previews
+                preview.classList.remove('hidden');
                 files.forEach((file, index) => {
                     const url = URL.createObjectURL(file);
                     wrapper._objectUrls.push(url);
 
                     const item = document.createElement('div');
-                    item.className = 'relative';
+                    item.className = 'aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-white relative group';
 
                     const img = document.createElement('img');
-                    img.className = 'w-full h-24 object-cover rounded border border-gray-200';
+                    img.className = 'w-full h-full object-cover';
                     img.src = url;
                     img.alt = file.name;
 
+                    const overlay = document.createElement('div');
+                    overlay.className = 'absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center';
+
                     const removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
-                    removeBtn.className = 'absolute top-1 right-1 text-[10px] px-1.5 py-0.5 bg-black bg-opacity-60 text-white rounded';
-                    removeBtn.textContent = 'Hapus';
+                    removeBtn.className = 'p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white';
+                    removeBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
                     removeBtn.addEventListener('click', () => removeFile(index));
 
-                    const name = document.createElement('p');
-                    name.className = 'mt-1 text-[10px] text-gray-500 truncate';
-                    name.textContent = file.name;
-
+                    overlay.appendChild(removeBtn);
                     item.appendChild(img);
-                    item.appendChild(removeBtn);
-                    item.appendChild(name);
+                    item.appendChild(overlay);
                     preview.appendChild(item);
                 });
             };
@@ -1486,14 +1648,18 @@
                     return;
                 }
                 setError('');
-                const files = Array.from(input.files || []);
-                if (files.length > maxFiles) {
+                // Merge new files with existing collected files
+                const newFiles = Array.from(input.files || []);
+                newFiles.forEach((file) => {
+                    if (wrapper._collectedFiles.length < maxFiles) {
+                        wrapper._collectedFiles.push(file);
+                    }
+                });
+                if (wrapper._collectedFiles.length > maxFiles) {
                     setError(`Maksimal ${maxFiles} gambar.`);
+                    wrapper._collectedFiles = wrapper._collectedFiles.slice(0, maxFiles);
                 }
-                const limited = files.slice(0, maxFiles);
-                const dataTransfer = new DataTransfer();
-                limited.forEach((file) => dataTransfer.items.add(file));
-                input.files = dataTransfer.files;
+                syncToInput();
                 renderPreview();
             };
 
@@ -1507,15 +1673,6 @@
                 }
                 if (panel) {
                     panel.classList.add('hidden');
-                }
-                if (openBtn) {
-                    openBtn.classList.remove('hidden');
-                }
-                if (captureBtn) {
-                    captureBtn.classList.add('hidden');
-                }
-                if (closeBtn) {
-                    closeBtn.classList.add('hidden');
                 }
             };
 
@@ -1538,15 +1695,6 @@
                     if (panel) {
                         panel.classList.remove('hidden');
                     }
-                    if (openBtn) {
-                        openBtn.classList.add('hidden');
-                    }
-                    if (captureBtn) {
-                        captureBtn.classList.remove('hidden');
-                    }
-                    if (closeBtn) {
-                        closeBtn.classList.remove('hidden');
-                    }
                 } catch (err) {
                     setError('Tidak bisa mengakses kamera. Pastikan izin kamera diaktifkan.');
                 }
@@ -1562,8 +1710,7 @@
                     setError('Kamera belum siap.');
                     return;
                 }
-                const existingCount = input.files?.length || 0;
-                if (existingCount >= maxFiles) {
+                if (wrapper._collectedFiles.length >= maxFiles) {
                     setError(`Maksimal ${maxFiles} gambar.`);
                     return;
                 }
@@ -1584,10 +1731,8 @@
                     }
                     const fileName = `camera-${Date.now()}.jpg`;
                     const file = new File([blob], fileName, { type: 'image/jpeg' });
-                    const dataTransfer = new DataTransfer();
-                    Array.from(input.files || []).forEach((existing) => dataTransfer.items.add(existing));
-                    dataTransfer.items.add(file);
-                    input.files = dataTransfer.files;
+                    wrapper._collectedFiles.push(file);
+                    syncToInput();
                     renderPreview();
                 }, 'image/jpeg', 0.9);
             };

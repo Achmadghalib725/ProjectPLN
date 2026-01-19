@@ -5,13 +5,18 @@ namespace App\Observers;
 use App\Events\SuratJalanStatusUpdated;
 use App\Models\AppNotification;
 use App\Models\SuratJalan;
+use App\Models\SuratJalanStatusHistory;
 use Illuminate\Broadcasting\BroadcastException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SuratJalanObserver
 {
     public function created(SuratJalan $suratJalan): void
     {
+        $this->recordStatusHistory($suratJalan);
+
         try {
             event(new SuratJalanStatusUpdated($suratJalan, 'created'));
         } catch (BroadcastException $e) {
@@ -25,6 +30,9 @@ class SuratJalanObserver
             return;
         }
 
+        $previousStatus = $suratJalan->getOriginal('status');
+        $this->recordStatusHistory($suratJalan);
+
         // Broadcast event
         try {
             event(new SuratJalanStatusUpdated($suratJalan, 'status_updated'));
@@ -33,10 +41,10 @@ class SuratJalanObserver
         }
 
         // Create notifications based on status
-        $this->createNotifications($suratJalan);
+        $this->createNotifications($suratJalan, $previousStatus);
     }
 
-    protected function createNotifications(SuratJalan $suratJalan): void
+    protected function createNotifications(SuratJalan $suratJalan, ?string $previousStatus = null): void
     {
         $status = $suratJalan->status;
         $nomor = $suratJalan->nomor;
@@ -60,6 +68,7 @@ class SuratJalanObserver
                     break;
 
                 case 'DIPERIKSA':
+                case 'DIPERIKSA_PENERIMA':
                     // Notify operator gudang tujuan: surat siap diterima
                     if ($suratJalan->gudang_tujuan_id) {
                         AppNotification::notifyGudangOperators(
@@ -75,6 +84,9 @@ class SuratJalanObserver
 
                 case 'DITERIMA':
                 case 'SELESAI':
+                    if ($previousStatus === 'DITERIMA') {
+                        break;
+                    }
                     // Notify operator gudang asal: surat sudah diterima
                     if ($suratJalan->gudang_asal_id) {
                         AppNotification::notifyGudangOperators(
@@ -118,5 +130,19 @@ class SuratJalanObserver
         } catch (\Exception $e) {
             Log::warning('Failed to create notification for SuratJalan: ' . $e->getMessage());
         }
+    }
+
+    protected function recordStatusHistory(SuratJalan $suratJalan): void
+    {
+        if (!Schema::hasTable('surat_jalan_status_histories')) {
+            return;
+        }
+
+        SuratJalanStatusHistory::create([
+            'surat_jalan_id' => $suratJalan->id,
+            'status' => $suratJalan->status ?? 'DRAFT',
+            'occurred_at' => now(),
+            'actor_id' => Auth::id(),
+        ]);
     }
 }

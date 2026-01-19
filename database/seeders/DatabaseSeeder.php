@@ -6,14 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Gudang;
-use App\Models\Item;
-use App\Models\ItemStock;
 use App\Models\Pic;
-use App\Models\Peminjaman;
-use App\Models\PeminjamanItem;
-use App\Models\SuratJalan;
-use App\Models\SuratJalanItem;
-use Illuminate\Support\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -70,7 +63,7 @@ class DatabaseSeeder extends Seeder
         // ========================================
 
         // Operator Gudang Tarahan
-        $operatorTarahan = User::create([
+        User::create([
             'name' => 'Budi Santoso',
             'username' => 'budi',
             'email' => 'budi@egudang.local',
@@ -83,7 +76,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Operator Gudang Teluk Betung
-        $operatorTelukBetung = User::create([
+        User::create([
             'name' => 'Siti Rahma',
             'username' => 'siti',
             'email' => 'siti@egudang.local',
@@ -104,7 +97,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'agus@egudang.local',
             'password' => Hash::make('password'),
             'role' => 'security',
-            'gudang_id' => $gudangTarahan->id, // Security di Tarahan
+            'gudang_id' => $gudangTarahan->id,
             'jabatan' => 'Komandan Regu Security',
             'no_hp' => '084567890123',
             'is_active' => true
@@ -116,120 +109,32 @@ class DatabaseSeeder extends Seeder
             'email' => 'rizal@egudang.local',
             'password' => Hash::make('password'),
             'role' => 'security',
-            'gudang_id' => $gudangTelukBetung->id, // Security di Teluk Betung
+            'gudang_id' => $gudangTelukBetung->id,
             'jabatan' => 'Petugas Security',
             'no_hp' => '085678901234',
             'is_active' => true
         ]);
 
         // ========================================
-        // 6. BUAT MASTER ITEM (Barang)
+        // 6. MASTER PIC (DATA NON-USER)
         // ========================================
-        $item1 = Item::create([
-            'kode' => 'KBL-001',
-            'nama' => 'Kabel NYA 1.5mm',
-            'satuan' => 'roll',
-            'kategori' => 'kabel',
-            'deskripsi' => 'Kabel instalasi rumah NYA ukuran 1.5mm'
-        ]);
-
-        $item2 = Item::create([
-            'kode' => 'TRA-001',
-            'nama' => 'Trafo Distribusi 100kVA',
-            'satuan' => 'unit',
-            'kategori' => 'trafo',
-            'deskripsi' => 'Trafo distribusi 20kV/380V kapasitas 100kVA'
-        ]);
-
-        $item3 = Item::create([
-            'kode' => 'MCB-001',
-            'nama' => 'MCB 3 Phase 63A',
-            'satuan' => 'unit',
-            'kategori' => 'proteksi',
-            'deskripsi' => 'Miniature Circuit Breaker 3 phase 63 Ampere'
-        ]);
-
-        $item4 = Item::create([
-            'kode' => 'TNG-001',
-            'nama' => 'Tiang Beton 9 Meter',
-            'satuan' => 'batang',
-            'kategori' => 'konstruksi',
-            'deskripsi' => 'Tiang beton pracetak tinggi 9 meter'
-        ]);
-
-        $item5 = Item::create([
-            'kode' => 'KWH-001',
-            'nama' => 'KWH Meter Digital 1 Phase',
-            'satuan' => 'unit',
-            'kategori' => 'meter',
-            'deskripsi' => 'KWH meter digital 1 phase dengan fitur prepaid'
-        ]);
-
-        // ========================================
-        // 7. ISI STOK AWAL GUDANG TARAHAN
-        // ========================================
-        ItemStock::create([
-            'item_id' => $item1->id,
-            'gudang_id' => $gudangTarahan->id,
-            'jumlah' => 150,
-            'stok_minimum' => 50
-        ]);
-
-        ItemStock::create([
-            'item_id' => $item2->id,
-            'gudang_id' => $gudangTarahan->id,
-            'jumlah' => 8,
-            'stok_minimum' => 3
-        ]);
-
-        ItemStock::create([
-            'item_id' => $item3->id,
-            'gudang_id' => $gudangTarahan->id,
-            'jumlah' => 25,
-            'stok_minimum' => 10
-        ]);
-
-        // ========================================
-        // 8. ISI STOK AWAL GUDANG TELUK BETUNG
-        // ========================================
-        ItemStock::create([
-            'item_id' => $item1->id,
-            'gudang_id' => $gudangTelukBetung->id,
-            'jumlah' => 80,
-            'stok_minimum' => 30
-        ]);
-
-        ItemStock::create([
-            'item_id' => $item4->id,
-            'gudang_id' => $gudangTelukBetung->id,
-            'jumlah' => 45,
-            'stok_minimum' => 20
-        ]);
-
-        ItemStock::create([
-            'item_id' => $item5->id,
-            'gudang_id' => $gudangTelukBetung->id,
-            'jumlah' => 5,
-            'stok_minimum' => 15  // Stok rendah untuk testing
-        ]);
-
-        // ========================================
-        // 9. MASTER PIC (DATA NON-USER)
-        // ========================================
-        $picTarahan = Pic::create([
+        Pic::create([
             'nama' => 'Rama Kurniawan',
             'jabatan' => 'PIC Logistik Tarahan',
             'no_hp' => '0812-3456-7890',
             'gudang_id' => $gudangTarahan->id,
         ]);
 
-        $picTelukBetung = Pic::create([
+        Pic::create([
             'nama' => 'Dewi Lestari',
             'jabatan' => 'PIC Gudang Teluk Betung',
             'no_hp' => '0813-9876-5432',
             'gudang_id' => $gudangTelukBetung->id,
         ]);
 
-
+        // ========================================
+        // 7. PANGGIL ITEM MEKANIK SEEDER
+        // ========================================
+        $this->call(ItemMekanikSeeder::class);
     }
 }

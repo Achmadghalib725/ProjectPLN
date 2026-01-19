@@ -69,10 +69,41 @@
 
                 // Helper untuk format waktu
                 $formatWaktu = fn($waktu) => $waktu ? \Carbon\Carbon::parse($waktu)->format('d M Y, H:i') : null;
+                $historyFor = function ($surat) {
+                    if (!$surat || !$surat->relationLoaded('statusHistories')) {
+                        return collect();
+                    }
+                    return $surat->statusHistories->groupBy('status');
+                };
+                $historyTime = function ($historyMap, $statuses) {
+                    $statusList = is_array($statuses) ? $statuses : [$statuses];
+                    foreach ($statusList as $status) {
+                        $entry = $historyMap->get($status)?->last();
+                        if ($entry && $entry->occurred_at) {
+                            return $entry->occurred_at;
+                        }
+                    }
+                    return null;
+                };
+                $historyTimeText = function ($historyMap, $statuses, $fallback = null) use ($historyTime, $formatWaktu) {
+                    $time = $historyTime($historyMap, $statuses) ?? $fallback;
+                    return $formatWaktu($time);
+                };
+                $historyActor = function ($historyMap, $statuses) {
+                    $statusList = is_array($statuses) ? $statuses : [$statuses];
+                    foreach ($statusList as $status) {
+                        $entry = $historyMap->get($status)?->last();
+                        if ($entry?->actor?->name) {
+                            return $entry->actor->name;
+                        }
+                    }
+                    return null;
+                };
 
                 if ($tipe === 'TRANSFER') {
                     // TRANSFER: Dikirim -> Diperiksa -> Selesai
                     $sjKirim = $suratJalan;
+                    $sjKirimHistory = $historyFor($sjKirim);
                     $steps = [
                         [
                             'label' => 'Dikirim',
@@ -81,7 +112,7 @@
                                 ? "Dikirim dari <strong>{$sjKirim->gudangAsal->nama}</strong> ke <strong>{$sjKirim->gudangTujuan->nama}</strong>"
                                 : null,
                             'time' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
-                                ? $formatWaktu($sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
+                                ? $historyTimeText($sjKirimHistory, ['DIKIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'], $sjKirim->waktu_ttd_pembuat ?? $sjKirim->updated_at)
                                 : null,
                             'by' => !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                 ? $sjKirim->pembuat?->name
@@ -90,11 +121,15 @@
                         [
                             'label' => 'Diperiksa',
                             'desc' => 'Security memeriksa',
-                            'detail' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI'])
+                            'detail' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
                                 ? "Diperiksa oleh Security di <strong>{$sjKirim->gudangTujuan->nama}</strong>"
                                 : null,
-                            'time' => in_array($sjKirim->status, ['DIPERIKSA', 'SELESAI']) ? $formatWaktu($sjKirim->updated_at) : null,
-                            'by' => null,
+                            'time' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                ? $historyTimeText($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], $sjKirim->updated_at)
+                                : null,
+                            'by' => in_array($sjKirim->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                                ? $historyActor($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'])
+                                : null,
                         ],
                         [
                             'label' => 'Selesai',
@@ -102,8 +137,12 @@
                             'detail' => $sjKirim->status === 'SELESAI'
                                 ? "Diterima di <strong>{$sjKirim->gudangTujuan->nama}</strong>"
                                 : null,
-                            'time' => $sjKirim->status === 'SELESAI' ? $formatWaktu($sjKirim->updated_at) : null,
-                            'by' => null,
+                            'time' => $sjKirim->status === 'SELESAI'
+                                ? $historyTimeText($sjKirimHistory, 'SELESAI', $sjKirim->updated_at)
+                                : null,
+                            'by' => $sjKirim->status === 'SELESAI'
+                                ? $historyActor($sjKirimHistory, 'SELESAI')
+                                : null,
                         ],
                     ];
                     $statusIndexMap = [
@@ -111,18 +150,26 @@
                         'MENUNGGU_PERSETUJUAN' => 0,
                         'DITOLAK_PERSETUJUAN' => 0,
                         'DIKIRIM' => 1,
+                        'DIPERIKSA_PENGIRIM' => 1,
+                        'DIPERIKSA_PENERIMA' => 2,
                         'DIPERIKSA' => 2,
                         'DITERIMA' => 3,
                         'SELESAI' => 3,
                         'DITOLAK' => -2,
                     ];
                     $currentStep = $statusIndexMap[$suratStatus] ?? 0;
+                    if ($suratStatus === 'DIPERIKSA_PENGIRIM') {
+                        $currentStep = -1;
+                    }
                 } else {
                     // PEMINJAMAN/PENGEMBALIAN: Alur lengkap sinkronisasi
                     $sjKirim = $peminjaman?->suratJalanKirim;
                     $sjKembali = $peminjaman?->suratJalanKembali;
                     $gudangPemilik = $peminjaman?->gudangPemilik;
                     $gudangPeminjam = $peminjaman?->gudangPeminjam;
+                    $sjKirimHistory = $historyFor($sjKirim);
+                    $sjKembaliHistory = $historyFor($sjKembali);
+                    $kirimCheckedAt = $historyTime($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA']);
 
                     $steps = [
                         [
@@ -131,18 +178,21 @@
                             'detail' => $sjKirim && !in_array($sjKirim->status, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true)
                                 ? "Dikirim dari <strong>{$gudangPemilik?->nama}</strong> ke <strong>{$gudangPeminjam?->nama}</strong>"
                                 : null,
-                            'time' => $peminjaman?->waktu_kirim ? $formatWaktu($peminjaman->waktu_kirim) : null,
+                            'time' => $historyTimeText($sjKirimHistory, ['DIKIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'DITERIMA', 'SELESAI', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN'], $peminjaman?->waktu_kirim),
                             'by' => $sjKirim?->pembuat?->name,
                         ],
                         [
                             'label' => 'Diperiksa',
                             'desc' => 'Security gudang tujuan',
-                            'detail' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA', 'DITERIMA', 'SELESAI'])
+                            'detail' => $sjKirim && $kirimCheckedAt
                                 ? "Diperiksa oleh Security di <strong>{$gudangPeminjam?->nama}</strong>"
                                 : null,
-                            'time' => $sjKirim && in_array($sjKirim->status, ['DIPERIKSA', 'DITERIMA', 'SELESAI'])
-                                ? $formatWaktu($sjKirim->updated_at) : null,
-                            'by' => null,
+                            'time' => $kirimCheckedAt
+                                ? $formatWaktu($kirimCheckedAt)
+                                : null,
+                            'by' => $kirimCheckedAt
+                                ? $historyActor($sjKirimHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'])
+                                : null,
                         ],
                         [
                             'label' => 'Diterima',
@@ -150,27 +200,27 @@
                             'detail' => $peminjaman && in_array($peminjaman->status, ['DITERIMA', 'DIKEMBALIKAN', 'SELESAI'])
                                 ? "Diterima di <strong>{$gudangPeminjam?->nama}</strong>"
                                 : null,
-                            'time' => $peminjaman?->waktu_diterima ? $formatWaktu($peminjaman->waktu_diterima) : null,
-                            'by' => null,
+                            'time' => $historyTimeText($sjKirimHistory, 'DITERIMA', $peminjaman?->waktu_diterima),
+                            'by' => $historyActor($sjKirimHistory, 'DITERIMA'),
                         ],
                         [
                             'label' => 'Dikembalikan',
                             'desc' => 'Barang dikembalikan',
-                            'detail' => $sjKembali && in_array($sjKembali->status, ['DIKEMBALIKAN', 'DIPERIKSA', 'SELESAI'])
+                            'detail' => $sjKembali && in_array($sjKembali->status, ['DIKEMBALIKAN', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
                                 ? "Dikembalikan dari <strong>{$gudangPeminjam?->nama}</strong> ke <strong>{$gudangPemilik?->nama}</strong>"
                                 : null,
-                            'time' => $peminjaman?->waktu_pengembalian ? $formatWaktu($peminjaman->waktu_pengembalian) : null,
+                            'time' => $historyTimeText($sjKembaliHistory, ['DIKEMBALIKAN', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'], $peminjaman?->waktu_pengembalian),
                             'by' => $sjKembali?->pembuat?->name,
                         ],
                         [
                             'label' => 'Diperiksa',
                             'desc' => 'Security gudang pemilik',
-                            'detail' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA', 'SELESAI'])
+                            'detail' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
                                 ? "Diperiksa oleh Security di <strong>{$gudangPemilik?->nama}</strong>"
                                 : null,
-                            'time' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA', 'SELESAI'])
-                                ? $formatWaktu($sjKembali->updated_at) : null,
-                            'by' => null,
+                            'time' => $sjKembali && in_array($sjKembali->status, ['DIPERIKSA_PENERIMA', 'DIPERIKSA', 'SELESAI'])
+                                ? $historyTimeText($sjKembaliHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], $sjKembali->updated_at) : null,
+                            'by' => $historyActor($sjKembaliHistory, ['DIPERIKSA_PENERIMA', 'DIPERIKSA']),
                         ],
                         [
                             'label' => 'Selesai',
@@ -178,8 +228,8 @@
                             'detail' => $peminjaman && $peminjaman->status === 'SELESAI'
                                 ? "Barang telah dikembalikan ke <strong>{$gudangPemilik?->nama}</strong>"
                                 : null,
-                            'time' => $peminjaman?->waktu_selesai ? $formatWaktu($peminjaman->waktu_selesai) : null,
-                            'by' => null,
+                            'time' => $historyTimeText($sjKembaliHistory, 'SELESAI', $peminjaman?->waktu_selesai),
+                            'by' => $historyActor($sjKembaliHistory, 'SELESAI'),
                         ],
                     ];
 
@@ -191,30 +241,30 @@
                     // Map status ke step (step yang SEDANG aktif, bukan yang sudah selesai)
                     if ($peminjamanStatus === 'SELESAI' || $sjKembaliStatus === 'SELESAI') {
                         $currentStep = 6; // Semua selesai (di luar range = semua hijau)
-                    } elseif ($sjKembaliStatus === 'DIPERIKSA') {
-                        $currentStep = 5; // Sedang di step Selesai (menunggu operator approve)
-                    } elseif ($sjKembaliStatus === 'DIKEMBALIKAN' || $peminjamanStatus === 'DIKEMBALIKAN') {
-                        $currentStep = 4; // Sedang di step Diperiksa pengembalian (menunggu security)
+                    } elseif (in_array($sjKembaliStatus, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], true)) {
+                        $currentStep = 5; // Menunggu operator menerima pengembalian
+                    } elseif (in_array($sjKembaliStatus, ['DIKEMBALIKAN', 'DIPERIKSA_PENGIRIM'], true) || $peminjamanStatus === 'DIKEMBALIKAN') {
+                        $currentStep = 4; // Menunggu security penerima (gudang pemilik)
                     } elseif ($peminjamanStatus === 'DITERIMA' || $sjKirimStatus === 'DITERIMA') {
-                        $currentStep = 3; // Sedang di step Dikembalikan (menunggu pengembalian)
-                    } elseif ($sjKirimStatus === 'DIPERIKSA' || $peminjamanStatus === 'DIPERIKSA') {
-                        $currentStep = 2; // Sedang di step Diterima (menunggu operator approve)
-                    } elseif ($sjKirimStatus === 'DIKIRIM' || $peminjamanStatus === 'DIKIRIM') {
-                        $currentStep = 1; // Sedang di step Diperiksa (menunggu security)
+                        $currentStep = 3; // Menunggu pengembalian barang
+                    } elseif (in_array($sjKirimStatus, ['DIPERIKSA_PENERIMA', 'DIPERIKSA'], true) || $peminjamanStatus === 'DIPERIKSA') {
+                        $currentStep = 2; // Menunggu operator menerima
+                    } elseif (in_array($sjKirimStatus, ['DIKIRIM', 'DIPERIKSA_PENGIRIM'], true) || $peminjamanStatus === 'DIKIRIM') {
+                        $currentStep = 1; // Menunggu security penerima (gudang tujuan)
                     } else {
                         $currentStep = 0; // Belum dikirim
                     }
 
-                    // Handle rejection
-                    if ($isRejected || $peminjaman?->status === 'DITOLAK') {
-                        $isRejected = true;
+                    if ($suratStatus === 'DIPERIKSA_PENGIRIM') {
+                        $currentStep = -1;
                     }
+
                 }
 
                 if ($isRejected) {
                     $periksaIndexes = collect($steps)
                         ->keys()
-                        ->filter(fn ($index) => ($steps[$index]['label'] ?? '') === 'Diperiksa')
+                        ->filter(fn ($index) => str_starts_with(($steps[$index]['label'] ?? ''), 'Diperiksa'))
                         ->values();
 
                     if ($periksaIndexes->count() > 1) {
@@ -233,7 +283,7 @@
 
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN'], true))
+            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true))
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -248,12 +298,31 @@
                     </div>
 
                     @if($isRejected)
+                        @php
+                            $rejectTitle = 'Surat Jalan Ditolak oleh Security';
+                            $rejectReason = null;
+                            $catatanText = (string) ($suratJalan->catatan ?? '');
+                            if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                                $rejectStage = strtolower($matches[1] ?? '');
+                                $rejectReason = trim($matches[2] ?? '');
+                                if ($rejectStage === 'pengirim') {
+                                    $rejectTitle = 'Surat Jalan Ditolak oleh Security Pengirim';
+                                } elseif ($rejectStage === 'penerima') {
+                                    $rejectTitle = 'Surat Jalan Ditolak oleh Security Penerima';
+                                }
+                            }
+                        @endphp
                         <div class="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
-                            <div class="flex items-center gap-2 text-red-700 text-sm sm:text-base">
-                                <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <div class="flex items-start gap-2 text-red-700 text-sm sm:text-base">
+                                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                 </svg>
-                                <span class="font-semibold">Surat Jalan Ditolak</span>
+                                <div>
+                                    <span class="font-semibold">{{ $rejectTitle }}</span>
+                                    @if($rejectReason)
+                                        <p class="text-xs sm:text-sm text-red-700 mt-1">Alasan: {{ $rejectReason }}</p>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -408,33 +477,63 @@
             @else
             {{-- DRAFT/MENUNGGU_PERSETUJUAN Status Card with Blurred Progress Background --}}
             @php
-                $draftMessage = match ($suratStatus) {
+                $securityRejectMessage = null;
+                if ($suratStatus === 'DITOLAK') {
+                    $rejectStageLabel = 'security';
+                    $rejectReason = null;
+                    $catatanText = (string) ($suratJalan->catatan ?? '');
+                    if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                        $rejectStage = strtolower($matches[1] ?? '');
+                        $rejectReason = trim($matches[2] ?? '');
+                        if ($rejectStage === 'pengirim') {
+                            $rejectStageLabel = 'security pengirim';
+                        } elseif ($rejectStage === 'penerima') {
+                            $rejectStageLabel = 'security penerima';
+                        }
+                    }
+                    $securityRejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
+                    if ($rejectReason) {
+                        $securityRejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    }
+                }
+
+                $draftMessage = $securityRejectMessage ?? match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                    'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
                     'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                    'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
                     default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
                 };
 
                 $draftIcon = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
+                    'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
+                    'DITOLAK' => 'x-circle',
                     default => 'document',
                 };
 
                 $draftBgClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
+                    'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
+                    'DITOLAK' => 'bg-red-50 border-red-200',
                     default => 'bg-gray-50 border-gray-200',
                 };
 
                 $draftTextClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
+                    'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
+                    'DITOLAK' => 'text-red-800',
                     default => 'text-gray-700',
                 };
 
                 $draftIconBgClass = match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
+                    'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
+                    'DITOLAK' => 'bg-red-100 text-red-600',
                     default => 'bg-gray-100 text-gray-600',
                 };
             @endphp
@@ -536,6 +635,8 @@
                                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
                                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
                                     'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                                    'DIPERIKSA_PENGIRIM' => 'bg-cyan-100 text-cyan-800',
+                                    'DIPERIKSA_PENERIMA' => 'bg-indigo-100 text-indigo-800',
                                     'DIPERIKSA' => 'bg-indigo-100 text-indigo-800',
                                     'DITERIMA' => 'bg-emerald-100 text-emerald-800',
                                     'MENUNGGU_DIKEMBALIKAN' => 'bg-amber-100 text-amber-800',
@@ -549,6 +650,8 @@
                                     'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
                                     'DITOLAK_PERSETUJUAN' => 'Persetujuan Ditolak',
                                     'DIKIRIM' => 'Dikirim',
+                                    'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan Pengirim',
+                                    'DIPERIKSA_PENERIMA' => 'Diperiksa Penerima',
                                     'DIPERIKSA' => 'Diperiksa',
                                     'DITERIMA' => 'Diterima',
                                     'MENUNGGU_DIKEMBALIKAN' => 'Menunggu Dikembalikan',
@@ -613,7 +716,7 @@
                     <h3 class="text-base sm:text-lg font-bold text-gray-900">Daftar Item</h3>
                 </div>
                 @php
-                    $canCheckItems = in_array($suratJalan->status, ['DIKIRIM', 'DIKEMBALIKAN'], true);
+                    $canCheckItems = in_array($suratJalan->status, ['DIKIRIM', 'DIKEMBALIKAN', 'DIPERIKSA_PENGIRIM'], true);
                     $hasSecurityCheck = $suratJalan->items->contains(fn ($row) => $row->checked_by_security !== null);
                 @endphp
 
@@ -730,26 +833,42 @@
                 $userGudangId = auth()->user()->gudang_id;
 
                 // Determine if this surat can be confirmed by security
-                // PEMINJAMAN with DIKIRIM → can be confirmed by gudang_tujuan (peminjam) security
-                // PEMINJAMAN with DIKEMBALIKAN → NO (action is on PENGEMBALIAN surat, not here)
-                // PENGEMBALIAN with DIKEMBALIKAN → can be confirmed by gudang_tujuan (pemilik) security
-                // TRANSFER with DIKIRIM → can be confirmed by gudang_tujuan security
+                // DIPERIKSA_PENGIRIM: security gudang_asal (pengirim) melakukan pemeriksaan awal
+                // DIKIRIM: security gudang_tujuan (penerima) melakukan pemeriksaan
+                // DIKEMBALIKAN (PENGEMBALIAN): security gudang_pemilik (penerima) melakukan pemeriksaan
                 $canShowConfirmation = false;
                 $expectedGudangId = null;
+                $checkStage = null;
 
-                if ($suratJalan->status === 'DIKIRIM' && in_array($suratJalan->tipe, ['PEMINJAMAN', 'TRANSFER'])) {
-                    // For DIKIRIM status: security at gudang_tujuan can confirm
+                if ($suratJalan->status === 'DIPERIKSA_PENGIRIM') {
+                    // Pemeriksaan awal oleh security pengirim
+                    $canShowConfirmation = true;
+                    $expectedGudangId = $suratJalan->gudang_asal_id;
+                    $checkStage = 'pengirim';
+                } elseif ($suratJalan->status === 'DIKIRIM' && in_array($suratJalan->tipe, ['PEMINJAMAN', 'TRANSFER'])) {
+                    // Pemeriksaan oleh security penerima
                     $canShowConfirmation = true;
                     $expectedGudangId = $suratJalan->gudang_tujuan_id;
+                    $checkStage = 'penerima';
                 } elseif ($suratJalan->status === 'DIKEMBALIKAN' && $suratJalan->tipe === 'PENGEMBALIAN') {
-                    // For PENGEMBALIAN with DIKEMBALIKAN: security at gudang_tujuan (gudang pemilik) can confirm
+                    // Pemeriksaan oleh security penerima (gudang pemilik)
                     $canShowConfirmation = true;
                     $expectedGudangId = $suratJalan->gudang_tujuan_id;
+                    if ($peminjaman?->gudang_pemilik_id) {
+                        $expectedGudangId = $peminjaman->gudang_pemilik_id;
+                    }
+                    $checkStage = 'penerima';
                 }
                 // Note: PEMINJAMAN with DIKEMBALIKAN should NOT show confirmation button
                 // because the action should be done on the PENGEMBALIAN surat
 
                 $canApprove = $canShowConfirmation && $userGudangId === $expectedGudangId;
+                $displayGudangLabel = $checkStage === 'pengirim' ? 'Asal' : 'Tujuan';
+                $displayGudangName = $checkStage === 'pengirim'
+                    ? ($suratJalan->gudangAsal->nama ?? '-')
+                    : (($suratJalan->tipe === 'PENGEMBALIAN' && $peminjaman?->gudangPemilik?->nama)
+                        ? $peminjaman->gudangPemilik->nama
+                        : ($suratJalan->gudangTujuan->nama ?? '-'));
             @endphp
             @if($canShowConfirmation)
                 @if($canApprove)
@@ -850,8 +969,8 @@
                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                         </svg>
                         <span class="font-semibold text-sm sm:text-base">
-                            Anda tidak dapat mengkonfirmasi surat jalan ini karena gudang tujuan bukan gudang Anda.
-                            <span class="text-yellow-600">(Gudang Tujuan: {{ $suratJalan->gudangTujuan->nama ?? '-' }})</span>
+                            Anda tidak dapat mengkonfirmasi surat jalan ini karena gudang {{ $checkStage === 'pengirim' ? 'asal' : 'tujuan' }} bukan gudang Anda.
+                            <span class="text-yellow-600">(Gudang {{ $displayGudangLabel }}: {{ $displayGudangName }})</span>
                         </span>
                     </div>
                 </div>

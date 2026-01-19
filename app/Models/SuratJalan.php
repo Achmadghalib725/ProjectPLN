@@ -70,6 +70,12 @@ class SuratJalan extends Model
         return $this->hasMany(SuratJalanAttachment::class);
     }
 
+    public function statusHistories()
+    {
+        return $this->hasMany(SuratJalanStatusHistory::class)
+            ->orderBy('occurred_at');
+    }
+
     /**
      * Relasi untuk surat jalan tipe PEMINJAMAN
      * Mendapatkan record peminjaman yang terkait
