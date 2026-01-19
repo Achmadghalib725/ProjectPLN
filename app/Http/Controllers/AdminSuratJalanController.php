@@ -12,6 +12,7 @@ use App\Models\StockMovement;
 use App\Models\SuratJalan;
 use App\Models\SuratJalanAttachment;
 use App\Models\SuratJalanItem;
+use App\Models\SuratJalanStatusHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -134,7 +135,7 @@ class AdminSuratJalanController extends Controller
         // Only show peminjaman that have been received (DITERIMA) and not yet returned
         $activePeminjamans = $activeGudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
             ? Peminjaman::query()
-                ->with(['items.item', 'gudangPemilik'])
+                ->with(['items.item', 'gudangPemilik', 'suratJalanKirim'])
                 ->where('gudang_peminjam_id', $activeGudangId)
                 ->where('status', 'DITERIMA')
                 ->whereNull('surat_jalan_kembali_id')
@@ -479,6 +480,14 @@ class AdminSuratJalanController extends Controller
                 $this->storeAttachments($suratJalanId, $request->file('attachments'));
             }
 
+            $this->seedAdminQuickStatusHistories(
+                $suratJalanId,
+                $validated['mode'],
+                $isCustomGudang,
+                $tanggalKirim,
+                $tanggalKembali
+            );
+
             $this->bumpSuratJalanCacheVersion([$gudangId, $gudangTujuanId]);
             $this->bumpSuratJalanDetailCacheVersion($suratJalanId);
 
@@ -791,6 +800,10 @@ class AdminSuratJalanController extends Controller
             if ($suratJalanAwal && $suratJalanAwal->attachments->isNotEmpty()) {
                 $this->copyAttachmentsFromSuratJalan($suratJalanId, $suratJalanAwal);
             }
+        }
+
+        if ($adminFinish) {
+            $this->seedAdminReturnStatusHistories($suratJalanId, $tanggalKirim);
         }
 
         $this->bumpSuratJalanCacheVersion([$gudangId, $peminjaman->gudang_pemilik_id]);
@@ -2588,6 +2601,87 @@ class AdminSuratJalanController extends Controller
               return $suratJalanKirim->id;
           });
       }
+
+    private function seedAdminQuickStatusHistories(
+        int $suratJalanId,
+        string $mode,
+        bool $isCustomGudang,
+        Carbon $tanggalKirim,
+        ?Carbon $tanggalKembali
+    ): void {
+        $kirimAt = $tanggalKirim->copy()->setTime(8, 0);
+        $periksaAt = $tanggalKirim->copy()->setTime(9, 0);
+        $diterimaAt = $tanggalKirim->copy()->setTime(10, 0);
+        $selesaiAt = $tanggalKembali
+            ? $tanggalKembali->copy()->setTime(16, 0)
+            : $diterimaAt->copy()->addHour();
+
+        $entries = [];
+        if ($mode === 'transfer') {
+            $entries[] = ['status' => 'DIKIRIM', 'occurred_at' => $kirimAt];
+            if (!$isCustomGudang) {
+                $entries[] = ['status' => 'DIPERIKSA', 'occurred_at' => $periksaAt];
+            }
+            $entries[] = ['status' => 'SELESAI', 'occurred_at' => $selesaiAt];
+        } else {
+            $entries[] = ['status' => 'DIKIRIM', 'occurred_at' => $kirimAt];
+            if ($isCustomGudang) {
+                $entries[] = ['status' => 'MENUNGGU_DIKEMBALIKAN', 'occurred_at' => $diterimaAt];
+            } else {
+                $entries[] = ['status' => 'DIPERIKSA', 'occurred_at' => $periksaAt];
+                $entries[] = ['status' => 'DITERIMA', 'occurred_at' => $diterimaAt];
+            }
+        }
+
+        $this->replaceStatusHistories($suratJalanId, $entries);
+    }
+
+    private function seedAdminReturnStatusHistories(int $suratJalanId, Carbon $tanggalKirim): void
+    {
+        $kembaliAt = $tanggalKirim->copy()->setTime(15, 0);
+        $periksaAt = $kembaliAt->copy()->addMinutes(30);
+        $selesaiAt = $kembaliAt->copy()->addHour();
+
+        $this->replaceStatusHistories($suratJalanId, [
+            ['status' => 'DIKEMBALIKAN', 'occurred_at' => $kembaliAt],
+            ['status' => 'DIPERIKSA', 'occurred_at' => $periksaAt],
+            ['status' => 'SELESAI', 'occurred_at' => $selesaiAt],
+        ]);
+    }
+
+    private function replaceStatusHistories(int $suratJalanId, array $entries): void
+    {
+        if (!Schema::hasTable('surat_jalan_status_histories')) {
+            return;
+        }
+
+        SuratJalanStatusHistory::where('surat_jalan_id', $suratJalanId)->delete();
+
+        if (empty($entries)) {
+            return;
+        }
+
+        $actorId = Auth::id();
+        $rows = [];
+        foreach ($entries as $entry) {
+            if (empty($entry['status']) || empty($entry['occurred_at'])) {
+                continue;
+            }
+            $occurredAt = $entry['occurred_at'];
+            $rows[] = [
+                'surat_jalan_id' => $suratJalanId,
+                'status' => $entry['status'],
+                'occurred_at' => $occurredAt,
+                'actor_id' => $entry['actor_id'] ?? $actorId,
+                'created_at' => $occurredAt,
+                'updated_at' => $occurredAt,
+            ];
+        }
+
+        if (!empty($rows)) {
+            SuratJalanStatusHistory::insert($rows);
+        }
+    }
 
     private function resolvePeminjamanStatusAfterReturnDraftDelete(Peminjaman $peminjaman): string
     {

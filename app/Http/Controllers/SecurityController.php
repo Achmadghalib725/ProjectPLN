@@ -273,14 +273,10 @@ class SecurityController extends Controller
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
                 if ($peminjaman && $peminjaman->status === 'DIKEMBALIKAN') {
                     $peminjaman->update(['status' => 'DIPERIKSA']);
-
-                    // Sync status surat jalan peminjaman (kirim)
-                    if ($peminjaman->surat_jalan_kirim_id) {
-                        $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
-                        if ($suratJalanKirim) {
-                            $suratJalanKirim->update(['status' => 'DIPERIKSA']);
-                        }
-                    }
+                    // Note: JANGAN sync status surat jalan peminjaman (kirim) ke DIPERIKSA
+                    // karena akan memicu tombol "Terima Barang" dan notifikasi ke operator gudang tujuan (peminjam)
+                    // yang seharusnya tidak bisa menerima barang pengembalian
+                    // Status surat jalan peminjaman tetap DIKEMBALIKAN sampai proses pengembalian selesai
                 }
             }
         });

@@ -116,12 +116,12 @@
                                     <div class="flex gap-2">
                                         <button type="button"
                                             @click="$dispatch('open-delete-modal', {
-                                                title: 'Batalkan Surat Jalan',
+                                                title: 'Hapus Surat Jalan',
                                                 message: 'Apakah Anda yakin ingin membatalkan surat jalan {{ $suratJalan->nomor }}? {{ in_array($suratJalan->status, ['DIKIRIM', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DITERIMA', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'DIPERIKSA']) ? 'Semua pergerakan stok akan di-rollback.' : '' }}',
                                                 action: '{{ route('admin.surat-jalan.destroy', $suratJalan->id) }}'
                                             })"
                                             class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                            Batalkan Surat Jalan
+                                            Hapus Surat Jalan
                                         </button>
                                         <a href="{{ route('admin.surat-jalan.index') }}"
                                            class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
@@ -454,9 +454,18 @@
                 $maxStep = count($steps) - 1;
             @endphp
 
+            @php
+                // Determine if we should show blurred overlay instead of progress
+                $returnStatus = $peminjaman?->suratJalanKembali?->status;
+                $showBlurredOverlay = in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true)
+                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+                // Exception: show progress if PEMINJAMAN is already in progress
+                $showProgress = !$showBlurredOverlay || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK' && !in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+            @endphp
+
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK'))
+            @if($showProgress)
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -684,15 +693,24 @@
                     }
                 }
 
-                $draftMessage = $rejectMessage ?? match ($suratStatus) {
-                    'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
-                    'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
-                    'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
-                    'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
-                    default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
-                };
+                // Check if PEMINJAMAN with return pending (security check or manager approval)
+                $isPeminjamanReturnPending = $tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true);
 
-                $draftIcon = match ($suratStatus) {
+                if ($isPeminjamanReturnPending) {
+                    $draftMessage = $returnStatus === 'MENUNGGU_PERSETUJUAN'
+                        ? 'Status: MENUNGGU PERSETUJUAN - Surat pengembalian terkait sedang menunggu persetujuan manager.'
+                        : 'Status: MENUNGGU PEMERIKSAAN - Surat pengembalian terkait sedang menunggu pemeriksaan security.';
+                } else {
+                    $draftMessage = $rejectMessage ?? match ($suratStatus) {
+                        'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                        'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
+                        'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                        'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
+                        default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
+                    };
+                }
+
+                $draftIcon = $isPeminjamanReturnPending ? 'clock' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
                     'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
@@ -700,7 +718,7 @@
                     default => 'document',
                 };
 
-                $draftBgClass = match ($suratStatus) {
+                $draftBgClass = $isPeminjamanReturnPending ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
@@ -708,7 +726,7 @@
                     default => 'bg-gray-50 border-gray-200',
                 };
 
-                $draftTextClass = match ($suratStatus) {
+                $draftTextClass = $isPeminjamanReturnPending ? 'text-orange-800' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
                     'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
@@ -716,7 +734,7 @@
                     default => 'text-gray-700',
                 };
 
-                $draftIconBgClass = match ($suratStatus) {
+                $draftIconBgClass = $isPeminjamanReturnPending ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
@@ -852,7 +870,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                                     </svg>
                                     <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
-                                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Sudah Dibuat</span>
+                                    
                                 </a>
                             @else
                                 <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
@@ -872,7 +890,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                                 </svg>
                                 <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
-                                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Surat Asal</span>
+                                
                             </a>
                         </div>
                         @endif
@@ -1276,10 +1294,8 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
-                        <input type="hidden" name="tanggal_kirim" value="{{ now()->toDateString() }}">
-                        <div class="w-full px-3 py-[10px] bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm shadow-sm">
-                            {{ now()->translatedFormat('d F Y') }}
-                        </div>
+                        <input type="date" name="tanggal_kirim" value="{{ now()->toDateString() }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary text-sm">
                     </div>
 
                     {{-- Form PIC Lainnya (di dalam grid) --}}
