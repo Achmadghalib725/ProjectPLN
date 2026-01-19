@@ -51,17 +51,12 @@ class SuratJalanObserver
         $gudangAsal = $suratJalan->gudangAsal?->nama ?? 'Gudang Asal';
         $gudangTujuan = $suratJalan->gudangTujuan?->nama ?? 'Gudang Tujuan';
         $picUserId = $suratJalan->picTujuan?->user_id;
-        $targetJabatan = $suratJalan->picTujuan?->jabatan ?? $suratJalan->pic_tujuan_custom_jabatan;
-        $targetJabatan = trim((string) $targetJabatan);
 
         try {
             switch ($status) {
                 case 'DIKIRIM':
                     // Notify operator gudang tujuan: ada surat masuk
                     if ($suratJalan->gudang_tujuan_id) {
-                        $roles = $suratJalan->tipe === 'PENGEMBALIAN' || $targetJabatan === ''
-                            ? ['operator_gudang']
-                            : ['operator_gudang', 'penerima'];
                         AppNotification::notifyGudangOperators(
                             $suratJalan->gudang_tujuan_id,
                             AppNotification::TYPE_SURAT_MASUK,
@@ -69,8 +64,7 @@ class SuratJalanObserver
                             "Surat jalan {$nomor} dari {$gudangAsal} sedang dalam perjalanan ke gudang Anda.",
                             $suratJalan->id,
                             route('gudang.surat-jalan.show', $suratJalan->id),
-                            $roles,
-                            $targetJabatan !== '' ? $targetJabatan : null
+                            ['operator_gudang']
                         );
                     }
                     if ($picUserId) {
@@ -89,7 +83,6 @@ class SuratJalanObserver
                 case 'DIPERIKSA_PENERIMA':
                     // Notify operator gudang tujuan: surat siap diterima
                     if ($suratJalan->gudang_tujuan_id) {
-                        $roles = $targetJabatan === '' ? ['operator_gudang'] : ['operator_gudang', 'penerima'];
                         AppNotification::notifyGudangOperators(
                             $suratJalan->gudang_tujuan_id,
                             AppNotification::TYPE_SURAT_SIAP_TERIMA,
@@ -97,8 +90,7 @@ class SuratJalanObserver
                             "Surat jalan {$nomor} sudah diperiksa security dan siap untuk Anda terima.",
                             $suratJalan->id,
                             route('gudang.surat-jalan.show', $suratJalan->id),
-                            $roles,
-                            $targetJabatan !== '' ? $targetJabatan : null
+                            ['operator_gudang']
                         );
                     }
                     if ($picUserId) {

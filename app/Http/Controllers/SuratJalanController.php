@@ -805,38 +805,40 @@ class SuratJalanController extends Controller
     public function show(Request $request, $id)
     {
         $loadDetail = function () use ($id) {
-            $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments', 'statusHistories.actor'])
+            $withStatusHistories = Schema::hasTable('surat_jalan_status_histories');
+            $suratJalanRelations = ['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'];
+            if ($withStatusHistories) {
+                $suratJalanRelations[] = 'statusHistories.actor';
+            }
+
+            $suratJalan = SuratJalan::with($suratJalanRelations)
                 ->findOrFail($id);
 
             $peminjaman = null;
+            $peminjamanRelations = [
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+                'items.item',
+            ];
+            if ($withStatusHistories) {
+                $peminjamanRelations[] = 'suratJalanKirim.statusHistories.actor';
+                $peminjamanRelations[] = 'suratJalanKembali.statusHistories.actor';
+            }
+
             if ($suratJalan->tipe === 'PEMINJAMAN') {
-                $peminjaman = Peminjaman::with([
-                    'suratJalanKirim.gudangAsal',
-                    'suratJalanKirim.gudangTujuan',
-                    'suratJalanKirim.pembuat',
-                    'suratJalanKirim.statusHistories.actor',
-                    'suratJalanKembali.gudangAsal',
-                    'suratJalanKembali.gudangTujuan',
-                    'suratJalanKembali.pembuat',
-                    'suratJalanKembali.statusHistories.actor',
-                    'gudangPeminjam',
-                    'gudangPemilik',
-                    'items.item',
-                ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with($peminjamanRelations)
+                    ->where('surat_jalan_kirim_id', $suratJalan->id)
+                    ->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-                $peminjaman = Peminjaman::with([
-                    'suratJalanKirim.gudangAsal',
-                    'suratJalanKirim.gudangTujuan',
-                    'suratJalanKirim.pembuat',
-                    'suratJalanKirim.statusHistories.actor',
-                    'suratJalanKembali.gudangAsal',
-                    'suratJalanKembali.gudangTujuan',
-                    'suratJalanKembali.pembuat',
-                    'suratJalanKembali.statusHistories.actor',
-                    'gudangPeminjam',
-                    'gudangPemilik',
-                    'items.item',
-                ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with($peminjamanRelations)
+                    ->where('surat_jalan_kembali_id', $suratJalan->id)
+                    ->first();
             }
 
             return [$suratJalan, $peminjaman];
