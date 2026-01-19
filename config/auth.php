@@ -39,6 +39,7 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            'remember' => (int) env('AUTH_REMEMBER_LIFETIME', 43200),
         ],
     ],
 
