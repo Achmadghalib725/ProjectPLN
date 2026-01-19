@@ -298,7 +298,7 @@ class SuratJalanController extends Controller
                 'max:50',
             ],
             'tanggal_kirim' => ['required', 'date'],
-            'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after:tanggal_kirim'],
+            'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after_or_equal:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
             'nama_driver' => ['required', 'string', 'max:100'],
             'jenis_kendaraan' => ['required', 'string', 'max:100'],
@@ -351,7 +351,7 @@ class SuratJalanController extends Controller
             'tanggal_kirim.date' => 'Format tanggal kirim tidak valid.',
             'tanggal_kembali.required_if' => 'Tanggal kembali wajib diisi untuk peminjaman.',
             'tanggal_kembali.date' => 'Format tanggal kembali tidak valid.',
-            'tanggal_kembali.after' => 'Tanggal kembali harus setelah tanggal kirim.',
+            'tanggal_kembali.after_or_equal' => 'Tanggal kembali harus setelah atau sama dengan tanggal kirim.',
 
             // Driver & Kendaraan
             'nama_driver.required' => 'Nama driver wajib diisi.',
@@ -1124,7 +1124,7 @@ class SuratJalanController extends Controller
                 'max:50',
             ],
             'tanggal_kirim' => ['required', 'date'],
-            'tanggal_kembali' => ['required_if:tipe,PEMINJAMAN', 'nullable', 'date', 'after:tanggal_kirim'],
+            'tanggal_kembali' => ['required_if:tipe,PEMINJAMAN', 'nullable', 'date', 'after_or_equal:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
             'nama_driver' => ['nullable', 'string', 'max:100'],
             'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
