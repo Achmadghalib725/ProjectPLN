@@ -452,9 +452,18 @@
                 $maxStep = count($steps) - 1;
             @endphp
 
+            @php
+                // Determine if we should show blurred overlay instead of progress
+                $returnStatus = $peminjaman?->suratJalanKembali?->status;
+                $showBlurredOverlay = in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true)
+                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+                // Exception: show progress if PEMINJAMAN is already in progress
+                $showProgress = !$showBlurredOverlay || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK' && !in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+            @endphp
+
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK'))
+            @if($showProgress)
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -683,15 +692,24 @@
                     }
                 }
 
-                $draftMessage = $rejectMessage ?? match ($suratStatus) {
-                    'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
-                    'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
-                    'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
-                    'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
-                    default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
-                };
+                // Check if PEMINJAMAN with return pending (security check or manager approval)
+                $isPeminjamanReturnPending = $tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true);
 
-                $draftIcon = match ($suratStatus) {
+                if ($isPeminjamanReturnPending) {
+                    $draftMessage = $returnStatus === 'MENUNGGU_PERSETUJUAN'
+                        ? 'Status: MENUNGGU PERSETUJUAN - Surat pengembalian terkait sedang menunggu persetujuan manager.'
+                        : 'Status: MENUNGGU PEMERIKSAAN - Surat pengembalian terkait sedang menunggu pemeriksaan security.';
+                } else {
+                    $draftMessage = $rejectMessage ?? match ($suratStatus) {
+                        'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                        'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
+                        'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                        'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
+                        default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
+                    };
+                }
+
+                $draftIcon = $isPeminjamanReturnPending ? 'clock' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
                     'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
@@ -699,7 +717,7 @@
                     default => 'document',
                 };
 
-                $draftBgClass = match ($suratStatus) {
+                $draftBgClass = $isPeminjamanReturnPending ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
@@ -707,7 +725,7 @@
                     default => 'bg-gray-50 border-gray-200',
                 };
 
-                $draftTextClass = match ($suratStatus) {
+                $draftTextClass = $isPeminjamanReturnPending ? 'text-orange-800' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
                     'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
@@ -715,7 +733,7 @@
                     default => 'text-gray-700',
                 };
 
-                $draftIconBgClass = match ($suratStatus) {
+                $draftIconBgClass = $isPeminjamanReturnPending ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
