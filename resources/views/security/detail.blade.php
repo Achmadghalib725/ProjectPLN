@@ -634,6 +634,22 @@
                             <p class="text-xs sm:text-sm text-gray-500">Gudang Tujuan</p>
                             <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->gudangTujuan->nama ?? '-' }}</p>
                         </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <p class="text-xs sm:text-sm text-gray-500">PIC Tujuan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">
+                                {{ $suratJalan->picTujuan->nama ?? $suratJalan->pic_tujuan_custom_nama ?? '-' }}
+                                @php
+                                    $picJabatan = $suratJalan->picTujuan?->jabatan ?? $suratJalan->pic_tujuan_custom_jabatan;
+                                    $picNoHp = $suratJalan->picTujuan?->no_hp ?? $suratJalan->pic_tujuan_custom_no_hp;
+                                @endphp
+                                @if(!empty($picJabatan))
+                                    <span class="text-xs sm:text-sm text-gray-500 font-normal">({{ $picJabatan }})</span>
+                                @endif
+                                @if(!empty($picNoHp))
+                                    <span class="text-xs sm:text-sm text-gray-500 font-normal">({{ $picNoHp }})</span>
+                                @endif
+                            </p>
+                        </div>
                         <div>
                             <p class="text-xs sm:text-sm text-gray-500">Tanggal</p>
                             <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->tanggal?->format('d M Y') ?? '-' }}</p>
