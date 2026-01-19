@@ -1655,14 +1655,25 @@
                 });
             };
 
-            const normalizeFiles = () => {
-                if (!input) {
+            const isAllowedFile = (file) => {
+                const type = (file.type || '').toLowerCase();
+                if (type === 'image/jpeg' || type === 'image/png' || type === 'image/jpg') {
+                    return true;
+                }
+                const name = (file.name || '').toLowerCase();
+                return name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
+            };
+
+            const appendFiles = (files) => {
+                if (!files || files.length === 0) {
                     return;
                 }
                 setError('');
-                // Merge new files with existing collected files
-                const newFiles = Array.from(input.files || []);
-                newFiles.forEach((file) => {
+                files.forEach((file) => {
+                    if (!isAllowedFile(file)) {
+                        setError('Hanya mendukung file JPG/PNG.');
+                        return;
+                    }
                     if (wrapper._collectedFiles.length < maxFiles) {
                         wrapper._collectedFiles.push(file);
                     }
@@ -1673,6 +1684,20 @@
                 }
                 syncToInput();
                 renderPreview();
+            };
+
+            const setHighlight = (active) => {
+                wrapper.classList.toggle('ring-2', active);
+                wrapper.classList.toggle('ring-pln-primary', active);
+                wrapper.classList.toggle('border-pln-primary', active);
+                wrapper.classList.toggle('bg-blue-50/50', active);
+            };
+
+            const normalizeFiles = () => {
+                if (!input) {
+                    return;
+                }
+                appendFiles(Array.from(input.files || []));
             };
 
             const stopCamera = () => {
@@ -1761,6 +1786,31 @@
             if (captureBtn) {
                 captureBtn.addEventListener('click', capturePhoto);
             }
+            wrapper._dragCounter = 0;
+            wrapper.addEventListener('dragenter', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter += 1;
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'copy';
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = Math.max(0, wrapper._dragCounter - 1);
+                if (wrapper._dragCounter === 0) {
+                    setHighlight(false);
+                }
+            });
+            wrapper.addEventListener('drop', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = 0;
+                setHighlight(false);
+                const files = Array.from(event.dataTransfer?.files || []);
+                appendFiles(files);
+            });
             wrapper._stopCamera = stopCamera;
             renderPreview();
         }
