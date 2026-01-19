@@ -118,12 +118,12 @@
                                     <div class="flex gap-2">
                                         <button type="button"
                                             @click="$dispatch('open-delete-modal', {
-                                                title: 'Batalkan Surat Jalan',
+                                                title: 'Hapus Surat Jalan',
                                                 message: 'Apakah Anda yakin ingin membatalkan surat jalan {{ $suratJalan->nomor }}? {{ in_array($suratJalan->status, ['DIKIRIM', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DITERIMA', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'DIPERIKSA']) ? 'Semua pergerakan stok akan di-rollback.' : '' }}',
                                                 action: '{{ route('admin.surat-jalan.destroy', $suratJalan->id) }}'
                                             })"
                                             class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                            Batalkan Surat Jalan
+                                            Hapus Surat Jalan
                                         </button>
                                         <a href="{{ route('admin.surat-jalan.index') }}"
                                            class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
