@@ -25,6 +25,15 @@ class ManagerSuratJalanController extends Controller
         $orderBy = $filters['order_by'] ?? 'terbaru';
         $direction = $orderBy === 'terlama' ? 'asc' : 'desc';
         $statusFilter = $filters['status'] ?? 'MENUNGGU_PERSETUJUAN';
+        $ongoingStatuses = [
+            'DIKIRIM',
+            'DIPERIKSA_PENGIRIM',
+            'DIPERIKSA_PENERIMA',
+            'DIPERIKSA',
+            'DITERIMA',
+            'MENUNGGU_DIKEMBALIKAN',
+            'DIKEMBALIKAN',
+        ];
 
         $query = SuratJalan::query()
             ->with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan'])
@@ -48,7 +57,11 @@ class ManagerSuratJalanController extends Controller
         }
 
         if (!empty($statusFilter) && $statusFilter !== 'ALL') {
-            $query->where('status', $statusFilter);
+            if ($statusFilter === 'BERLANGSUNG') {
+                $query->whereIn('status', $ongoingStatuses);
+            } else {
+                $query->where('status', $statusFilter);
+            }
         }
 
         $suratJalans = $query->paginate(20)->appends($request->all());
@@ -77,7 +90,7 @@ class ManagerSuratJalanController extends Controller
             abort(403, 'Manager belum memiliki gudang yang ditugaskan');
         }
 
-        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'ttdPembuat', 'items.item', 'attachments'])
+        $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'ttdPembuat', 'items.item', 'attachments', 'statusHistories'])
             ->findOrFail($id);
 
         if (!in_array($suratJalan->gudang_asal_id, $gudangIds, true)) {

@@ -360,6 +360,20 @@
 
                 return 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
             };
+            $historyMap = $suratJalan->relationLoaded('statusHistories')
+                ? $suratJalan->statusHistories->groupBy('status')
+                : collect();
+            $resolveHistoryTime = function (array $statuses) use ($historyMap) {
+                foreach ($statuses as $status) {
+                    $entry = $historyMap->get($status)?->last();
+                    if ($entry?->occurred_at) {
+                        return $entry->occurred_at;
+                    }
+                }
+                return null;
+            };
+            $pengirimSignedAt = $resolveHistoryTime(['DIPERIKSA_PENGIRIM', 'DIKIRIM']) ?? $suratJalan->waktu_ttd_pembuat;
+            $penerimaSignedAt = $resolveHistoryTime(['DITERIMA', 'SELESAI']) ?? $suratJalan->waktu_ttd_penerima;
         @endphp
         <!-- Header -->
         <div class="header">
@@ -611,7 +625,7 @@
                 <div class="signature-title">Pengirim</div>
                 @php
                     $pengirimQr = null;
-                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $suratJalan->waktu_ttd_pembuat) {
+                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $pengirimSignedAt) {
                         $pengirimUrl = route('surat-jalan.signature', [
                             'id' => $suratJalan->id,
                             'token' => $suratJalan->qr_token,
@@ -655,7 +669,7 @@
                 <div class="signature-title">Penerima</div>
                 @php
                     $penerimaQr = null;
-                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $suratJalan->waktu_ttd_penerima) {
+                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $penerimaSignedAt) {
                         $penerimaUrl = route('surat-jalan.signature', [
                             'id' => $suratJalan->id,
                             'token' => $suratJalan->qr_token,
