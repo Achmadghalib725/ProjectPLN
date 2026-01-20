@@ -1578,7 +1578,7 @@ class SuratJalanController extends Controller
                             'stok_sesudah' => $stokSesudah,
                             'referensi_type' => 'SuratJalan',
                             'referensi_id' => $suratJalan->id,
-                            'created_by' => $movementUserId,
+                            'created_by' => Auth::id(),
                             'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$gudangTujuanNama}"
                         ]);
                     }
