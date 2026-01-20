@@ -1560,6 +1560,7 @@ class AdminSuratJalanController extends Controller
                     }
 
                     // Kurangi stok dan catat movement (per item total)
+                    $movementUserId = $suratJalan->created_by ?: Auth::id();
                     foreach ($itemTotals as $itemId => $qty) {
                         $stock = ItemStock::where('gudang_id', $gudangId)
                             ->where('item_id', $itemId)
@@ -1579,7 +1580,7 @@ class AdminSuratJalanController extends Controller
                             'stok_sesudah' => $stokSesudah,
                             'referensi_type' => 'SuratJalan',
                             'referensi_id' => $suratJalan->id,
-                            'created_by' => Auth::id(),
+                            'created_by' => $movementUserId,
                             'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$gudangTujuanNama}"
                         ]);
                     }
@@ -2385,6 +2386,7 @@ class AdminSuratJalanController extends Controller
 
     private function applyStockOut(int $gudangId, $itemTotals, SuratJalan $suratJalan, Carbon $eventTime, string $keterangan): void
     {
+        $movementUserId = $suratJalan->created_by ?: Auth::id();
         foreach ($itemTotals as $itemId => $qty) {
             $stock = ItemStock::where('gudang_id', $gudangId)
                 ->where('item_id', $itemId)
@@ -2409,7 +2411,7 @@ class AdminSuratJalanController extends Controller
                 'stok_sesudah' => $stokSesudah,
                 'referensi_type' => 'SuratJalan',
                 'referensi_id' => $suratJalan->id,
-                'created_by' => Auth::id(),
+                'created_by' => $movementUserId,
                 'keterangan' => $keterangan,
                 'created_at' => $eventTime,
                 'updated_at' => $eventTime,
