@@ -50,8 +50,15 @@
                         isPengembalian: @js($suratJalan->tipe === 'PENGEMBALIAN'),
                         gudangMode: @js(old('gudang_tujuan_mode', $suratJalan->gudang_tujuan_is_custom ? 'custom' : 'existing')),
                         selectedGudang: String(@js(old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id)) || ''),
+                        labelGudang: '',
+                        gudangOpen: false,
                         initialPic: String(@js(old('pic_tujuan_id', $suratJalan->pic_tujuan_id ?? ($suratJalan->pic_tujuan_custom_nama ? 'lainnya' : ''))) || ''),
                         selectedPic: '',
+                        allGudangs: @js(($gudangs ?? collect())->map(fn($gudang) => [
+                            'id' => $gudang->id,
+                            'kode' => $gudang->kode,
+                            'nama' => $gudang->nama,
+                        ])->values()),
                         customGudang: {
                             nama: @js(old('gudang_custom_nama', $suratJalan->gudang_tujuan_custom_nama)),
                             alamat: @js(old('gudang_custom_alamat', $suratJalan->gudang_tujuan_custom_alamat)),
@@ -96,6 +103,13 @@
                         },
                         init() {
                             this.selectedPic = this.initialPic;
+                            if (this.gudangMode === 'custom') {
+                                this.selectedGudang = '';
+                                this.labelGudang = this.customGudang.nama || 'Lainnya';
+                            } else if (this.selectedGudang) {
+                                const gudang = this.allGudangs.find(item => String(item.id) === String(this.selectedGudang));
+                                this.labelGudang = gudang ? gudang.nama : '';
+                            }
                             this.$nextTick(() => {
                                 if (!this.selectedPic && this.initialPic) {
                                     this.selectedPic = this.initialPic;
@@ -152,29 +166,38 @@
                             </div>
 
                             @if($suratJalan->tipe !== 'PENGEMBALIAN')
-                                <div>
+                                <div class="relative">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Tujuan</label>
-                                    <select name="gudang_tujuan_mode"
-                                            x-model="gudangMode"
-                                            @change="if (isCustomGudang) { selectedGudang = ''; selectedPic = 'lainnya'; }"
-                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                                        <option value="existing">Gudang Terdaftar</option>
-                                        <option value="custom">Gudang Lainnya</option>
-                                    </select>
-                                </div>
-                                <div x-show="!isCustomGudang">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Gudang Tujuan</label>
-                                    <select name="gudang_tujuan_id"
-                                            x-model="selectedGudang"
-                                            @change="handleGudangChange()"
-                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
-                                        <option value="">Pilih gudang tujuan...</option>
-                                        @foreach($gudangs as $gudang)
-                                            <option value="{{ $gudang->id }}" {{ (string)old('gudang_tujuan_id', $suratJalan->gudang_tujuan_id) === (string)$gudang->id ? 'selected' : '' }}>
-                                                {{ $gudang->kode }} - {{ $gudang->nama }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <div class="relative">
+                                        <input type="text"
+                                               x-model="labelGudang"
+                                               @input="gudangOpen = true; selectedGudang = ''"
+                                               @click="gudangOpen = true"
+                                               @click.away="gudangOpen = false"
+                                               placeholder="Cari gudang..."
+                                               class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary">
+
+                                        <input type="hidden" name="gudang_tujuan_mode" :value="gudangMode">
+                                        <input type="hidden" name="gudang_tujuan_id" :value="selectedGudang">
+
+                                        <div x-show="gudangOpen" x-cloak class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            <div class="p-2 border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Pilih dari Daftar</div>
+                                            <template x-for="g in allGudangs.filter(item => item.nama.toLowerCase().includes(labelGudang.toLowerCase()))" :key="g.id">
+                                                <button type="button"
+                                                        @click="selectedGudang = g.id; labelGudang = g.nama; gudangMode = 'existing'; gudangOpen = false; handleGudangChange()"
+                                                        class="w-full text-left px-4 py-2 text-sm hover:bg-pln-primary hover:text-white transition">
+                                                    <span x-text="g.kode + ' - ' + g.nama"></span>
+                                                </button>
+                                            </template>
+                                            <div class="border-t">
+                                                <button type="button"
+                                                        @click="gudangMode = 'custom'; selectedGudang = ''; labelGudang = customGudang.nama || 'Lainnya'; gudangOpen = false; selectedPic = 'lainnya'"
+                                                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
+                                                    Lainnya...
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div x-show="isCustomGudang" class="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4">
                                     <p class="text-sm font-semibold text-gray-900 mb-3">Gudang Lainnya</p>
@@ -198,10 +221,17 @@
                                 </div>
                             @else
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Tujuan</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Kode Peminjaman</label>
                                     <input type="text"
                                            class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
-                                           value="{{ $suratJalan->gudang_tujuan_is_custom ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya') : ($suratJalan->gudangTujuan->nama ?? '-') }}"
+                                           value="{{ $peminjaman->kode ?? '-' }}"
+                                           readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Gudang Pemilik (Tujuan)</label>
+                                    <input type="text"
+                                           class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
+                                           value="{{ $suratJalan->gudang_tujuan_is_custom ? ($suratJalan->gudang_tujuan_custom_nama ?? 'Gudang Lainnya') : ($peminjaman?->gudangPemilik?->nama ?? $suratJalan->gudangTujuan->nama ?? '-') }}"
                                            readonly>
                                 </div>
                             @endif
