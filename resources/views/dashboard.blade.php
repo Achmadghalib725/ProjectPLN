@@ -17,12 +17,14 @@
                 <div class="p-6 text-gray-900 flex justify-between items-center">
                     <div>
                         <h3 class="text-lg font-bold text-[#035b71]">Selamat Datang, {{ Auth::user()->name }}!</h3>
-                        <p class="text-sm text-gray-500">
-                            Lokasi Tugas: 
-                            <strong class="text-gray-800">
-                                {{ Auth::user()->gudang ? Auth::user()->gudang->nama : 'Kantor Pusat / Global' }}
-                            </strong>
-                        </p>
+                        @if(Auth::user()->gudang)
+                            <p class="text-sm text-gray-500">
+                                Lokasi Tugas:
+                                <strong class="text-gray-800">
+                                    {{ Auth::user()->gudang->nama }}
+                                </strong>
+                            </p>
+                        @endif
                     </div>
                     <div class="text-right text-xs text-gray-400">
                         {{ now()->locale('id')->translatedFormat('l, d F Y') }}

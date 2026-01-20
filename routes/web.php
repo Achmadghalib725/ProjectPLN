@@ -152,7 +152,15 @@ Route::get('/dashboard', function () {
             'total' => (clone $managerQuery)->count(),
             'menunggu_persetujuan' => (clone $managerQuery)->where('status', 'MENUNGGU_PERSETUJUAN')->count(),
             'ditolak_persetujuan' => (clone $managerQuery)->where('status', 'DITOLAK_PERSETUJUAN')->count(),
-            'dikirim' => (clone $managerQuery)->whereIn('status', ['DIKIRIM', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DIPERIKSA', 'MENUNGGU_DIKEMBALIKAN'])->count(),
+            'dikirim' => (clone $managerQuery)->whereIn('status', [
+                'DIKIRIM',
+                'DIPERIKSA_PENGIRIM',
+                'DIPERIKSA_PENERIMA',
+                'DIPERIKSA',
+                'DITERIMA',
+                'MENUNGGU_DIKEMBALIKAN',
+                'DIKEMBALIKAN',
+            ])->count(),
             'selesai' => (clone $managerQuery)->where('status', 'SELESAI')->count(),
         ];
         $data['managerRecent'] = $managerQuery->orderByDesc('tanggal')->limit(6)->get();
