@@ -1257,7 +1257,7 @@
                         <div class="flex flex-col sm:flex-row items-center gap-4">
                             {{-- Action Buttons --}}
                             <div class="flex items-center gap-2">
-                                <button type="button" data-camera-open class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                                <button type="button" data-camera-open class="md:hidden inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
                                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -1568,7 +1568,7 @@
                         <div class="flex flex-col sm:flex-row items-center gap-4">
                             {{-- Action Buttons --}}
                             <div class="flex items-center gap-2">
-                                <button type="button" data-camera-open class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                                <button type="button" data-camera-open class="md:hidden inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
                                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -1926,28 +1926,50 @@
                 });
             };
 
+            const isAllowedFile = (file) => {
+                const type = (file.type || '').toLowerCase();
+                if (type === 'image/jpeg' || type === 'image/png' || type === 'image/jpg') {
+                    return true;
+                }
+                const name = (file.name || '').toLowerCase();
+                return name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
+            };
+
+            const appendFiles = (files) => {
+                if (!files || files.length === 0) {
+                    return;
+                }
+                setError('');
+                files.forEach((file) => {
+                    if (!isAllowedFile(file)) {
+                        setError('Hanya mendukung file JPG/PNG.');
+                        return;
+                    }
+                    if (wrapper._collectedFiles.length < maxFiles) {
+                        wrapper._collectedFiles.push(file);
+                    }
+                });
+                if (wrapper._collectedFiles.length > maxFiles) {
+                    setError(`Maksimal ${maxFiles} gambar.`);
+                    wrapper._collectedFiles = wrapper._collectedFiles.slice(0, maxFiles);
+                }
+                syncToInput();
+                renderPreview();
+            };
+
+            const setHighlight = (active) => {
+                wrapper.classList.toggle('ring-2', active);
+                wrapper.classList.toggle('ring-pln-primary', active);
+                wrapper.classList.toggle('border-pln-primary', active);
+                wrapper.classList.toggle('bg-blue-50/50', active);
+            };
+
             // Merge new files with existing collected files
             const normalizeFiles = () => {
                 if (!input) {
                     return;
                 }
-                setError('');
-                const newFiles = Array.from(input.files || []);
-
-                // Merge new files with existing collected files
-                newFiles.forEach((file) => {
-                    if (wrapper._collectedFiles.length < maxFiles) {
-                        wrapper._collectedFiles.push(file);
-                    }
-                });
-
-                if (wrapper._collectedFiles.length > maxFiles) {
-                    setError(`Maksimal ${maxFiles} gambar.`);
-                    wrapper._collectedFiles = wrapper._collectedFiles.slice(0, maxFiles);
-                }
-
-                syncToInput();
-                renderPreview();
+                appendFiles(Array.from(input.files || []));
             };
 
             const stopCamera = () => {
@@ -2054,6 +2076,31 @@
             if (captureBtn) {
                 captureBtn.addEventListener('click', capturePhoto);
             }
+            wrapper._dragCounter = 0;
+            wrapper.addEventListener('dragenter', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter += 1;
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'copy';
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = Math.max(0, wrapper._dragCounter - 1);
+                if (wrapper._dragCounter === 0) {
+                    setHighlight(false);
+                }
+            });
+            wrapper.addEventListener('drop', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = 0;
+                setHighlight(false);
+                const files = Array.from(event.dataTransfer?.files || []);
+                appendFiles(files);
+            });
             wrapper._stopCamera = stopCamera;
             renderPreview();
         }

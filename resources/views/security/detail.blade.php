@@ -255,7 +255,9 @@
                         $currentStep = 0; // Belum dikirim
                     }
 
-                    if ($suratStatus === 'DIPERIKSA_PENGIRIM') {
+                    // For PEMINJAMAN with DIPERIKSA_PENGIRIM, reset to -1 (first security check)
+                    // For PENGEMBALIAN with DIPERIKSA_PENGIRIM, keep the calculated step (return process)
+                    if ($tipe === 'PEMINJAMAN' && $suratStatus === 'DIPERIKSA_PENGIRIM') {
                         $currentStep = -1;
                     }
 
@@ -281,9 +283,17 @@
                 $maxStep = count($steps) - 1;
             @endphp
 
+            @php
+                // Determine if we should show blurred overlay instead of progress
+                $returnStatus = $peminjaman?->suratJalanKembali?->status;
+                $showBlurredOverlay = in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true)
+                    || ($tipe === 'PENGEMBALIAN' && $suratStatus === 'DIPERIKSA_PENGIRIM')
+                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+            @endphp
+
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true))
+            @if(!$showBlurredOverlay)
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -301,8 +311,8 @@
                         @php
                             $rejectTitle = 'Surat Jalan Ditolak oleh Security';
                             $rejectReason = null;
-                            $catatanText = (string) ($suratJalan->catatan ?? '');
-                            if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                            $catatanPenolakan = (string) ($suratJalan->catatan_penolakan ?? '');
+                            if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
                                 $rejectStage = strtolower($matches[1] ?? '');
                                 $rejectReason = trim($matches[2] ?? '');
                                 if ($rejectStage === 'pengirim') {
@@ -475,14 +485,16 @@
                 </div>
             </div>
             @else
-            {{-- DRAFT/MENUNGGU_PERSETUJUAN Status Card with Blurred Progress Background --}}
+            {{-- DRAFT/MENUNGGU_PERSETUJUAN/DIPERIKSA_PENGIRIM Status Card with Blurred Progress Background --}}
             @php
-                $securityRejectMessage = null;
+                $rejectMessage = null;
+                $catatanPenolakan = (string) ($suratJalan->catatan_penolakan ?? '');
+
                 if ($suratStatus === 'DITOLAK') {
+                    // Security rejection
                     $rejectStageLabel = 'security';
                     $rejectReason = null;
-                    $catatanText = (string) ($suratJalan->catatan ?? '');
-                    if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                    if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
                         $rejectStage = strtolower($matches[1] ?? '');
                         $rejectReason = trim($matches[2] ?? '');
                         if ($rejectStage === 'pengirim') {
@@ -491,21 +503,46 @@
                             $rejectStageLabel = 'security penerima';
                         }
                     }
-                    $securityRejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
+                    $rejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
                     if ($rejectReason) {
-                        $securityRejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                        $rejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    }
+                } elseif ($suratStatus === 'DITOLAK_PERSETUJUAN') {
+                    // Manager rejection
+                    $rejectReason = null;
+                    if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK PERSETUJUAN:\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
+                        $rejectReason = trim($matches[1] ?? '');
+                    }
+                    $rejectMessage = 'Status: DITOLAK PERSETUJUAN - Ditolak oleh manager.';
+                    if ($rejectReason) {
+                        $rejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    } else {
+                        $rejectMessage .= ' Silakan perbaiki dan ajukan ulang.';
                     }
                 }
 
-                $draftMessage = $securityRejectMessage ?? match ($suratStatus) {
-                    'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
-                    'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
-                    'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
-                    'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
-                    default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
-                };
+                // Custom message for PENGEMBALIAN with DIPERIKSA_PENGIRIM
+                $returnStatus = $peminjaman?->suratJalanKembali?->status;
+                if ($tipe === 'PENGEMBALIAN' && $suratStatus === 'DIPERIKSA_PENGIRIM') {
+                    $draftMessage = 'Status: MENUNGGU PEMERIKSAAN - Menunggu pemeriksaan security pengirim (Gudang Peminjam).';
+                } elseif ($tipe === 'PEMINJAMAN' && $returnStatus === 'DIPERIKSA_PENGIRIM') {
+                    $draftMessage = 'Status: MENUNGGU PEMERIKSAAN PENGEMBALIAN - Surat pengembalian terkait sedang menunggu pemeriksaan security.';
+                } elseif ($tipe === 'PEMINJAMAN' && $returnStatus === 'MENUNGGU_PERSETUJUAN') {
+                    $draftMessage = 'Status: MENUNGGU PERSETUJUAN - Surat pengembalian terkait sedang menunggu persetujuan manager.';
+                } else {
+                    $draftMessage = $rejectMessage ?? match ($suratStatus) {
+                        'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                        'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PEMERIKSAAN - Menunggu pemeriksaan security pengirim.',
+                        'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                        'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
+                        default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
+                    };
+                }
 
-                $draftIcon = match ($suratStatus) {
+                // Check if PEMINJAMAN with return pending (security check or manager approval)
+                $isPeminjamanReturnPending = $tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true);
+
+                $draftIcon = $isPeminjamanReturnPending ? 'clock' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
                     'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
@@ -513,7 +550,7 @@
                     default => 'document',
                 };
 
-                $draftBgClass = match ($suratStatus) {
+                $draftBgClass = $isPeminjamanReturnPending ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
@@ -521,7 +558,7 @@
                     default => 'bg-gray-50 border-gray-200',
                 };
 
-                $draftTextClass = match ($suratStatus) {
+                $draftTextClass = $isPeminjamanReturnPending ? 'text-orange-800' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
                     'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
@@ -529,7 +566,7 @@
                     default => 'text-gray-700',
                 };
 
-                $draftIconBgClass = match ($suratStatus) {
+                $draftIconBgClass = $isPeminjamanReturnPending ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
@@ -597,6 +634,22 @@
                             <p class="text-xs sm:text-sm text-gray-500">Gudang Tujuan</p>
                             <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->gudangTujuan->nama ?? '-' }}</p>
                         </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <p class="text-xs sm:text-sm text-gray-500">PIC Tujuan</p>
+                            <p class="font-semibold text-sm sm:text-base text-gray-900">
+                                {{ $suratJalan->picTujuan->nama ?? $suratJalan->pic_tujuan_custom_nama ?? '-' }}
+                                @php
+                                    $picJabatan = $suratJalan->picTujuan?->jabatan ?? $suratJalan->pic_tujuan_custom_jabatan;
+                                    $picNoHp = $suratJalan->picTujuan?->no_hp ?? $suratJalan->pic_tujuan_custom_no_hp;
+                                @endphp
+                                @if(!empty($picJabatan))
+                                    <span class="text-xs sm:text-sm text-gray-500 font-normal">({{ $picJabatan }})</span>
+                                @endif
+                                @if(!empty($picNoHp))
+                                    <span class="text-xs sm:text-sm text-gray-500 font-normal">({{ $picNoHp }})</span>
+                                @endif
+                            </p>
+                        </div>
                         <div>
                             <p class="text-xs sm:text-sm text-gray-500">Tanggal</p>
                             <p class="font-semibold text-sm sm:text-base text-gray-900">{{ $suratJalan->tanggal?->format('d M Y') ?? '-' }}</p>
@@ -630,36 +683,48 @@
                         <div>
                             <p class="text-xs sm:text-sm text-gray-500">Status</p>
                             @php
-                                $statusBadge = match($suratJalan->status) {
-                                    'DRAFT' => 'bg-gray-100 text-gray-800',
-                                    'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
-                                    'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
-                                    'DIKIRIM' => 'bg-blue-100 text-blue-800',
-                                    'DIPERIKSA_PENGIRIM' => 'bg-cyan-100 text-cyan-800',
-                                    'DIPERIKSA_PENERIMA' => 'bg-indigo-100 text-indigo-800',
-                                    'DIPERIKSA' => 'bg-indigo-100 text-indigo-800',
-                                    'DITERIMA' => 'bg-emerald-100 text-emerald-800',
-                                    'MENUNGGU_DIKEMBALIKAN' => 'bg-amber-100 text-amber-800',
-                                    'DIKEMBALIKAN' => 'bg-teal-100 text-teal-800',
-                                    'SELESAI' => 'bg-green-100 text-green-800',
-                                    'DITOLAK' => 'bg-red-100 text-red-800',
-                                    default => 'bg-gray-100 text-gray-800'
-                                };
-                                $statusLabel = match($suratJalan->status) {
-                                    'DRAFT' => 'Draft',
-                                    'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
-                                    'DITOLAK_PERSETUJUAN' => 'Persetujuan Ditolak',
-                                    'DIKIRIM' => 'Dikirim',
-                                    'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan Pengirim',
-                                    'DIPERIKSA_PENERIMA' => 'Diperiksa Penerima',
-                                    'DIPERIKSA' => 'Diperiksa',
-                                    'DITERIMA' => 'Diterima',
-                                    'MENUNGGU_DIKEMBALIKAN' => 'Menunggu Dikembalikan',
-                                    'DIKEMBALIKAN' => 'Dikembalikan',
-                                    'SELESAI' => 'Selesai',
-                                    'DITOLAK' => 'Ditolak',
-                                    default => $suratJalan->status
-                                };
+                                // Check if PEMINJAMAN has pending return
+                                $returnStatusForBadge = $peminjaman?->suratJalanKembali?->status;
+                                $hasPendingReturn = $suratJalan->tipe === 'PEMINJAMAN' && in_array($returnStatusForBadge, ['MENUNGGU_PERSETUJUAN', 'DIPERIKSA_PENGIRIM'], true);
+
+                                if ($hasPendingReturn) {
+                                    // Override status display for PEMINJAMAN with pending return
+                                    $statusBadge = 'bg-orange-100 text-orange-800';
+                                    $statusLabel = $returnStatusForBadge === 'MENUNGGU_PERSETUJUAN'
+                                        ? 'Menunggu Persetujuan'
+                                        : 'Menunggu Pemeriksaan';
+                                } else {
+                                    $statusBadge = match($suratJalan->status) {
+                                        'DRAFT' => 'bg-gray-100 text-gray-800',
+                                        'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
+                                        'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
+                                        'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                                        'DIPERIKSA_PENGIRIM' => 'bg-cyan-100 text-cyan-800',
+                                        'DIPERIKSA_PENERIMA' => 'bg-indigo-100 text-indigo-800',
+                                        'DIPERIKSA' => 'bg-indigo-100 text-indigo-800',
+                                        'DITERIMA' => 'bg-emerald-100 text-emerald-800',
+                                        'MENUNGGU_DIKEMBALIKAN' => 'bg-amber-100 text-amber-800',
+                                        'DIKEMBALIKAN' => 'bg-teal-100 text-teal-800',
+                                        'SELESAI' => 'bg-green-100 text-green-800',
+                                        'DITOLAK' => 'bg-red-100 text-red-800',
+                                        default => 'bg-gray-100 text-gray-800'
+                                    };
+                                    $statusLabel = match($suratJalan->status) {
+                                        'DRAFT' => 'Draft',
+                                        'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
+                                        'DITOLAK_PERSETUJUAN' => 'Persetujuan Ditolak',
+                                        'DIKIRIM' => 'Dikirim',
+                                        'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan',
+                                        'DIPERIKSA_PENERIMA' => 'Diperiksa Penerima',
+                                        'DIPERIKSA' => 'Diperiksa',
+                                        'DITERIMA' => 'Diterima',
+                                        'MENUNGGU_DIKEMBALIKAN' => 'Menunggu Dikembalikan',
+                                        'DIKEMBALIKAN' => 'Dikembalikan',
+                                        'SELESAI' => 'Selesai',
+                                        'DITOLAK' => 'Ditolak',
+                                        default => $suratJalan->status
+                                    };
+                                }
                             @endphp
                             <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ $statusBadge }}">
                                 {{ $statusLabel }}
@@ -677,7 +742,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                                     </svg>
                                     <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
-                                    
+
                                 </a>
                             @else
                                 <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
@@ -697,7 +762,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                                 </svg>
                                 <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
-                                
+
                             </a>
                         </div>
                         @endif
@@ -827,6 +892,25 @@
                     </table>
                 </div>
             </div>
+
+            {{-- Info Box for PEMINJAMAN - When return is pending security check or manager approval --}}
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->suratJalanKembali && in_array($peminjaman->suratJalanKembali->status, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true))
+            @php
+                $returnInfoMessage = $peminjaman->suratJalanKembali->status === 'MENUNGGU_PERSETUJUAN'
+                    ? 'sedang menunggu persetujuan manager.'
+                    : 'sedang menunggu pemeriksaan security pengirim.';
+            @endphp
+            <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 sm:p-6 mt-4 sm:mt-6">
+                <div class="flex items-start sm:items-center gap-3 text-orange-800">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5 sm:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="font-semibold text-sm sm:text-base">
+                        Surat Pengembalian Terkait (<a href="{{ route('security.show', $peminjaman->suratJalanKembali->id) }}" class="underline hover:text-orange-900">{{ $peminjaman->suratJalanKembali->nomor }}</a>) {{ $returnInfoMessage }}
+                    </span>
+                </div>
+            </div>
+            @endif
 
             {{-- Action Buttons --}}
             @php

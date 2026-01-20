@@ -68,15 +68,13 @@
                                        class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
                                         Edit Draft
                                     </a>
-                                    @if($suratJalan->status !== 'DITOLAK')
-                                        <form method="POST" action="{{ route('admin.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
-                                            @csrf
-                                            <button type="submit"
-                                                    class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                                {{ $suratJalan->status === 'DITOLAK_PERSETUJUAN' ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
-                                            </button>
-                                        </form>
-                                    @endif
+                                    <form method="POST" action="{{ route('admin.surat-jalan.request-approval', $suratJalan->id) }}" class="flex-1 sm:flex-none">
+                                        @csrf
+                                        <button type="submit"
+                                                class="w-full bg-pln-primary hover:bg-pln-light active:scale-95 text-white font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
+                                            {{ in_array($suratJalan->status, ['DITOLAK_PERSETUJUAN', 'DITOLAK'], true) ? 'Ajukan Ulang' : 'Minta Persetujuan' }}
+                                        </button>
+                                    </form>
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="button"
@@ -118,12 +116,12 @@
                                     <div class="flex gap-2">
                                         <button type="button"
                                             @click="$dispatch('open-delete-modal', {
-                                                title: 'Batalkan Surat Jalan',
+                                                title: 'Hapus Surat Jalan',
                                                 message: 'Apakah Anda yakin ingin membatalkan surat jalan {{ $suratJalan->nomor }}? {{ in_array($suratJalan->status, ['DIKIRIM', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA', 'DITERIMA', 'MENUNGGU_DIKEMBALIKAN', 'DIKEMBALIKAN', 'DIPERIKSA']) ? 'Semua pergerakan stok akan di-rollback.' : '' }}',
                                                 action: '{{ route('admin.surat-jalan.destroy', $suratJalan->id) }}'
                                             })"
                                             class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 active:scale-95 text-white font-semibold py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm">
-                                            Batalkan Surat Jalan
+                                            Hapus Surat Jalan
                                         </button>
                                         <a href="{{ route('admin.surat-jalan.index') }}"
                                            class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium py-2.5 sm:py-1.5 px-3 rounded-lg sm:rounded-md transition duration-150 text-sm text-center">
@@ -456,9 +454,18 @@
                 $maxStep = count($steps) - 1;
             @endphp
 
+            @php
+                // Determine if we should show blurred overlay instead of progress
+                $returnStatus = $peminjaman?->suratJalanKembali?->status;
+                $showBlurredOverlay = in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true)
+                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+                // Exception: show progress if PEMINJAMAN is already in progress
+                $showProgress = !$showBlurredOverlay || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK' && !in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+            @endphp
+
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
             {{-- Riwayat Status - Only show if not DRAFT --}}
-            @if(!in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true) || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK'))
+            @if($showProgress)
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mb-4 sm:mb-6" x-data="{ showDetail: false }">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -476,8 +483,8 @@
                         @php
                             $rejectTitle = 'Surat Jalan Ditolak oleh Security';
                             $rejectReason = null;
-                            $catatanText = (string) ($suratJalan->catatan ?? '');
-                            if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                            $catatanPenolakan = (string) ($suratJalan->catatan_penolakan ?? '');
+                            if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
                                 $rejectStage = strtolower($matches[1] ?? '');
                                 $rejectReason = trim($matches[2] ?? '');
                                 if ($rejectStage === 'pengirim') {
@@ -652,12 +659,14 @@
             @else
             {{-- DRAFT Status Card with Blurred Progress Background --}}
             @php
-                $securityRejectMessage = null;
+                $rejectMessage = null;
+                $catatanPenolakan = (string) ($suratJalan->catatan_penolakan ?? '');
+
                 if ($suratStatus === 'DITOLAK') {
+                    // Security rejection
                     $rejectStageLabel = 'security';
                     $rejectReason = null;
-                    $catatanText = (string) ($suratJalan->catatan ?? '');
-                    if ($catatanText !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanText, $matches)) {
+                    if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK_(PENGIRIM|PENERIMA):\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
                         $rejectStage = strtolower($matches[1] ?? '');
                         $rejectReason = trim($matches[2] ?? '');
                         if ($rejectStage === 'pengirim') {
@@ -666,21 +675,42 @@
                             $rejectStageLabel = 'security penerima';
                         }
                     }
-                    $securityRejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
+                    $rejectMessage = 'Status: DITOLAK - Ditolak oleh ' . $rejectStageLabel . '.';
                     if ($rejectReason) {
-                        $securityRejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                        $rejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    }
+                } elseif ($suratStatus === 'DITOLAK_PERSETUJUAN') {
+                    // Manager rejection
+                    $rejectReason = null;
+                    if ($catatanPenolakan !== '' && preg_match('/\\[DITOLAK PERSETUJUAN:\\s*([^\\]]+)\\]/', $catatanPenolakan, $matches)) {
+                        $rejectReason = trim($matches[1] ?? '');
+                    }
+                    $rejectMessage = 'Status: DITOLAK PERSETUJUAN - Ditolak oleh manager.';
+                    if ($rejectReason) {
+                        $rejectMessage .= ' Alasan: ' . $rejectReason . '.';
+                    } else {
+                        $rejectMessage .= ' Silakan perbaiki dan ajukan ulang.';
                     }
                 }
 
-                $draftMessage = $securityRejectMessage ?? match ($suratStatus) {
-                    'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
-                    'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
-                    'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
-                    'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
-                    default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
-                };
+                // Check if PEMINJAMAN with return pending (security check or manager approval)
+                $isPeminjamanReturnPending = $tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true);
 
-                $draftIcon = match ($suratStatus) {
+                if ($isPeminjamanReturnPending) {
+                    $draftMessage = $returnStatus === 'MENUNGGU_PERSETUJUAN'
+                        ? 'Status: MENUNGGU PERSETUJUAN - Surat pengembalian terkait sedang menunggu persetujuan manager.'
+                        : 'Status: MENUNGGU PEMERIKSAAN - Surat pengembalian terkait sedang menunggu pemeriksaan security.';
+                } else {
+                    $draftMessage = $rejectMessage ?? match ($suratStatus) {
+                        'MENUNGGU_PERSETUJUAN' => 'Status: MENUNGGU PERSETUJUAN - Menunggu persetujuan manager.',
+                        'DIPERIKSA_PENGIRIM' => 'Status: MENUNGGU PERSETUJUAN - Menunggu pemeriksaan security pengirim.',
+                        'DITOLAK_PERSETUJUAN' => 'Status: DITOLAK PERSETUJUAN - Silakan perbaiki dan ajukan ulang.',
+                        'DITOLAK' => 'Status: DITOLAK - Ditolak oleh security.',
+                        default => 'Status: DRAFT - Belum diajukan untuk persetujuan.',
+                    };
+                }
+
+                $draftIcon = $isPeminjamanReturnPending ? 'clock' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
                     'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
@@ -688,7 +718,7 @@
                     default => 'document',
                 };
 
-                $draftBgClass = match ($suratStatus) {
+                $draftBgClass = $isPeminjamanReturnPending ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
@@ -696,7 +726,7 @@
                     default => 'bg-gray-50 border-gray-200',
                 };
 
-                $draftTextClass = match ($suratStatus) {
+                $draftTextClass = $isPeminjamanReturnPending ? 'text-orange-800' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
                     'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
@@ -704,7 +734,7 @@
                     default => 'text-gray-700',
                 };
 
-                $draftIconBgClass = match ($suratStatus) {
+                $draftIconBgClass = $isPeminjamanReturnPending ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
@@ -840,7 +870,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                                     </svg>
                                     <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
-                                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Sudah Dibuat</span>
+                                    
                                 </a>
                             @else
                                 <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
@@ -860,7 +890,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                                 </svg>
                                 <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
-                                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Surat Asal</span>
+                                
                             </a>
                         </div>
                         @endif
@@ -1264,10 +1294,8 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
-                        <input type="hidden" name="tanggal_kirim" value="{{ now()->toDateString() }}">
-                        <div class="w-full px-3 py-[10px] bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm shadow-sm">
-                            {{ now()->translatedFormat('d F Y') }}
-                        </div>
+                        <input type="date" name="tanggal_kirim" value="{{ now()->toDateString() }}"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:ring-pln-primary focus:border-pln-primary text-sm">
                     </div>
 
                     {{-- Form PIC Lainnya (di dalam grid) --}}
@@ -1373,7 +1401,7 @@
                         <div class="flex flex-col sm:flex-row items-center gap-4">
                             {{-- Action Buttons --}}
                             <div class="flex items-center gap-2">
-                                <button type="button" data-camera-open class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                                <button type="button" data-camera-open class="md:hidden inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
                                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -1643,14 +1671,25 @@
                 });
             };
 
-            const normalizeFiles = () => {
-                if (!input) {
+            const isAllowedFile = (file) => {
+                const type = (file.type || '').toLowerCase();
+                if (type === 'image/jpeg' || type === 'image/png' || type === 'image/jpg') {
+                    return true;
+                }
+                const name = (file.name || '').toLowerCase();
+                return name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
+            };
+
+            const appendFiles = (files) => {
+                if (!files || files.length === 0) {
                     return;
                 }
                 setError('');
-                // Merge new files with existing collected files
-                const newFiles = Array.from(input.files || []);
-                newFiles.forEach((file) => {
+                files.forEach((file) => {
+                    if (!isAllowedFile(file)) {
+                        setError('Hanya mendukung file JPG/PNG.');
+                        return;
+                    }
                     if (wrapper._collectedFiles.length < maxFiles) {
                         wrapper._collectedFiles.push(file);
                     }
@@ -1661,6 +1700,20 @@
                 }
                 syncToInput();
                 renderPreview();
+            };
+
+            const setHighlight = (active) => {
+                wrapper.classList.toggle('ring-2', active);
+                wrapper.classList.toggle('ring-pln-primary', active);
+                wrapper.classList.toggle('border-pln-primary', active);
+                wrapper.classList.toggle('bg-blue-50/50', active);
+            };
+
+            const normalizeFiles = () => {
+                if (!input) {
+                    return;
+                }
+                appendFiles(Array.from(input.files || []));
             };
 
             const stopCamera = () => {
@@ -1749,6 +1802,31 @@
             if (captureBtn) {
                 captureBtn.addEventListener('click', capturePhoto);
             }
+            wrapper._dragCounter = 0;
+            wrapper.addEventListener('dragenter', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter += 1;
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'copy';
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = Math.max(0, wrapper._dragCounter - 1);
+                if (wrapper._dragCounter === 0) {
+                    setHighlight(false);
+                }
+            });
+            wrapper.addEventListener('drop', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = 0;
+                setHighlight(false);
+                const files = Array.from(event.dataTransfer?.files || []);
+                appendFiles(files);
+            });
             wrapper._stopCamera = stopCamera;
             renderPreview();
         }

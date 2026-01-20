@@ -298,7 +298,7 @@ class SuratJalanController extends Controller
                 'max:50',
             ],
             'tanggal_kirim' => ['required', 'date'],
-            'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after:tanggal_kirim'],
+            'tanggal_kembali' => ['required_if:mode,peminjaman', 'nullable', 'date', 'after_or_equal:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
             'nama_driver' => ['required', 'string', 'max:100'],
             'jenis_kendaraan' => ['required', 'string', 'max:100'],
@@ -351,7 +351,7 @@ class SuratJalanController extends Controller
             'tanggal_kirim.date' => 'Format tanggal kirim tidak valid.',
             'tanggal_kembali.required_if' => 'Tanggal kembali wajib diisi untuk peminjaman.',
             'tanggal_kembali.date' => 'Format tanggal kembali tidak valid.',
-            'tanggal_kembali.after' => 'Tanggal kembali harus setelah tanggal kirim.',
+            'tanggal_kembali.after_or_equal' => 'Tanggal kembali harus setelah atau sama dengan tanggal kirim.',
 
             // Driver & Kendaraan
             'nama_driver.required' => 'Nama driver wajib diisi.',
@@ -805,38 +805,40 @@ class SuratJalanController extends Controller
     public function show(Request $request, $id)
     {
         $loadDetail = function () use ($id) {
-            $suratJalan = SuratJalan::with(['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments', 'statusHistories.actor'])
+            $withStatusHistories = Schema::hasTable('surat_jalan_status_histories');
+            $suratJalanRelations = ['gudangAsal', 'gudangTujuan', 'pembuat', 'picTujuan', 'items.item', 'attachments'];
+            if ($withStatusHistories) {
+                $suratJalanRelations[] = 'statusHistories.actor';
+            }
+
+            $suratJalan = SuratJalan::with($suratJalanRelations)
                 ->findOrFail($id);
 
             $peminjaman = null;
+            $peminjamanRelations = [
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'gudangPeminjam',
+                'gudangPemilik',
+                'items.item',
+            ];
+            if ($withStatusHistories) {
+                $peminjamanRelations[] = 'suratJalanKirim.statusHistories.actor';
+                $peminjamanRelations[] = 'suratJalanKembali.statusHistories.actor';
+            }
+
             if ($suratJalan->tipe === 'PEMINJAMAN') {
-                $peminjaman = Peminjaman::with([
-                    'suratJalanKirim.gudangAsal',
-                    'suratJalanKirim.gudangTujuan',
-                    'suratJalanKirim.pembuat',
-                    'suratJalanKirim.statusHistories.actor',
-                    'suratJalanKembali.gudangAsal',
-                    'suratJalanKembali.gudangTujuan',
-                    'suratJalanKembali.pembuat',
-                    'suratJalanKembali.statusHistories.actor',
-                    'gudangPeminjam',
-                    'gudangPemilik',
-                    'items.item',
-                ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with($peminjamanRelations)
+                    ->where('surat_jalan_kirim_id', $suratJalan->id)
+                    ->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-                $peminjaman = Peminjaman::with([
-                    'suratJalanKirim.gudangAsal',
-                    'suratJalanKirim.gudangTujuan',
-                    'suratJalanKirim.pembuat',
-                    'suratJalanKirim.statusHistories.actor',
-                    'suratJalanKembali.gudangAsal',
-                    'suratJalanKembali.gudangTujuan',
-                    'suratJalanKembali.pembuat',
-                    'suratJalanKembali.statusHistories.actor',
-                    'gudangPeminjam',
-                    'gudangPemilik',
-                    'items.item',
-                ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with($peminjamanRelations)
+                    ->where('surat_jalan_kembali_id', $suratJalan->id)
+                    ->first();
             }
 
             return [$suratJalan, $peminjaman];
@@ -992,8 +994,35 @@ class SuratJalanController extends Controller
             $validated = $request->validate([
                 'pic_tujuan_id' => [
                     'required',
-                    'integer',
-                    Rule::exists('pics', 'id')->where(fn ($q) => $q->where('gudang_id', $suratJalan->gudang_tujuan_id)),
+                    Rule::when(
+                        $request->input('pic_tujuan_id') !== 'lainnya',
+                        [
+                            'integer',
+                            Rule::exists('pics', 'id')->where(fn ($q) => $q->where('gudang_id', $suratJalan->gudang_tujuan_id)),
+                        ]
+                    ),
+                    Rule::when(
+                        $request->input('pic_tujuan_id') === 'lainnya',
+                        ['in:lainnya']
+                    ),
+                ],
+                'pic_custom_nama' => [
+                    'exclude_unless:pic_tujuan_id,lainnya',
+                    'required_if:pic_tujuan_id,lainnya',
+                    'string',
+                    'max:255',
+                ],
+                'pic_custom_jabatan' => [
+                    'exclude_unless:pic_tujuan_id,lainnya',
+                    'nullable',
+                    'string',
+                    'max:255',
+                ],
+                'pic_custom_no_hp' => [
+                    'exclude_unless:pic_tujuan_id,lainnya',
+                    'nullable',
+                    'string',
+                    'max:50',
                 ],
                 'tanggal_kirim' => ['required', 'date'],
                 'catatan' => ['nullable', 'string'],
@@ -1012,7 +1041,19 @@ class SuratJalanController extends Controller
                 'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
                 'attachments.max' => 'Maksimal 3 lampiran gambar per surat jalan.',
+                'pic_custom_nama.required_if' => 'Nama PIC wajib diisi jika memilih Lainnya.',
             ]);
+
+            $picTujuanId = $validated['pic_tujuan_id'];
+            $picCustomData = null;
+            if ($picTujuanId === 'lainnya') {
+                $picCustomData = [
+                    'nama' => $validated['pic_custom_nama'],
+                    'jabatan' => $validated['pic_custom_jabatan'] ?? null,
+                    'no_hp' => $validated['pic_custom_no_hp'] ?? null,
+                ];
+                $picTujuanId = null;
+            }
 
             $catatanValue = $validated['catatan'] ?? null;
             if ($resetAfterReject) {
@@ -1020,10 +1061,10 @@ class SuratJalanController extends Controller
             }
 
             $updatePayload = [
-                'pic_tujuan_id' => $validated['pic_tujuan_id'],
-                'pic_tujuan_custom_nama' => null,
-                'pic_tujuan_custom_jabatan' => null,
-                'pic_tujuan_custom_no_hp' => null,
+                'pic_tujuan_id' => $picTujuanId,
+                'pic_tujuan_custom_nama' => $picCustomData['nama'] ?? null,
+                'pic_tujuan_custom_jabatan' => $picCustomData['jabatan'] ?? null,
+                'pic_tujuan_custom_no_hp' => $picCustomData['no_hp'] ?? null,
                 'tanggal' => Carbon::parse($validated['tanggal_kirim'])->toDateString(),
                 'catatan' => $catatanValue,
                 'nama_driver' => $validated['nama_driver'] ?? null,
@@ -1122,7 +1163,7 @@ class SuratJalanController extends Controller
                 'max:50',
             ],
             'tanggal_kirim' => ['required', 'date'],
-            'tanggal_kembali' => ['required_if:tipe,PEMINJAMAN', 'nullable', 'date', 'after:tanggal_kirim'],
+            'tanggal_kembali' => ['required_if:tipe,PEMINJAMAN', 'nullable', 'date', 'after_or_equal:tanggal_kirim'],
             'catatan' => ['nullable', 'string'],
             'nama_driver' => ['nullable', 'string', 'max:100'],
             'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
@@ -1331,13 +1372,7 @@ class SuratJalanController extends Controller
             abort(403, 'Anda tidak berhak meminta persetujuan surat jalan gudang lain.');
         }
 
-        if ($suratJalan->status === 'DITOLAK') {
-            return redirect()
-                ->route('gudang.surat-jalan.show', $suratJalan->id)
-                ->with('error', 'Surat Jalan ini ditolak oleh security. Silakan edit terlebih dahulu sebelum ajukan ulang.');
-        }
-
-        if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN'], true)) {
+        if (!in_array($suratJalan->status, ['DRAFT', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true)) {
             return redirect()
                 ->route('gudang.surat-jalan.show', $suratJalan->id)
                 ->with('error', 'Surat Jalan ini tidak dapat diajukan untuk persetujuan.');
@@ -1370,13 +1405,23 @@ class SuratJalanController extends Controller
                 ->with('error', 'Wajib upload minimal 1 lampiran gambar sebelum meminta persetujuan.');
         }
 
-        // Hapus catatan penolakan sebelumnya jika diajukan ulang dari status DITOLAK_PERSETUJUAN
+        $wasSecurityRejected = $suratJalan->status === 'DITOLAK';
+
+        // Reset catatan penolakan jika diajukan ulang dari status DITOLAK/DITOLAK_PERSETUJUAN
         $updateData = ['status' => 'MENUNGGU_PERSETUJUAN'];
-        if ($suratJalan->status === 'DITOLAK_PERSETUJUAN') {
-            $updateData['catatan'] = null;
+        if (in_array($suratJalan->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN'], true)) {
+            $updateData['catatan_penolakan'] = null;
+        }
+        if ($wasSecurityRejected) {
+            $updateData['catatan'] = $this->stripSecurityRejectTags($suratJalan->catatan);
+            $updateData['ttd_pembuat_id'] = null;
+            $updateData['waktu_ttd_pembuat'] = null;
         }
 
         $suratJalan->update($updateData);
+        if ($wasSecurityRejected) {
+            $this->resetSuratJalanAfterSecurityReject($suratJalan);
+        }
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
@@ -1422,7 +1467,7 @@ class SuratJalanController extends Controller
         $alasan = trim((string) $validated['alasan']);
         $suratJalan->update([
             'status' => 'DITOLAK_PERSETUJUAN',
-            'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[DITOLAK PERSETUJUAN: {$alasan}]",
+            'catatan_penolakan' => "[DITOLAK PERSETUJUAN: {$alasan}]",
         ]);
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
@@ -1541,12 +1586,26 @@ class SuratJalanController extends Controller
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
                     ]);
+
+                    // Generate dan simpan hash signature pembuat untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_pembuat' => $suratJalan->generateDocumentHash('pembuat'),
+                        'signature_metadata_pembuat' => SuratJalan::generateSignatureMetadata(),
+                    ]);
                 } else {
                     // PENGEMBALIAN: menunggu pemeriksaan security pengirim
                     $suratJalan->update([
                         'status' => 'DIPERIKSA_PENGIRIM',
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
                         'waktu_ttd_pembuat' => $suratJalan->waktu_ttd_pembuat ?? now(),
+                    ]);
+
+                    // Generate dan simpan hash signature pembuat untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_pembuat' => $suratJalan->generateDocumentHash('pembuat'),
+                        'signature_metadata_pembuat' => SuratJalan::generateSignatureMetadata(),
                     ]);
                 }
             });
@@ -1643,6 +1702,13 @@ class SuratJalanController extends Controller
                         'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
                     ]);
 
+                    // Generate dan simpan hash signature penerima untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_penerima' => $suratJalan->generateDocumentHash('penerima'),
+                        'signature_metadata_penerima' => SuratJalan::generateSignatureMetadata(),
+                    ]);
+
                     // Update peminjaman status to SELESAI
                     $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
                     if ($peminjaman) {
@@ -1690,6 +1756,13 @@ class SuratJalanController extends Controller
                         'status' => 'DITERIMA',
                         'ttd_penerima_id' => $suratJalan->ttd_penerima_id ?? Auth::id(),
                         'waktu_ttd_penerima' => $suratJalan->waktu_ttd_penerima ?? now(),
+                    ]);
+
+                    // Generate dan simpan hash signature penerima untuk integritas dokumen
+                    $suratJalan->refresh();
+                    $suratJalan->update([
+                        'signature_hash_penerima' => $suratJalan->generateDocumentHash('penerima'),
+                        'signature_metadata_penerima' => SuratJalan::generateSignatureMetadata(),
                     ]);
 
                     // Update peminjaman status if applicable

@@ -50,6 +50,7 @@ class SuratJalanObserver
         $nomor = $suratJalan->nomor;
         $gudangAsal = $suratJalan->gudangAsal?->nama ?? 'Gudang Asal';
         $gudangTujuan = $suratJalan->gudangTujuan?->nama ?? 'Gudang Tujuan';
+        $picUserId = $suratJalan->picTujuan?->user_id;
 
         try {
             switch ($status) {
@@ -58,6 +59,17 @@ class SuratJalanObserver
                     if ($suratJalan->gudang_tujuan_id) {
                         AppNotification::notifyGudangOperators(
                             $suratJalan->gudang_tujuan_id,
+                            AppNotification::TYPE_SURAT_MASUK,
+                            'Surat Jalan Masuk',
+                            "Surat jalan {$nomor} dari {$gudangAsal} sedang dalam perjalanan ke gudang Anda.",
+                            $suratJalan->id,
+                            route('gudang.surat-jalan.show', $suratJalan->id),
+                            ['operator_gudang']
+                        );
+                    }
+                    if ($picUserId) {
+                        AppNotification::notifyUser(
+                            $picUserId,
                             AppNotification::TYPE_SURAT_MASUK,
                             'Surat Jalan Masuk',
                             "Surat jalan {$nomor} dari {$gudangAsal} sedang dalam perjalanan ke gudang Anda.",
@@ -73,6 +85,17 @@ class SuratJalanObserver
                     if ($suratJalan->gudang_tujuan_id) {
                         AppNotification::notifyGudangOperators(
                             $suratJalan->gudang_tujuan_id,
+                            AppNotification::TYPE_SURAT_SIAP_TERIMA,
+                            'Surat Jalan Siap Diterima',
+                            "Surat jalan {$nomor} sudah diperiksa security dan siap untuk Anda terima.",
+                            $suratJalan->id,
+                            route('gudang.surat-jalan.show', $suratJalan->id),
+                            ['operator_gudang']
+                        );
+                    }
+                    if ($picUserId) {
+                        AppNotification::notifyUser(
+                            $picUserId,
                             AppNotification::TYPE_SURAT_SIAP_TERIMA,
                             'Surat Jalan Siap Diterima',
                             "Surat jalan {$nomor} sudah diperiksa security dan siap untuk Anda terima.",
@@ -95,7 +118,8 @@ class SuratJalanObserver
                             'Surat Jalan Diterima',
                             "Surat jalan {$nomor} sudah diterima oleh {$gudangTujuan}.",
                             $suratJalan->id,
-                            route('gudang.surat-jalan.show', $suratJalan->id)
+                            route('gudang.surat-jalan.show', $suratJalan->id),
+                            ['operator_gudang']
                         );
                     }
                     break;
@@ -109,7 +133,8 @@ class SuratJalanObserver
                             'Surat Jalan Ditolak',
                             "Surat jalan {$nomor} ditolak oleh security di {$gudangTujuan}.",
                             $suratJalan->id,
-                            route('gudang.surat-jalan.show', $suratJalan->id)
+                            route('gudang.surat-jalan.show', $suratJalan->id),
+                            ['operator_gudang']
                         );
                     }
                     break;
@@ -122,7 +147,8 @@ class SuratJalanObserver
                             'Surat Jalan Ditolak',
                             "Persetujuan surat jalan {$nomor} ditolak. Silakan perbaiki dan ajukan ulang.",
                             $suratJalan->id,
-                            route('gudang.surat-jalan.show', $suratJalan->id)
+                            route('gudang.surat-jalan.show', $suratJalan->id),
+                            ['operator_gudang']
                         );
                     }
                     break;

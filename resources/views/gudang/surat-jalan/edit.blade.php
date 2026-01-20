@@ -364,7 +364,6 @@
                                         <thead class="bg-white">
                                             <tr>
                                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Satuan</th>
                                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Jumlah</th>
                                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
                                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Aksi</th>
@@ -384,12 +383,6 @@
                                                                 </option>
                                                             @endforeach
                                                         </select>
-                                                    </td>
-                                                    <td class="px-4 py-3">
-                                                        <input type="text"
-                                                               class="w-full rounded-md border-gray-300 bg-gray-50 text-gray-700 shadow-sm"
-                                                               :value="unitFor(row.item_id)"
-                                                               readonly>
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <input type="number"
@@ -486,46 +479,6 @@
                                 <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full" data-camera-status>{{ $suratJalan->attachments->count() }}/3</span>
                             </div>
 
-                            {{-- Existing Attachments --}}
-                            @if($suratJalan->attachments->count() > 0)
-                                <div class="p-4 border-b border-gray-100">
-                                    <p class="text-xs font-medium text-gray-600 mb-3">Foto Tersimpan</p>
-                                    <div class="grid grid-cols-3 gap-3">
-                                        @foreach($suratJalan->attachments as $attachment)
-                                            <div class="relative group" data-attachment-card data-attachment-id="{{ $attachment->id }}">
-                                                <div class="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-white">
-                                                    <img src="{{ Storage::url($attachment->file_path) }}"
-                                                         alt="{{ $attachment->file_name }}"
-                                                         class="w-full h-full object-cover">
-                                                    <span class="hidden absolute top-1 left-1 rounded bg-red-600/90 text-white text-[10px] px-1.5 py-0.5" data-attachment-badge>
-                                                        Hapus
-                                                    </span>
-                                                </div>
-                                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                                    <button type="button"
-                                                            class="p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white"
-                                                            data-attachment-delete
-                                                            title="Hapus">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                        </svg>
-                                                    </button>
-                                                    <button type="button"
-                                                            class="hidden p-1.5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white ml-2"
-                                                            data-attachment-undo
-                                                            title="Urungkan">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                                <p class="text-xs text-red-600 mt-1 hidden text-center" data-attachment-status>Akan dihapus</p>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
                             <div data-delete-attachments></div>
 
                             {{-- Camera Panel (Hidden by default) --}}
@@ -551,47 +504,89 @@
                             </div>
 
                             {{-- Upload Area --}}
-                            @if($suratJalan->attachments->count() < 3)
-                                <div class="p-4">
-                                    <div class="flex flex-col sm:flex-row items-center gap-4">
-                                        {{-- Action Buttons --}}
-                                        <div class="flex items-center gap-2">
-                                            <button type="button" data-camera-open class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
-                                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                </svg>
-                                                Kamera
-                                            </button>
-                                            <label class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light cursor-pointer transition-colors">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                                </svg>
-                                                Pilih File
-                                                <input type="file"
-                                                       id="attachments-edit-gudang"
-                                                       name="attachments[]"
-                                                       multiple
-                                                       accept="image/jpeg,image/jpg,image/png"
-                                                       capture="environment"
-                                                       class="hidden">
-                                            </label>
-                                        </div>
-                                        {{-- Info --}}
-                                        <p class="text-xs text-gray-500">JPG, PNG. Maks 10MB. Sisa {{ 3 - $suratJalan->attachments->count() }} slot.</p>
+                            <div class="p-4">
+                                @if($suratJalan->attachments->count() < 3)
+                                <div class="flex flex-col sm:flex-row items-center gap-4">
+                                    {{-- Action Buttons --}}
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" data-camera-open class="md:hidden inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            </svg>
+                                            Kamera
+                                        </button>
+                                        <label class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light cursor-pointer transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            Pilih File
+                                            <input type="file"
+                                                   id="attachments-edit-gudang"
+                                                   name="attachments[]"
+                                                   multiple
+                                                   accept="image/jpeg,image/jpg,image/png"
+                                                   capture="environment"
+                                                   class="hidden">
+                                        </label>
                                     </div>
-
-                                    {{-- Preview Grid (empty by default, populated dynamically) --}}
-                                    <div class="mt-4 grid grid-cols-3 gap-3 hidden" data-camera-preview></div>
-
-                                    {{-- Error message --}}
-                                    <p class="text-xs text-red-600 mt-2 hidden" data-camera-error></p>
+                                    {{-- Info --}}
+                                    <p class="text-xs text-gray-500">JPG, PNG. Maks 10MB.</p>
                                 </div>
-                            @else
-                                <div class="p-4">
-                                    <p class="text-sm text-amber-600 text-center">Slot lampiran penuh. Hapus salah satu untuk menambah yang baru.</p>
+                                @else
+                                <p class="text-sm text-amber-600 text-center mb-4">Slot lampiran penuh. Hapus salah satu untuk menambah yang baru.</p>
+                                @endif
+
+                                {{-- Grid Layout --}}
+                                <div class="mt-4 grid grid-cols-3 gap-3">
+                                    {{-- Existing Attachments (tidak di dalam data-camera-preview) --}}
+                                    @foreach($suratJalan->attachments as $attachment)
+                                        <div class="relative group" data-attachment-card data-attachment-id="{{ $attachment->id }}">
+                                            <div class="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-white">
+                                                <img src="{{ Storage::url($attachment->file_path) }}"
+                                                     alt="{{ $attachment->file_name }}"
+                                                     class="w-full h-full object-cover">
+                                                <span class="hidden absolute top-1 left-1 rounded bg-red-600/90 text-white text-[10px] px-1.5 py-0.5" data-attachment-badge>
+                                                    Hapus
+                                                </span>
+                                            </div>
+                                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                <button type="button"
+                                                        class="p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white"
+                                                        data-attachment-delete
+                                                        title="Hapus">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    </svg>
+                                                </button>
+                                                <button type="button"
+                                                        class="hidden p-1.5 bg-emerald-500 hover:bg-emerald-600 rounded-full text-white ml-2"
+                                                        data-attachment-undo
+                                                        title="Urungkan">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            <p class="text-xs text-red-600 mt-1 hidden text-center" data-attachment-status>Akan dihapus</p>
+                                        </div>
+                                    @endforeach
+
+                                    {{-- Placeholders for new uploads (dengan data-camera-preview untuk JS) --}}
+                                    <div class="contents" data-camera-preview>
+                                        @for($i = 0; $i < 3 - $suratJalan->attachments->count(); $i++)
+                                            <div class="aspect-square rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center bg-white" data-placeholder>
+                                                <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                            </div>
+                                        @endfor
+                                    </div>
                                 </div>
-                            @endif
+
+                                {{-- Error message --}}
+                                <p class="text-xs text-red-600 mt-2 hidden" data-camera-error></p>
+                            </div>
                         </div>
 
                         <div class="flex items-center justify-end gap-3">
@@ -796,14 +791,25 @@
                 });
             };
 
-            const normalizeFiles = () => {
-                if (!input) {
+            const isAllowedFile = (file) => {
+                const type = (file.type || '').toLowerCase();
+                if (type === 'image/jpeg' || type === 'image/png' || type === 'image/jpg') {
+                    return true;
+                }
+                const name = (file.name || '').toLowerCase();
+                return name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
+            };
+
+            const appendFiles = (files) => {
+                if (!files || files.length === 0) {
                     return;
                 }
                 setError('');
-                // Merge new files with existing collected files
-                const newFiles = Array.from(input.files || []);
-                newFiles.forEach((file) => {
+                files.forEach((file) => {
+                    if (!isAllowedFile(file)) {
+                        setError('Hanya mendukung file JPG/PNG.');
+                        return;
+                    }
                     if (wrapper._collectedFiles.length < maxFiles) {
                         wrapper._collectedFiles.push(file);
                     }
@@ -814,6 +820,20 @@
                 }
                 syncToInput();
                 renderPreview();
+            };
+
+            const setHighlight = (active) => {
+                wrapper.classList.toggle('ring-2', active);
+                wrapper.classList.toggle('ring-pln-primary', active);
+                wrapper.classList.toggle('border-pln-primary', active);
+                wrapper.classList.toggle('bg-blue-50/50', active);
+            };
+
+            const normalizeFiles = () => {
+                if (!input) {
+                    return;
+                }
+                appendFiles(Array.from(input.files || []));
             };
 
             const stopCamera = () => {
@@ -902,6 +922,31 @@
             if (captureBtn) {
                 captureBtn.addEventListener('click', capturePhoto);
             }
+            wrapper._dragCounter = 0;
+            wrapper.addEventListener('dragenter', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter += 1;
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'copy';
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = Math.max(0, wrapper._dragCounter - 1);
+                if (wrapper._dragCounter === 0) {
+                    setHighlight(false);
+                }
+            });
+            wrapper.addEventListener('drop', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = 0;
+                setHighlight(false);
+                const files = Array.from(event.dataTransfer?.files || []);
+                appendFiles(files);
+            });
             wrapper._stopCamera = stopCamera;
             renderPreview();
         }

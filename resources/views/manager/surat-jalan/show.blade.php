@@ -20,7 +20,7 @@
                     'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
                     'DITOLAK_PERSETUJUAN' => 'Persetujuan Ditolak',
                     'DIKIRIM' => 'Dikirim',
-                    'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan Pengirim',
+                    'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan',
                     'DIPERIKSA_PENERIMA' => 'Diperiksa Penerima',
                     'DIPERIKSA' => 'Diperiksa',
                     'DITERIMA' => 'Diterima',
@@ -60,6 +60,9 @@
                 $gudangTujuanTelepon = $suratJalan->gudang_tujuan_is_custom
                     ? ($suratJalan->gudang_tujuan_custom_telepon ?? '-')
                     : ($suratJalan->gudangTujuan->telepon ?? '-');
+                $picNama = $suratJalan->picTujuan->nama ?? $suratJalan->pic_tujuan_custom_nama;
+                $picJabatan = $suratJalan->picTujuan?->jabatan ?? $suratJalan->pic_tujuan_custom_jabatan;
+                $picNoHp = $suratJalan->picTujuan?->no_hp ?? $suratJalan->pic_tujuan_custom_no_hp;
                 $historyMap = $suratJalan->relationLoaded('statusHistories')
                     ? $suratJalan->statusHistories->groupBy('status')
                     : collect();
@@ -172,9 +175,12 @@
                         <div>
                             <dt class="text-slate-500">PIC Tujuan</dt>
                             <dd class="font-semibold text-slate-900">
-                                {{ $suratJalan->picTujuan->nama ?? '-' }}
-                                @if($suratJalan->picTujuan?->jabatan)
-                                    <span class="text-xs text-slate-500">({{ $suratJalan->picTujuan->jabatan }})</span>
+                                {{ $picNama ?? '-' }}
+                                @if($picJabatan)
+                                    <span class="text-xs text-slate-500">({{ $picJabatan }})</span>
+                                @endif
+                                @if($picNoHp)
+                                    <span class="text-xs text-slate-500">({{ $picNoHp }})</span>
                                 @endif
                             </dd>
                         </div>
@@ -349,7 +355,7 @@
                 MENUNGGU_PERSETUJUAN: 'Menunggu Persetujuan',
                 DITOLAK_PERSETUJUAN: 'Persetujuan Ditolak',
                 DIKIRIM: 'Dikirim',
-                DIPERIKSA_PENGIRIM: 'Menunggu Pemeriksaan Pengirim',
+                DIPERIKSA_PENGIRIM: 'Menunggu Pemeriksaan',
                 DIPERIKSA_PENERIMA: 'Diperiksa Penerima',
                 DIPERIKSA: 'Diperiksa',
                 DITERIMA: 'Diterima',

@@ -1023,7 +1023,7 @@
 
                     <div x-show="mode === 'peminjaman'">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kembali</label>
-                        <input type="date" name="tanggal_kembali" min="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300">
+                        <input type="date" name="tanggal_kembali" class="w-full rounded-md border-gray-300">
                     </div>
 
                     <div>
@@ -1247,16 +1247,16 @@
                             <div class="flex items-center gap-2">
                                 <button type="button"
                                         data-camera-open
-                                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                        class="md:hidden inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     </svg>
                                     Kamera
                                 </button>
-                                <label class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors cursor-pointer">
+                                <label class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light cursor-pointer transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
                                     Pilih File
                                     <input type="file"
@@ -1319,11 +1319,15 @@
                 selectedPic: @js(old('pic_tujuan_id', '')),
                 labelPic: '',
                 picOpen: false,
+                tanggalKirim: @js(old('tanggal_kirim', now()->toDateString())),
                 peminjamans: @js(($activePeminjamans ?? collect())->map(fn($p) => [
                     'id' => $p->id,
                     'kode' => $p->kode,
                     'gudang_pemilik_id' => $p->gudang_pemilik_id,
                     'gudang_pemilik_nama' => $p->gudangPemilik->nama ?? '-',
+                    'batas_waktu_kembali' => $p->batas_waktu_kembali?->format('Y-m-d'),
+                    'tanggal_kirim' => $p->suratJalanKirim?->tanggal?->format('Y-m-d')
+                        ?? $p->waktu_kirim?->format('Y-m-d'),
                     'items' => $p->items->map(fn($item) => [
                         'kode' => $item->item->kode ?? '-',
                         'nama' => $item->item->nama ?? 'Item',
@@ -1359,8 +1363,16 @@
                         this.selectedPic = '';
                         this.labelPic = '';
                     }
+                    const peminjaman = this.selectedPeminjaman();
+                    if (peminjaman?.batas_waktu_kembali) {
+                        this.tanggalKirim = peminjaman.batas_waktu_kembali;
+                    } else if (peminjaman?.tanggal_kirim) {
+                        this.tanggalKirim = peminjaman.tanggal_kirim;
+                    }
                 }
-             }">
+             }"
+             x-init="handlePeminjamanChange()"
+             x-effect="selectedPeminjamanId && handlePeminjamanChange()">
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h3 class="text-lg font-bold text-gray-900">Pengembalian Peminjaman Barang</h3>
@@ -1438,8 +1450,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengiriman</label>
                         <input type="date"
                                name="tanggal_kirim"
-                               value="{{ old('tanggal_kirim', now()->toDateString()) }}"
-                               min="{{ date('Y-m-d') }}"
+                               x-model="tanggalKirim"
                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                     </div>
 
@@ -1550,16 +1561,16 @@
                             <div class="flex items-center gap-2">
                                 <button type="button"
                                         data-camera-open
-                                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                        class="md:hidden inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     </svg>
                                     Kamera
                                 </button>
-                                <label class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light transition-colors cursor-pointer">
+                                <label class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-pln-primary rounded-lg hover:bg-pln-light cursor-pointer transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
                                     Pilih File
                                     <input type="file"
@@ -1904,28 +1915,50 @@
                 });
             };
 
+            const isAllowedFile = (file) => {
+                const type = (file.type || '').toLowerCase();
+                if (type === 'image/jpeg' || type === 'image/png' || type === 'image/jpg') {
+                    return true;
+                }
+                const name = (file.name || '').toLowerCase();
+                return name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
+            };
+
+            const appendFiles = (files) => {
+                if (!files || files.length === 0) {
+                    return;
+                }
+                setError('');
+                files.forEach((file) => {
+                    if (!isAllowedFile(file)) {
+                        setError('Hanya mendukung file JPG/PNG.');
+                        return;
+                    }
+                    if (wrapper._collectedFiles.length < maxFiles) {
+                        wrapper._collectedFiles.push(file);
+                    }
+                });
+                if (wrapper._collectedFiles.length > maxFiles) {
+                    setError(`Maksimal ${maxFiles} gambar.`);
+                    wrapper._collectedFiles = wrapper._collectedFiles.slice(0, maxFiles);
+                }
+                syncToInput();
+                renderPreview();
+            };
+
+            const setHighlight = (active) => {
+                wrapper.classList.toggle('ring-2', active);
+                wrapper.classList.toggle('ring-pln-primary', active);
+                wrapper.classList.toggle('border-pln-primary', active);
+                wrapper.classList.toggle('bg-blue-50/50', active);
+            };
+
             // Merge new files with existing collected files
             const normalizeFiles = () => {
                 if (!input) {
                     return;
                 }
-                setError('');
-                const newFiles = Array.from(input.files || []);
-
-                // Merge new files with existing collected files
-                newFiles.forEach((file) => {
-                    if (wrapper._collectedFiles.length < maxFiles) {
-                        wrapper._collectedFiles.push(file);
-                    }
-                });
-
-                if (wrapper._collectedFiles.length > maxFiles) {
-                    setError(`Maksimal ${maxFiles} gambar.`);
-                    wrapper._collectedFiles = wrapper._collectedFiles.slice(0, maxFiles);
-                }
-
-                syncToInput();
-                renderPreview();
+                appendFiles(Array.from(input.files || []));
             };
 
             const stopCamera = () => {
@@ -2032,6 +2065,31 @@
             if (captureBtn) {
                 captureBtn.addEventListener('click', capturePhoto);
             }
+            wrapper._dragCounter = 0;
+            wrapper.addEventListener('dragenter', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter += 1;
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'copy';
+                setHighlight(true);
+            });
+            wrapper.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = Math.max(0, wrapper._dragCounter - 1);
+                if (wrapper._dragCounter === 0) {
+                    setHighlight(false);
+                }
+            });
+            wrapper.addEventListener('drop', (event) => {
+                event.preventDefault();
+                wrapper._dragCounter = 0;
+                setHighlight(false);
+                const files = Array.from(event.dataTransfer?.files || []);
+                appendFiles(files);
+            });
             wrapper._stopCamera = stopCamera;
             renderPreview();
         }

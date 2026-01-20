@@ -273,14 +273,10 @@ class SecurityController extends Controller
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
                 if ($peminjaman && $peminjaman->status === 'DIKEMBALIKAN') {
                     $peminjaman->update(['status' => 'DIPERIKSA']);
-
-                    // Sync status surat jalan peminjaman (kirim)
-                    if ($peminjaman->surat_jalan_kirim_id) {
-                        $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
-                        if ($suratJalanKirim) {
-                            $suratJalanKirim->update(['status' => 'DIPERIKSA']);
-                        }
-                    }
+                    // Note: JANGAN sync status surat jalan peminjaman (kirim) ke DIPERIKSA
+                    // karena akan memicu tombol "Terima Barang" dan notifikasi ke operator gudang tujuan (peminjam)
+                    // yang seharusnya tidak bisa menerima barang pengembalian
+                    // Status surat jalan peminjaman tetap DIKEMBALIKAN sampai proses pengembalian selesai
                 }
             }
         });
@@ -342,9 +338,18 @@ class SecurityController extends Controller
         }
 
         DB::transaction(function () use ($suratJalan, $request, $rejectTag) {
+            // Reset TTD dan signature hash karena surat ditolak dan perlu di-approve ulang
             $suratJalan->update([
                 'status' => 'DITOLAK',
-                'catatan' => ($suratJalan->catatan ? $suratJalan->catatan . "\n" : '') . "[{$rejectTag}: " . $request->alasan . "]",
+                'catatan_penolakan' => "[{$rejectTag}: " . $request->alasan . "]",
+                'ttd_pembuat_id' => null,
+                'waktu_ttd_pembuat' => null,
+                'signature_hash_pembuat' => null,
+                'signature_metadata_pembuat' => null,
+                'ttd_penerima_id' => null,
+                'waktu_ttd_penerima' => null,
+                'signature_hash_penerima' => null,
+                'signature_metadata_penerima' => null,
             ]);
 
             if ($suratJalan->tipe !== 'PENGEMBALIAN') {

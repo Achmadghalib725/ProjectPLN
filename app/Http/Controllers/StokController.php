@@ -519,6 +519,7 @@ class StokController extends Controller
         $tanggalKembali = $request->input('tanggal_kembali');
 
         $peminjamans = Peminjaman::with(['items.item', 'gudangPeminjam', 'gudangPemilik'])
+            ->where('status', 'SELESAI') // Riwayat hanya menampilkan peminjaman yang sudah selesai
             ->where(function ($query) use ($gudangId, $tipePinjam) {
                 // Filter based on tipe_pinjam (dipinjamkan = owner, meminjam = borrower)
                 if ($tipePinjam === 'dipinjamkan') {
