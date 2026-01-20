@@ -132,13 +132,14 @@ class AdminSuratJalanController extends Controller
                 ->get(['id', 'name', 'gudang_id', 'jabatan', 'role'])
             : collect();
 
-        // Only show peminjaman that have been received (DITERIMA) and not yet returned
+        // Only show peminjaman that have been received and items are still with borrower
+        // This includes: DITERIMA (received, no return), DIKEMBALIKAN (return in progress), DIPERIKSA (return being checked)
+        // Excludes: SELESAI (returned), DITOLAK (rejected), DIAJUKAN/DIKIRIM (not yet received)
         $activePeminjamans = $activeGudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
             ? Peminjaman::query()
                 ->with(['items.item', 'gudangPemilik', 'suratJalanKirim'])
                 ->where('gudang_peminjam_id', $activeGudangId)
-                ->where('status', 'DITERIMA')
-                ->whereNull('surat_jalan_kembali_id')
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIPERIKSA'])
                 ->orderByDesc('waktu_pengajuan')
                 ->get()
             : collect();
@@ -918,12 +919,12 @@ class AdminSuratJalanController extends Controller
             : collect();
 
         // Get active borrowed items for this gudang
+        // Include peminjamans where items are still with borrower (DITERIMA, DIKEMBALIKAN, DIPERIKSA)
         $activePeminjamans = Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
             ? Peminjaman::query()
                 ->with('items')
                 ->where('gudang_peminjam_id', $gudangId)
-                ->where('status', 'DITERIMA')
-                ->whereNull('surat_jalan_kembali_id')
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIPERIKSA'])
                 ->get()
             : collect();
 
