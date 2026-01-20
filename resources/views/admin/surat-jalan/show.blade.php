@@ -1096,7 +1096,7 @@
             @endif
 
             {{-- Konfirmasi Pengembalian Manual untuk Gudang Eksternal --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'MENUNGGU_DIKEMBALIKAN' && $isGudangAsal && $suratJalan->gudang_tujuan_is_custom && !$isManagerView)
+            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'MENUNGGU_DIKEMBALIKAN' && ($isGudangAsal || $isAdminView) && $suratJalan->gudang_tujuan_is_custom && !$isManagerView)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Konfirmasi Pengembalian</h3>
