@@ -387,19 +387,20 @@
                                     <select name="status"
                                             class="block w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71] transition">
                                         <option value="">Semua Status</option>
-                                        @if($tab === 'keluar')
-                                            @foreach(['DRAFT','MENUNGGU_PERSETUJUAN','DITOLAK_PERSETUJUAN','DIKIRIM','DIPERIKSA_PENGIRIM','DIPERIKSA_PENERIMA','MENUNGGU_DIKEMBALIKAN','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK','SELESAI'] as $statusOption)
-                                                <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                                    {{ $statusOption }}
-                                                </option>
-                                            @endforeach
-                                        @else
-                                            @foreach(['DIKIRIM','DIPERIKSA_PENGIRIM','DIPERIKSA_PENERIMA','DIKEMBALIKAN','DIPERIKSA','DITERIMA','DITOLAK'] as $statusOption)
-                                                <option value="{{ $statusOption }}" {{ ($filters['status'] ?? '') === $statusOption ? 'selected' : '' }}>
-                                                    {{ in_array($statusOption, ['DIKIRIM', 'DIKEMBALIKAN']) ? 'MENUNGGU' : $statusOption }}
-                                                </option>
-                                            @endforeach
-                                        @endif
+                                        @foreach([
+                                            'DRAFT' => 'DRAFT',
+                                            'MENUNGGU_PERSETUJUAN' => 'MENUNGGU PERSETUJUAN',
+                                            'DIKIRIM' => 'DIKIRIM',
+                                            'DIPERIKSA' => 'DIPERIKSA',
+                                            'DITERIMA' => 'DITERIMA',
+                                            'DIKEMBALIKAN' => 'DIKEMBALIKAN',
+                                            'SELESAI' => 'SELESAI',
+                                            'DITOLAK' => 'DITOLAK',
+                                        ] as $statusValue => $statusLabel)
+                                            <option value="{{ $statusValue }}" {{ ($filters['status'] ?? '') === $statusValue ? 'selected' : '' }}>
+                                                {{ $statusLabel }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
 
@@ -465,8 +466,10 @@
                 <div class="sm:hidden divide-y divide-gray-100">
                     @forelse($suratJalans as $sj)
                         @php
-                            $status = $sj->status ?? 'DRAFT';
-                            $statusClass = match ($status) {
+                            $statusRaw = $sj->status ?? 'DRAFT';
+                            $statusDisplay = $statusRaw === 'MENUNGGU_DIKEMBALIKAN' ? 'DITERIMA' : $statusRaw;
+                            $statusDisplay = str_replace('_', ' ', $statusDisplay);
+                            $statusClass = match ($statusRaw) {
                                 'DRAFT' => 'bg-gray-100 text-gray-800',
                                 'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
                                 'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
@@ -497,7 +500,7 @@
                                 </div>
                                 <div class="flex flex-col items-end gap-1">
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $statusClass }}" data-surat-jalan-status data-base-class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold">
-                                        {{ $status }}
+                                        {{ $statusDisplay }}
                                     </span>
                                     <div class="flex items-center gap-1">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium {{ $tipeClass }}">
@@ -581,8 +584,10 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($suratJalans as $index => $sj)
                                 @php
-                                    $status = $sj->status ?? 'DRAFT';
-                                    $statusClass = match ($status) {
+                                    $statusRaw = $sj->status ?? 'DRAFT';
+                                    $statusDisplay = $statusRaw === 'MENUNGGU_DIKEMBALIKAN' ? 'DITERIMA' : $statusRaw;
+                                    $statusDisplay = str_replace('_', ' ', $statusDisplay);
+                                    $statusClass = match ($statusRaw) {
                                         'DRAFT' => 'bg-gray-100 text-gray-800',
                                         'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-800',
                                         'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-800',
@@ -657,7 +662,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}" data-surat-jalan-status data-base-class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold">
-                                            {{ $status }}
+                                            {{ $statusDisplay }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -2128,6 +2133,14 @@
                 DITOLAK: 'bg-red-100 text-red-800',
                 SELESAI: 'bg-green-100 text-green-800',
             };
+            const statusLabelMap = {
+                MENUNGGU_DIKEMBALIKAN: 'DITERIMA',
+            };
+            const statusGroups = {
+                DIPERIKSA: ['DIPERIKSA', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA'],
+                DITERIMA: ['DITERIMA', 'MENUNGGU_DIKEMBALIKAN'],
+                DITOLAK: ['DITOLAK', 'DITOLAK_PERSETUJUAN'],
+            };
             const gudangIds = Array.from(new Set([
                 @if(!empty($activeGudangId))
                     {{ (int) $activeGudangId }},
@@ -2176,11 +2189,14 @@
                         const baseClass = badge.dataset.baseClass || '';
                         const nextClass = statusClassMap[status] || 'bg-gray-100 text-gray-800';
                         badge.className = `${baseClass} ${nextClass}`.trim();
-                        badge.textContent = status;
+                        badge.textContent = statusLabelMap[status] || status.replace(/_/g, ' ');
                     });
                 });
                 const statusFilter = document.querySelector('select[name="status"]')?.value;
                 if (statusFilter && statusFilter !== status) {
+                    if (statusGroups[statusFilter]?.includes(status)) {
+                        return;
+                    }
                     refreshList();
                 }
             };

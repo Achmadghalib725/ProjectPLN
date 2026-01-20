@@ -2030,7 +2030,17 @@ class SuratJalanController extends Controller
         }
 
         if (!empty($filters['status']) && $filters['status'] !== 'SELESAI') {
-            $query->where('status', $filters['status']);
+            $statusFilter = $filters['status'];
+            $statusGroups = [
+                'DIPERIKSA' => ['DIPERIKSA', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA'],
+                'DITERIMA' => ['DITERIMA', 'MENUNGGU_DIKEMBALIKAN'],
+                'DITOLAK' => ['DITOLAK', 'DITOLAK_PERSETUJUAN'],
+            ];
+            if (array_key_exists($statusFilter, $statusGroups)) {
+                $query->whereIn('status', $statusGroups[$statusFilter]);
+            } else {
+                $query->where('status', $statusFilter);
+            }
         }
 
         if (!empty($filters['tanggal_mulai'])) {
