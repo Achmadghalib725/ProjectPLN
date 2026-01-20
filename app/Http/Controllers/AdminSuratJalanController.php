@@ -132,13 +132,14 @@ class AdminSuratJalanController extends Controller
                 ->get(['id', 'name', 'gudang_id', 'jabatan', 'role'])
             : collect();
 
-        // Only show peminjaman that have been received (DITERIMA) and not yet returned
+        // Only show peminjaman that have been received and items are still with borrower
+        // This includes: DITERIMA (received, no return), DIKEMBALIKAN (return in progress), DIPERIKSA (return being checked)
+        // Excludes: SELESAI (returned), DITOLAK (rejected), DIAJUKAN/DIKIRIM (not yet received)
         $activePeminjamans = $activeGudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
             ? Peminjaman::query()
                 ->with(['items.item', 'gudangPemilik', 'suratJalanKirim'])
                 ->where('gudang_peminjam_id', $activeGudangId)
-                ->where('status', 'DITERIMA')
-                ->whereNull('surat_jalan_kembali_id')
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIPERIKSA'])
                 ->orderByDesc('waktu_pengajuan')
                 ->get()
             : collect();
@@ -918,12 +919,12 @@ class AdminSuratJalanController extends Controller
             : collect();
 
         // Get active borrowed items for this gudang
+        // Include peminjamans where items are still with borrower (DITERIMA, DIKEMBALIKAN, DIPERIKSA)
         $activePeminjamans = Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
             ? Peminjaman::query()
                 ->with('items')
                 ->where('gudang_peminjam_id', $gudangId)
-                ->where('status', 'DITERIMA')
-                ->whereNull('surat_jalan_kembali_id')
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIPERIKSA'])
                 ->get()
             : collect();
 
@@ -954,6 +955,10 @@ class AdminSuratJalanController extends Controller
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
             $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::with('gudangPemilik')
+                ->where('surat_jalan_kembali_id', $suratJalan->id)
+                ->first();
         }
 
         return view('admin.surat-jalan.edit', compact('suratJalan', 'gudangs', 'pics', 'availableStocks', 'peminjaman'));
@@ -1024,6 +1029,8 @@ class AdminSuratJalanController extends Controller
                 'nama_driver' => ['nullable', 'string', 'max:100'],
                 'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
                 'nomor_plat' => ['nullable', 'string', 'max:50'],
+                'attachments' => ['nullable', 'array', 'max:' . $maxAttachments],
+                'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
                 'delete_attachments' => ['nullable', 'array'],
                 'delete_attachments.*' => [
                     'integer',
@@ -1034,6 +1041,7 @@ class AdminSuratJalanController extends Controller
                 'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
                 'pic_custom_nama.required_if' => 'Nama PIC wajib diisi jika memilih Lainnya.',
+                'attachments.max' => 'Maksimal 3 lampiran gambar per surat jalan.',
             ]);
 
             $picTujuanId = $validated['pic_tujuan_id'];
@@ -1076,6 +1084,10 @@ class AdminSuratJalanController extends Controller
             }
 
             $this->deleteAttachmentsByIds($suratJalan, $request->input('delete_attachments', []));
+
+            if ($request->hasFile('attachments')) {
+                $this->storeAttachments($suratJalan->id, $request->file('attachments'));
+            }
 
             $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $oldTujuanId, $suratJalan->gudang_tujuan_id]);
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
@@ -1548,6 +1560,7 @@ class AdminSuratJalanController extends Controller
                     }
 
                     // Kurangi stok dan catat movement (per item total)
+                    $movementUserId = $suratJalan->created_by ?: Auth::id();
                     foreach ($itemTotals as $itemId => $qty) {
                         $stock = ItemStock::where('gudang_id', $gudangId)
                             ->where('item_id', $itemId)
@@ -1567,7 +1580,7 @@ class AdminSuratJalanController extends Controller
                             'stok_sesudah' => $stokSesudah,
                             'referensi_type' => 'SuratJalan',
                             'referensi_id' => $suratJalan->id,
-                            'created_by' => Auth::id(),
+                            'created_by' => $movementUserId,
                             'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$gudangTujuanNama}"
                         ]);
                     }
@@ -1794,8 +1807,10 @@ class AdminSuratJalanController extends Controller
     {
         $suratJalan = SuratJalan::with(['items.item', 'gudangAsal'])->findOrFail($id);
 
-        $gudangId = Auth::user()?->gudang_id;
-        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
+        $user = Auth::user();
+        $isAdmin = $user?->role === 'admin';
+        $gudangId = $isAdmin ? $suratJalan->gudang_asal_id : ($user?->gudang_id ?? null);
+        if (!$isAdmin && (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId)) {
             abort(403, 'Anda tidak berhak mengonfirmasi pengembalian gudang lain.');
         }
 
@@ -2070,7 +2085,17 @@ class AdminSuratJalanController extends Controller
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $statusFilter = $filters['status'];
+            $statusGroups = [
+                'DIPERIKSA' => ['DIPERIKSA', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA'],
+                'DITERIMA' => ['DITERIMA', 'MENUNGGU_DIKEMBALIKAN'],
+                'DITOLAK' => ['DITOLAK', 'DITOLAK_PERSETUJUAN'],
+            ];
+            if (array_key_exists($statusFilter, $statusGroups)) {
+                $query->whereIn('status', $statusGroups[$statusFilter]);
+            } else {
+                $query->where('status', $statusFilter);
+            }
         } elseif (!$isAdmin) {
             $query->where('status', '!=', 'SELESAI');
         }
@@ -2371,6 +2396,7 @@ class AdminSuratJalanController extends Controller
 
     private function applyStockOut(int $gudangId, $itemTotals, SuratJalan $suratJalan, Carbon $eventTime, string $keterangan): void
     {
+        $movementUserId = $suratJalan->created_by ?: Auth::id();
         foreach ($itemTotals as $itemId => $qty) {
             $stock = ItemStock::where('gudang_id', $gudangId)
                 ->where('item_id', $itemId)
@@ -2395,7 +2421,7 @@ class AdminSuratJalanController extends Controller
                 'stok_sesudah' => $stokSesudah,
                 'referensi_type' => 'SuratJalan',
                 'referensi_id' => $suratJalan->id,
-                'created_by' => Auth::id(),
+                'created_by' => $movementUserId,
                 'keterangan' => $keterangan,
                 'created_at' => $eventTime,
                 'updated_at' => $eventTime,

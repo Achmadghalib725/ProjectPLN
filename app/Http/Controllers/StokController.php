@@ -574,12 +574,19 @@ class StokController extends Controller
             // Determine if current gudang is owner or borrower
             $peminjaman->is_owner = $peminjaman->gudang_pemilik_id === $gudangId;
 
+            $startTime = $peminjaman->waktu_diterima
+                ?? $peminjaman->waktu_kirim
+                ?? $peminjaman->waktu_pengajuan
+                ?? $peminjaman->created_at;
+            $endTime = $peminjaman->waktu_selesai
+                ?? $peminjaman->waktu_pengembalian;
+
+            $peminjaman->waktu_pinjam = $startTime ? \Carbon\Carbon::parse($startTime) : null;
+
             // Calculate duration
-            if ($peminjaman->waktu_diterima) {
-                $start = \Carbon\Carbon::parse($peminjaman->waktu_diterima);
-                $end = $peminjaman->waktu_selesai
-                    ? \Carbon\Carbon::parse($peminjaman->waktu_selesai)
-                    : now();
+            if ($peminjaman->waktu_pinjam) {
+                $start = $peminjaman->waktu_pinjam;
+                $end = $endTime ? \Carbon\Carbon::parse($endTime) : now();
 
                 // Calculate total minutes first, then convert to days and hours
                 $totalMinutes = $start->diffInMinutes($end);

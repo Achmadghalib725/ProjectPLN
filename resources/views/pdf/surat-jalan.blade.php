@@ -669,7 +669,8 @@
                 <div class="signature-title">Penerima</div>
                 @php
                     $penerimaQr = null;
-                    if (!empty($suratJalan->id) && !empty($suratJalan->qr_token) && $penerimaSignedAt) {
+                    $showPenerimaQr = !$suratJalan->gudang_tujuan_is_custom;
+                    if ($showPenerimaQr && !empty($suratJalan->id) && !empty($suratJalan->qr_token) && $penerimaSignedAt) {
                         $penerimaUrl = route('surat-jalan.signature', [
                             'id' => $suratJalan->id,
                             'token' => $suratJalan->qr_token,
@@ -697,7 +698,7 @@
                         </div>
                     @endif
                     <div class="signature-qr">
-                        @if($penerimaQr)
+                        @if($showPenerimaQr && $penerimaQr)
                             <img src="{{ $penerimaQr }}" alt="QR TTD Penerima" style="width: 80px; height: 80px;">
                         @endif
                     </div>

@@ -72,6 +72,21 @@
                                 'SELESAI' => 'bg-green-100 text-green-800',
                                 default => 'bg-gray-100 text-gray-800',
                             };
+                            $statusLabel = match ($status) {
+                                'DRAFT' => 'Draft',
+                                'MENUNGGU_PERSETUJUAN' => 'Menunggu Persetujuan',
+                                'DITOLAK_PERSETUJUAN' => 'Ditolak Persetujuan',
+                                'DIKIRIM' => 'Dikirim',
+                                'DIPERIKSA_PENGIRIM' => 'Menunggu Pemeriksaan',
+                                'DIPERIKSA_PENERIMA' => 'Diperiksa Penerima',
+                                'DIKEMBALIKAN' => 'Dikembalikan',
+                                'MENUNGGU_DIKEMBALIKAN' => 'Menunggu Dikembalikan',
+                                'DIPERIKSA' => 'Diperiksa',
+                                'DITERIMA' => 'Diterima',
+                                'DITOLAK' => 'Ditolak',
+                                'SELESAI' => 'Selesai',
+                                default => $status,
+                            };
                         @endphp
                         <tr>
                             <td class="px-5 py-3 text-sm font-semibold text-slate-900">{{ $sj->nomor ?? '-' }}</td>
@@ -79,7 +94,7 @@
                             <td class="px-5 py-3 text-sm text-slate-500">{{ $sj->tanggal?->format('d M Y') ?? '-' }}</td>
                             <td class="px-5 py-3 text-sm">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}">
-                                    {{ $status }}
+                                    {{ $statusLabel }}
                                 </span>
                             </td>
                             <td class="px-5 py-3 text-sm">

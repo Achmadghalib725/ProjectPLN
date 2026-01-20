@@ -135,13 +135,14 @@ class SuratJalanController extends Controller
                     ->get(['id', 'name', 'gudang_id', 'jabatan', 'role'])
                 : collect();
 
-            // Only show peminjaman that have been received (DITERIMA) and not yet returned
+            // Only show peminjaman that have been received and items are still with borrower
+            // This includes: DITERIMA (received, no return), DIKEMBALIKAN (return in progress), DIPERIKSA (return being checked)
+            // Excludes: SELESAI (returned), DITOLAK (rejected), DIAJUKAN/DIKIRIM (not yet received)
             $activePeminjamans = $activeGudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
                 ? Peminjaman::query()
                     ->with(['items.item', 'gudangPemilik'])
                     ->where('gudang_peminjam_id', $activeGudangId)
-                    ->where('status', 'DITERIMA')
-                    ->whereNull('surat_jalan_kembali_id')
+                    ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIPERIKSA'])
                     ->orderByDesc('waktu_pengajuan')
                     ->get()
                 : collect();
@@ -959,6 +960,10 @@ class SuratJalanController extends Controller
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
             $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::with('gudangPemilik')
+                ->where('surat_jalan_kembali_id', $suratJalan->id)
+                ->first();
         }
 
         return view('gudang.surat-jalan.edit', compact('suratJalan', 'gudangs', 'pics', 'availableStocks', 'peminjaman'));
@@ -1557,6 +1562,7 @@ class SuratJalanController extends Controller
                     }
 
                     // Kurangi stok dan catat movement (per item total)
+                    $movementUserId = $suratJalan->created_by ?: Auth::id();
                     foreach ($itemTotals as $itemId => $qty) {
                         $stock = ItemStock::where('gudang_id', $gudangId)
                             ->where('item_id', $itemId)
@@ -2028,7 +2034,17 @@ class SuratJalanController extends Controller
         }
 
         if (!empty($filters['status']) && $filters['status'] !== 'SELESAI') {
-            $query->where('status', $filters['status']);
+            $statusFilter = $filters['status'];
+            $statusGroups = [
+                'DIPERIKSA' => ['DIPERIKSA', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA'],
+                'DITERIMA' => ['DITERIMA', 'MENUNGGU_DIKEMBALIKAN'],
+                'DITOLAK' => ['DITOLAK', 'DITOLAK_PERSETUJUAN'],
+            ];
+            if (array_key_exists($statusFilter, $statusGroups)) {
+                $query->whereIn('status', $statusGroups[$statusFilter]);
+            } else {
+                $query->where('status', $statusFilter);
+            }
         }
 
         if (!empty($filters['tanggal_mulai'])) {
@@ -2358,6 +2374,7 @@ class SuratJalanController extends Controller
 
     private function applyStockOut(int $gudangId, $itemTotals, SuratJalan $suratJalan, Carbon $eventTime, string $keterangan): void
     {
+        $movementUserId = $suratJalan->created_by ?: Auth::id();
         foreach ($itemTotals as $itemId => $qty) {
             $stock = ItemStock::where('gudang_id', $gudangId)
                 ->where('item_id', $itemId)
@@ -2382,7 +2399,7 @@ class SuratJalanController extends Controller
                 'stok_sesudah' => $stokSesudah,
                 'referensi_type' => 'SuratJalan',
                 'referensi_id' => $suratJalan->id,
-                'created_by' => Auth::id(),
+                'created_by' => $movementUserId,
                 'keterangan' => $keterangan,
                 'created_at' => $eventTime,
                 'updated_at' => $eventTime,

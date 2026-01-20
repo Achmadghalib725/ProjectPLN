@@ -856,8 +856,8 @@
                             <p class="font-semibold text-sm sm:text-base text-gray-900" data-surat-jalan-status-text>{{ $suratJalan->status ?? '-' }}</p>
                         </div>
 
-                        {{-- Linked Surat Jalan Section --}}
-                        @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman)
+                        {{-- Linked Surat Jalan Section - Only for internal gudang --}}
+                        @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && !$suratJalan->gudang_tujuan_is_custom)
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Surat Pengembalian Terkait</p>
                             @if($peminjaman->suratJalanKembali)
