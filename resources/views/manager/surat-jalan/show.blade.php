@@ -121,14 +121,20 @@
                         <form method="POST"
                               action="{{ route('manager.surat-jalan.approve', $suratJalan->id) }}"
                               class="sm:flex-1"
-                              @if($isFutureDate)
-                              onsubmit="return confirm('Perhatian: Tanggal pengiriman surat jalan ini adalah {{ $suratJalan->tanggal->format('d M Y') }}. Apakah Anda yakin ingin menyetujui surat jalan ini?');"
-                              @endif>
+                              id="approve-surat-jalan-form">
                             @csrf
-                            <button type="submit"
-                                    class="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-lg hover:bg-pln-light">
-                                Approve & Kirim
-                            </button>
+                            @if($isFutureDate)
+                                <button type="button"
+                                        class="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-lg hover:bg-pln-light"
+                                        @click="$dispatch('open-modal', 'approve-confirm')">
+                                    Approve & Kirim
+                                </button>
+                            @else
+                                <button type="submit"
+                                        class="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-lg hover:bg-pln-light">
+                                    Approve & Kirim
+                                </button>
+                            @endif
                         </form>
                         <button type="button"
                                 @click="$dispatch('open-reject-approval', { action: '{{ route('manager.surat-jalan.reject', $suratJalan->id) }}' })"
@@ -393,6 +399,37 @@
                 });
         });
     </script>
+    <x-modal name="approve-confirm" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-7.1 12.3A2 2 0 004.9 19h14.2a2 2 0 001.71-2.84l-7.1-12.3a2 2 0 00-3.42 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Konfirmasi Persetujuan</h2>
+                    <p class="text-sm text-slate-600">
+                        Perhatian: Tanggal pengiriman surat jalan ini adalah <strong>{{ $suratJalan->tanggal->format('d M Y') }}</strong>.
+                        Apakah Anda yakin ingin menyetujui surat jalan ini?
+                    </p>
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button"
+                        class="inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
+                        x-on:click="$dispatch('close-modal', 'approve-confirm')">
+                    Batal
+                </button>
+                <button type="button"
+                        class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-pln-primary rounded-lg hover:bg-pln-light"
+                        x-on:click="document.getElementById('approve-surat-jalan-form').submit()">
+                    Ya, Setujui
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
     <x-modal name="reject-approval" focusable>
         <div class="p-6"
              x-data="{ formAction: '' }"

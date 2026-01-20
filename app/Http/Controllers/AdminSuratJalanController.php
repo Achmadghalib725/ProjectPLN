@@ -955,6 +955,10 @@ class AdminSuratJalanController extends Controller
         $peminjaman = null;
         if ($suratJalan->tipe === 'PEMINJAMAN') {
             $peminjaman = Peminjaman::where('surat_jalan_kirim_id', $suratJalan->id)->first();
+        } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $peminjaman = Peminjaman::with('gudangPemilik')
+                ->where('surat_jalan_kembali_id', $suratJalan->id)
+                ->first();
         }
 
         return view('admin.surat-jalan.edit', compact('suratJalan', 'gudangs', 'pics', 'availableStocks', 'peminjaman'));
@@ -1025,6 +1029,8 @@ class AdminSuratJalanController extends Controller
                 'nama_driver' => ['nullable', 'string', 'max:100'],
                 'jenis_kendaraan' => ['nullable', 'string', 'max:100'],
                 'nomor_plat' => ['nullable', 'string', 'max:50'],
+                'attachments' => ['nullable', 'array', 'max:' . $maxAttachments],
+                'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
                 'delete_attachments' => ['nullable', 'array'],
                 'delete_attachments.*' => [
                     'integer',
@@ -1035,6 +1041,7 @@ class AdminSuratJalanController extends Controller
                 'pic_tujuan_id.required' => 'PIC tujuan wajib dipilih.',
                 'pic_tujuan_id.exists' => 'PIC tujuan tidak sesuai dengan gudang tujuan.',
                 'pic_custom_nama.required_if' => 'Nama PIC wajib diisi jika memilih Lainnya.',
+                'attachments.max' => 'Maksimal 3 lampiran gambar per surat jalan.',
             ]);
 
             $picTujuanId = $validated['pic_tujuan_id'];
@@ -1077,6 +1084,10 @@ class AdminSuratJalanController extends Controller
             }
 
             $this->deleteAttachmentsByIds($suratJalan, $request->input('delete_attachments', []));
+
+            if ($request->hasFile('attachments')) {
+                $this->storeAttachments($suratJalan->id, $request->file('attachments'));
+            }
 
             $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $oldTujuanId, $suratJalan->gudang_tujuan_id]);
             $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
