@@ -1795,8 +1795,10 @@ class AdminSuratJalanController extends Controller
     {
         $suratJalan = SuratJalan::with(['items.item', 'gudangAsal'])->findOrFail($id);
 
-        $gudangId = Auth::user()?->gudang_id;
-        if (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId) {
+        $user = Auth::user();
+        $isAdmin = $user?->role === 'admin';
+        $gudangId = $isAdmin ? $suratJalan->gudang_asal_id : ($user?->gudang_id ?? null);
+        if (!$isAdmin && (!$gudangId || $suratJalan->gudang_asal_id !== $gudangId)) {
             abort(403, 'Anda tidak berhak mengonfirmasi pengembalian gudang lain.');
         }
 
