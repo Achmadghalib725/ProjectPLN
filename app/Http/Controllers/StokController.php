@@ -314,7 +314,7 @@ class StokController extends Controller
         $stock->own_qty = max(0, (int) $stock->jumlah - $stock->borrowed_qty);
 
         // Get movement history
-        $movements = StockMovement::with('creator')
+        $movements = StockMovement::with(['creator', 'suratJalan.pembuat'])
             ->where('item_id', $stock->item_id)
             ->where('gudang_id', $stock->gudang_id)
             ->orderBy('created_at', 'desc')
@@ -360,7 +360,7 @@ class StokController extends Controller
         $tanggalMulai = $request->input('tanggal_mulai');
         $tanggalSelesai = $request->input('tanggal_selesai');
 
-        $movements = StockMovement::with(['item', 'gudang', 'creator'])
+        $movements = StockMovement::with(['item', 'gudang', 'creator', 'suratJalan.pembuat'])
             ->where('gudang_id', $gudangId)
             ->when($search, function ($query, $search) {
                 $searchLower = strtolower($search);
@@ -372,6 +372,12 @@ class StokController extends Controller
                     ->orWhereRaw('LOWER(keterangan) LIKE ?', ["%{$searchLower}%"])
                     ->orWhereHas('creator', function ($userQuery) use ($searchLower) {
                         $userQuery->whereRaw('LOWER(name) LIKE ?', ["%{$searchLower}%"]);
+                    })
+                    ->orWhere(function ($subQuery) use ($searchLower) {
+                        $subQuery->where('referensi_type', 'SuratJalan')
+                            ->whereHas('suratJalan.pembuat', function ($userQuery) use ($searchLower) {
+                                $userQuery->whereRaw('LOWER(name) LIKE ?', ["%{$searchLower}%"]);
+                            });
                     });
                 });
             })

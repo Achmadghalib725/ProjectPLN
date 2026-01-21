@@ -145,8 +145,14 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($movements as $movement)
-                                    <tr class="hover:bg-gray-50">
+                                    @forelse($movements as $movement)
+                                        @php
+                                            $movementUser = $movement->creator;
+                                            if ($movement->referensi_type === 'SuratJalan' && $movement->tipe === 'OUT' && $movement->suratJalan?->pembuat) {
+                                                $movementUser = $movement->suratJalan->pembuat;
+                                            }
+                                        @endphp
+                                        <tr class="hover:bg-gray-50">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <div>{{ $movement->created_at->format('d M Y') }}</div>
                                             <div class="text-xs text-gray-500">{{ $movement->created_at->format('H:i') }} WIB</div>
@@ -183,7 +189,7 @@
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $movement->creator->name ?? 'System' }}
+                                            {{ $movementUser->name ?? 'System' }}
                                         </td>
                                         <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
                                             {{ $movement->keterangan ?? '-' }}

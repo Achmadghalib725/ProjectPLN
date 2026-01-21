@@ -1598,7 +1598,37 @@ class AdminSuratJalanController extends Controller
                         'signature_metadata_pembuat' => SuratJalan::generateSignatureMetadata(),
                     ]);
                 } else {
-                    // PENGEMBALIAN: menunggu pemeriksaan security pengirim
+                    // PENGEMBALIAN: kurangi stok dari gudang peminjam (gudang_asal) dan menunggu pemeriksaan security pengirim
+                    $gudangId = $suratJalan->gudang_asal_id;
+                    $movementUserId = $suratJalan->created_by ?: Auth::id();
+
+                    // Kurangi stok dan catat movement (per item total)
+                    foreach ($itemTotals as $itemId => $qty) {
+                        $stock = ItemStock::where('gudang_id', $gudangId)
+                            ->where('item_id', $itemId)
+                            ->first();
+
+                        if ($stock) {
+                            $stokSebelum = $stock->jumlah;
+                            $stokSesudah = $stokSebelum - $qty;
+
+                            $stock->decrement('jumlah', $qty);
+
+                            StockMovement::create([
+                                'item_id' => $itemId,
+                                'gudang_id' => $gudangId,
+                                'tipe' => 'OUT',
+                                'jumlah' => $qty,
+                                'stok_sebelum' => $stokSebelum,
+                                'stok_sesudah' => $stokSesudah,
+                                'referensi_type' => 'SuratJalan',
+                                'referensi_id' => $suratJalan->id,
+                                'created_by' => $movementUserId,
+                                'keterangan' => "Pengembalian via {$suratJalan->nomor} ke {$gudangTujuanNama}"
+                            ]);
+                        }
+                    }
+
                     $suratJalan->update([
                         'status' => 'DIPERIKSA_PENGIRIM',
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
@@ -2263,7 +2293,7 @@ class AdminSuratJalanController extends Controller
         PeminjamanItem::insert($rows);
     }
 
-    private function buildStockWarnings(int $gudangId, array $items, bool $excludeBorrowed = false): array
+    private function buildStockWarnings(int $gudangId, array $items, bool $excludeBorrowed = false, ?int $excludeSuratJalanId = null): array
     {
         $requested = collect($items)
             ->filter(fn ($row) => !empty($row['item_id']) && !empty($row['jumlah']))
@@ -2283,24 +2313,32 @@ class AdminSuratJalanController extends Controller
             ? $this->getBorrowedItemTotals($gudangId, $requested->keys())
             : collect();
 
+        // Get pending reserved items from other surat jalan waiting for approval
+        $pendingReserved = $this->getPendingReservedItemTotals($gudangId, $requested->keys(), $excludeSuratJalanId);
+
         $warnings = [];
         foreach ($requested as $itemId => $qty) {
             $available = (int) ($stocks[$itemId] ?? 0);
             if ($excludeBorrowed) {
                 $available -= (int) ($borrowedTotals[$itemId] ?? 0);
-                $available = max(0, $available);
             }
+            // Subtract pending reserved items
+            $available -= (int) ($pendingReserved[$itemId] ?? 0);
+            $available = max(0, $available);
+
             if ($qty > $available) {
                 $name = $itemNames[$itemId] ?? 'Item';
                 $label = $excludeBorrowed ? 'stok sendiri' : 'stok';
-                $warnings[] = "{$name} (diminta {$qty}, {$label} {$available})";
+                $pending = (int) ($pendingReserved[$itemId] ?? 0);
+                $pendingInfo = $pending > 0 ? ", {$pending} menunggu persetujuan" : "";
+                $warnings[] = "{$name} (diminta {$qty}, {$label} tersedia {$available}{$pendingInfo})";
             }
         }
 
         return $warnings;
     }
 
-    private function buildStockErrorMessage(int $gudangId, array $items, bool $excludeBorrowed = false): string
+    private function buildStockErrorMessage(int $gudangId, array $items, bool $excludeBorrowed = false, ?int $excludeSuratJalanId = null): string
     {
         $requested = collect($items)
             ->filter(fn ($row) => !empty($row['item_id']) && !empty($row['jumlah']))
@@ -2318,14 +2356,19 @@ class AdminSuratJalanController extends Controller
         $itemNames = Item::whereIn('id', $requested->keys())->pluck('nama', 'id');
         $borrowedTotals = $this->getBorrowedItemTotals($gudangId, $requested->keys());
 
+        // Get pending reserved items from other surat jalan waiting for approval
+        $pendingReserved = $this->getPendingReservedItemTotals($gudangId, $requested->keys(), $excludeSuratJalanId);
+
         $details = [];
         foreach ($requested as $itemId => $qty) {
             $stock = (int) ($stocks[$itemId] ?? 0);
             $borrowed = (int) ($borrowedTotals[$itemId] ?? 0);
-            $available = max(0, $stock - $borrowed);
+            $pending = (int) ($pendingReserved[$itemId] ?? 0);
+            $available = max(0, $stock - $borrowed - $pending);
             if ($qty > $available) {
                 $name = $itemNames[$itemId] ?? 'Item';
-                $details[] = "{$name} (diminta {$qty}, tersedia {$available})";
+                $pendingInfo = $pending > 0 ? ", {$pending} menunggu persetujuan" : "";
+                $details[] = "{$name} (diminta {$qty}, tersedia {$available}{$pendingInfo})";
             }
         }
 
@@ -2392,6 +2435,32 @@ class AdminSuratJalanController extends Controller
         return $query
             ->groupBy('peminjaman_items.item_id')
             ->pluck('total', 'peminjaman_items.item_id');
+    }
+
+    /**
+     * Get items that are "reserved" by other surat jalan waiting for manager approval.
+     * These items should be subtracted from available stock when validating new submissions.
+     */
+    private function getPendingReservedItemTotals(int $gudangId, $itemIds = null, ?int $excludeSuratJalanId = null)
+    {
+        $query = SuratJalanItem::query()
+            ->select('surat_jalan_items.item_id', DB::raw('SUM(surat_jalan_items.jumlah) as total'))
+            ->join('surat_jalans', 'surat_jalan_items.surat_jalan_id', '=', 'surat_jalans.id')
+            ->where('surat_jalans.gudang_asal_id', $gudangId)
+            ->where('surat_jalans.status', 'MENUNGGU_PERSETUJUAN')
+            ->whereIn('surat_jalans.tipe', ['TRANSFER', 'PEMINJAMAN']); // Only count outgoing stock
+
+        if ($excludeSuratJalanId !== null) {
+            $query->where('surat_jalans.id', '!=', $excludeSuratJalanId);
+        }
+
+        if ($itemIds !== null) {
+            $query->whereIn('surat_jalan_items.item_id', collect($itemIds)->all());
+        }
+
+        return $query
+            ->groupBy('surat_jalan_items.item_id')
+            ->pluck('total', 'surat_jalan_items.item_id');
     }
 
     private function applyStockOut(int $gudangId, $itemTotals, SuratJalan $suratJalan, Carbon $eventTime, string $keterangan): void

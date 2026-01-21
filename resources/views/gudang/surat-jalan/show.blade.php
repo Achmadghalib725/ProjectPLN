@@ -861,14 +861,19 @@
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Surat Pengembalian Terkait</p>
                             @if($peminjaman->suratJalanKembali)
-                                <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKembali->id) }}"
-                                   class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                    </svg>
-                                    <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
-                                    
-                                </a>
+                                @if($isDivisiView)
+                                    <div class="mt-1 text-sm font-medium text-gray-700">
+                                        <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
+                                    </div>
+                                @else
+                                    <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKembali->id) }}"
+                                       class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                        </svg>
+                                        <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
+                                    </a>
+                                @endif
                             @else
                                 <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -881,14 +886,19 @@
                         @elseif($suratJalan->tipe === 'PENGEMBALIAN' && $peminjaman && $peminjaman->suratJalanKirim)
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Surat Peminjaman Asal</p>
-                            <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKirim->id) }}"
-                               class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                </svg>
-                                <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
-                                
-                            </a>
+                            @if($isDivisiView)
+                                <div class="mt-1 text-sm font-medium text-gray-700">
+                                    <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
+                                </div>
+                            @else
+                                <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKirim->id) }}"
+                                   class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                    </svg>
+                                    <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
+                                </a>
+                            @endif
                         </div>
                         @endif
 
@@ -903,7 +913,7 @@
             {{-- Items Section --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                 <div class="p-4 sm:p-6 border-b border-gray-100">
-                    <h3 class="text-base sm:text-lg font-bold text-gray-900">Item Surat Jalan</h3>
+                    <h3 class="text-base sm:text-lg font-bold text-gray-900">Daftar Barang</h3>
                 </div>
 
                 @php
@@ -912,16 +922,16 @@
 
                 {{-- Mobile Cards View --}}
                 <div class="sm:hidden divide-y divide-gray-100">
-                    @forelse($suratJalan->items as $item)
+                    @forelse($suratJalan->items as $index => $item)
                         <div class="p-4">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
-                                    <p class="font-medium text-gray-900 text-sm">{{ $item->item->nama ?? 'Item' }}</p>
+                                    <p class="font-medium text-gray-900 text-sm">{{ $index + 1 }}. {{ $item->item->nama ?? 'Item' }}</p>
                                     <p class="text-xs text-gray-500 mt-0.5">{{ $item->item->kode ?? '-' }}</p>
                                 </div>
                                 <div class="text-right">
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-pln-primary/10 text-pln-primary">
-                                        {{ $item->jumlah }} unit
+                                        {{ $item->jumlah }} {{ $item->item->satuan?->nama ?? 'unit' }}
                                     </span>
                                 </div>
                             </div>
@@ -943,7 +953,7 @@
                         </div>
                     @empty
                         <div class="p-8 text-center text-gray-500 text-sm">
-                            Belum ada item.
+                            Tidak ada daftar barang.
                         </div>
                     @endforelse
                 </div>
@@ -953,8 +963,11 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">No</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
                                 @if($showSecurityCheck)
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemeriksaan Security</th>
@@ -962,12 +975,13 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($suratJalan->items as $item)
+                            @forelse($suratJalan->items as $index => $item)
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->jumlah }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $index + 1 }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->item->kode ?? '-' }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->item->nama ?? 'Item' }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{{ $item->jumlah }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->keterangan ?? '-' }}</td>
                                     @if($showSecurityCheck)
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -983,8 +997,8 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $showSecurityCheck ? 4 : 3 }}" class="px-6 py-8 text-center text-gray-500">
-                                        Belum ada item.
+                                    <td colspan="{{ $showSecurityCheck ? 7 : 6 }}" class="px-6 py-8 text-center text-gray-500">
+                                        Tidak ada daftar barang.
                                     </td>
                                 </tr>
                             @endforelse
