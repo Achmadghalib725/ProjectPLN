@@ -263,31 +263,35 @@
 
             <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
                 <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <h3 class="font-semibold text-slate-900">Detail Barang</h3>
+                    <h3 class="font-semibold text-slate-900">Daftar Barang</h3>
                     <span class="text-xs text-slate-500">Total: {{ $suratJalan->items->count() }} item</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200">
                         <thead class="bg-slate-50">
                             <tr>
+                                <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase w-12">No</th>
                                 <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Kode</th>
-                                <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Nama</th>
-                                <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Satuan</th>
+                                <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Nama Barang</th>
                                 <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Jumlah</th>
+                                <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Satuan</th>
+                                <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Keterangan</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-slate-200">
-                            @forelse($suratJalan->items as $item)
+                            @forelse($suratJalan->items as $index => $item)
                                 <tr>
+                                    <td class="px-5 py-3 text-sm text-slate-500">{{ $index + 1 }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-900">{{ $item->item->kode ?? '-' }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-900">{{ $item->item->nama ?? 'Item' }}</td>
-                                    <td class="px-5 py-3 text-sm text-slate-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
                                     <td class="px-5 py-3 text-sm text-slate-700 font-semibold">{{ $item->jumlah }}</td>
+                                    <td class="px-5 py-3 text-sm text-slate-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
+                                    <td class="px-5 py-3 text-sm text-slate-500">{{ $item->keterangan ?? '-' }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-5 py-6 text-center text-sm text-slate-500">
-                                        Tidak ada detail barang.
+                                    <td colspan="6" class="px-5 py-6 text-center text-sm text-slate-500">
+                                        Tidak ada daftar barang.
                                     </td>
                                 </tr>
                             @endforelse
