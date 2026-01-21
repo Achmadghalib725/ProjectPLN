@@ -142,6 +142,12 @@
     {{-- Mobile Card View --}}
     <div class="sm:hidden">
         @forelse($movements ?? [] as $movement)
+            @php
+                $movementUser = $movement->creator;
+                if ($movement->referensi_type === 'SuratJalan' && $movement->tipe === 'OUT' && $movement->suratJalan?->pembuat) {
+                    $movementUser = $movement->suratJalan->pembuat;
+                }
+            @endphp
             <div class="p-4 border-b border-gray-200">
                 <div class="flex items-start justify-between mb-2">
                     <div class="flex-1">
@@ -179,7 +185,7 @@
                 <div class="flex items-center justify-between text-xs text-gray-500">
                     <div class="flex items-center gap-2">
                         <span class="px-2 py-0.5 bg-gray-100 rounded">{{ $movement->referensi_type }}</span>
-                        <span>{{ $movement->creator->name ?? 'System' }}</span>
+                        <span>{{ $movementUser->name ?? 'System' }}</span>
                     </div>
                     <span>{{ $movement->created_at->format('d M Y H:i') }}</span>
                 </div>
@@ -221,6 +227,12 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($movements ?? [] as $movement)
+                        @php
+                            $movementUser = $movement->creator;
+                            if ($movement->referensi_type === 'SuratJalan' && $movement->tipe === 'OUT' && $movement->suratJalan?->pembuat) {
+                                $movementUser = $movement->suratJalan->pembuat;
+                            }
+                        @endphp
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <div>{{ $movement->created_at->format('d M Y') }}</div>
@@ -262,7 +274,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ $movement->creator->name ?? 'System' }}
+                                {{ $movementUser->name ?? 'System' }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
                                 {{ $movement->keterangan ?? '-' }}
