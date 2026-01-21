@@ -861,14 +861,19 @@
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Surat Pengembalian Terkait</p>
                             @if($peminjaman->suratJalanKembali)
-                                <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKembali->id) }}"
-                                   class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                    </svg>
-                                    <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
-                                    
-                                </a>
+                                @if($isDivisiView)
+                                    <div class="mt-1 text-sm font-medium text-gray-700">
+                                        <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
+                                    </div>
+                                @else
+                                    <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKembali->id) }}"
+                                       class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                        </svg>
+                                        <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
+                                    </a>
+                                @endif
                             @else
                                 <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -881,14 +886,19 @@
                         @elseif($suratJalan->tipe === 'PENGEMBALIAN' && $peminjaman && $peminjaman->suratJalanKirim)
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Surat Peminjaman Asal</p>
-                            <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKirim->id) }}"
-                               class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                </svg>
-                                <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
-                                
-                            </a>
+                            @if($isDivisiView)
+                                <div class="mt-1 text-sm font-medium text-gray-700">
+                                    <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
+                                </div>
+                            @else
+                                <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKirim->id) }}"
+                                   class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                    </svg>
+                                    <span>{{ $peminjaman->suratJalanKirim->nomor }}</span>
+                                </a>
+                            @endif
                         </div>
                         @endif
 
