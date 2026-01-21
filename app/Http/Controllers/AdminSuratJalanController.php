@@ -2085,7 +2085,17 @@ class AdminSuratJalanController extends Controller
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $statusFilter = $filters['status'];
+            $statusGroups = [
+                'DIPERIKSA' => ['DIPERIKSA', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA'],
+                'DITERIMA' => ['DITERIMA', 'MENUNGGU_DIKEMBALIKAN'],
+                'DITOLAK' => ['DITOLAK', 'DITOLAK_PERSETUJUAN'],
+            ];
+            if (array_key_exists($statusFilter, $statusGroups)) {
+                $query->whereIn('status', $statusGroups[$statusFilter]);
+            } else {
+                $query->where('status', $statusFilter);
+            }
         } elseif (!$isAdmin) {
             $query->where('status', '!=', 'SELESAI');
         }

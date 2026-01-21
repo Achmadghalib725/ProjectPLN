@@ -202,7 +202,7 @@
                 <div class="flex items-start justify-between mb-2">
                     <div class="flex-1">
                         <h3 class="font-semibold text-gray-900 text-sm">{{ $pinjam->kode }}</h3>
-                        <p class="text-xs text-gray-500">{{ $pinjam->waktu_diterima?->format('d M Y') ?? $pinjam->created_at->format('d M Y') }}</p>
+                        <p class="text-xs text-gray-500">{{ $pinjam->waktu_pinjam?->format('d M Y') ?? $pinjam->created_at->format('d M Y') }}</p>
                     </div>
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
                         {{ $pinjam->status }}
@@ -231,7 +231,7 @@
                 {{-- Duration --}}
                 <div class="mb-3 text-xs">
                     <span class="text-gray-500">Durasi Pinjam:</span>
-                    @if($pinjam->waktu_diterima)
+                    @if($pinjam->waktu_pinjam)
                         @php
                             $mobileDurationParts = [];
                             if ($pinjam->total_hari > 0) $mobileDurationParts[] = $pinjam->total_hari . ' hari';
@@ -398,9 +398,9 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($pinjam->waktu_diterima)
-                                <div class="text-sm font-medium text-gray-900">{{ \Carbon\Carbon::parse($pinjam->waktu_diterima)->format('d M Y') }}</div>
-                                <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($pinjam->waktu_diterima)->format('H:i') }} WIB</div>
+                    @if($pinjam->waktu_pinjam)
+                        <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_pinjam->format('d M Y') }}</div>
+                        <div class="text-xs text-gray-500">{{ $pinjam->waktu_pinjam->format('H:i') }} WIB</div>
                             @else
                                 <span class="text-sm text-gray-400 italic">Belum diterima</span>
                             @endif
@@ -414,7 +414,7 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($pinjam->waktu_diterima)
+                    @if($pinjam->waktu_pinjam)
                                 @php
                                     $durationParts = [];
                                     if ($pinjam->total_hari > 0) $durationParts[] = $pinjam->total_hari . ' hari';
@@ -426,7 +426,7 @@
                                     {{ $durationText }}
                                 </div>
                                 <div class="text-xs text-gray-500">
-                                    Sejak {{ \Carbon\Carbon::parse($pinjam->waktu_diterima)->format('d M Y') }}
+                                    Sejak {{ $pinjam->waktu_pinjam->format('d M Y') }}
                                 </div>
                                 @if(!$pinjam->waktu_selesai)
                                     <div class="text-xs text-yellow-600 font-medium mt-0.5">Masih berjalan</div>
