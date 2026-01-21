@@ -5,11 +5,11 @@ namespace App\Events;
 use App\Models\Peminjaman;
 use App\Models\SuratJalan;
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class SuratJalanStatusUpdated implements ShouldBroadcastNow
+class SuratJalanStatusUpdated implements ShouldBroadcast
 {
     use Dispatchable, SerializesModels;
 
