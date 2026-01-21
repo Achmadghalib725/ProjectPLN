@@ -1582,7 +1582,7 @@ class SuratJalanController extends Controller
                             'stok_sesudah' => $stokSesudah,
                             'referensi_type' => 'SuratJalan',
                             'referensi_id' => $suratJalan->id,
-                            'created_by' => Auth::id(),
+                            'created_by' => $movementUserId,
                             'keterangan' => "Pengiriman via {$suratJalan->nomor} ke {$gudangTujuanNama}"
                         ]);
                     }
@@ -1600,7 +1600,37 @@ class SuratJalanController extends Controller
                         'signature_metadata_pembuat' => SuratJalan::generateSignatureMetadata(),
                     ]);
                 } else {
-                    // PENGEMBALIAN: menunggu pemeriksaan security pengirim
+                    // PENGEMBALIAN: kurangi stok dari gudang peminjam (gudang_asal) dan menunggu pemeriksaan security pengirim
+                    $gudangId = $suratJalan->gudang_asal_id;
+                    $movementUserId = $suratJalan->created_by ?: Auth::id();
+
+                    // Kurangi stok dan catat movement (per item total)
+                    foreach ($itemTotals as $itemId => $qty) {
+                        $stock = ItemStock::where('gudang_id', $gudangId)
+                            ->where('item_id', $itemId)
+                            ->first();
+
+                        if ($stock) {
+                            $stokSebelum = $stock->jumlah;
+                            $stokSesudah = $stokSebelum - $qty;
+
+                            $stock->decrement('jumlah', $qty);
+
+                            StockMovement::create([
+                                'item_id' => $itemId,
+                                'gudang_id' => $gudangId,
+                                'tipe' => 'OUT',
+                                'jumlah' => $qty,
+                                'stok_sebelum' => $stokSebelum,
+                                'stok_sesudah' => $stokSesudah,
+                                'referensi_type' => 'SuratJalan',
+                                'referensi_id' => $suratJalan->id,
+                                'created_by' => $movementUserId,
+                                'keterangan' => "Pengembalian via {$suratJalan->nomor} ke {$gudangTujuanNama}"
+                            ]);
+                        }
+                    }
+
                     $suratJalan->update([
                         'status' => 'DIPERIKSA_PENGIRIM',
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
