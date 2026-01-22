@@ -199,8 +199,8 @@
                 <p class="text-xs text-gray-500 truncate">{{ Auth::user()->jabatan ?? Auth::user()->role }}</p>
             </a>
 
-            {{-- Notification Bell - Desktop only, hanya untuk operator_gudang dan penerima --}}
-            @if(in_array(Auth::user()->role, ['operator_gudang', 'penerima']))
+            {{-- Notification Bell - Desktop only, hanya untuk operator_gudang, penerima, manager --}}
+            @if(in_array(Auth::user()->role, ['operator_gudang', 'penerima', 'manager']))
                 <div class="hidden md:block">
                     <x-notification-bell />
                 </div>
