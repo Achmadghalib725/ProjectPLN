@@ -352,35 +352,39 @@ class SecurityController extends Controller
                 'signature_metadata_penerima' => null,
             ]);
 
-            if ($suratJalan->tipe !== 'PENGEMBALIAN') {
-                $itemTotals = $suratJalan->items
-                    ->groupBy('item_id')
-                    ->map(fn ($rows) => $rows->sum('jumlah'));
+            // Restore stock to gudang_asal for all types (TRANSFER, PEMINJAMAN, PENGEMBALIAN)
+            // When rejected, items go back to the sender
+            $itemTotals = $suratJalan->items
+                ->groupBy('item_id')
+                ->map(fn ($rows) => $rows->sum('jumlah'));
 
-                foreach ($itemTotals as $itemId => $qty) {
-                    $stock = ItemStock::firstOrCreate(
-                        ['gudang_id' => $suratJalan->gudang_asal_id, 'item_id' => $itemId],
-                        ['jumlah' => 0, 'stok_minimum' => 0]
-                    );
+            $keterangan = $suratJalan->tipe === 'PENGEMBALIAN'
+                ? "Pengembalian stok karena surat pengembalian ditolak ({$suratJalan->nomor})"
+                : "Pengembalian stok karena surat jalan ditolak ({$suratJalan->nomor})";
 
-                    $stokSebelum = $stock->jumlah;
-                    $stokSesudah = $stokSebelum + $qty;
+            foreach ($itemTotals as $itemId => $qty) {
+                $stock = ItemStock::firstOrCreate(
+                    ['gudang_id' => $suratJalan->gudang_asal_id, 'item_id' => $itemId],
+                    ['jumlah' => 0, 'stok_minimum' => 0]
+                );
 
-                    $stock->increment('jumlah', $qty);
+                $stokSebelum = $stock->jumlah;
+                $stokSesudah = $stokSebelum + $qty;
 
-                    StockMovement::create([
-                        'item_id' => $itemId,
-                        'gudang_id' => $suratJalan->gudang_asal_id,
-                        'tipe' => 'IN',
-                        'jumlah' => $qty,
-                        'stok_sebelum' => $stokSebelum,
-                        'stok_sesudah' => $stokSesudah,
-                        'referensi_type' => 'SuratJalan',
-                        'referensi_id' => $suratJalan->id,
-                        'created_by' => Auth::id(),
-                        'keterangan' => "Pengembalian stok karena surat jalan ditolak ({$suratJalan->nomor})",
-                    ]);
-                }
+                $stock->increment('jumlah', $qty);
+
+                StockMovement::create([
+                    'item_id' => $itemId,
+                    'gudang_id' => $suratJalan->gudang_asal_id,
+                    'tipe' => 'IN',
+                    'jumlah' => $qty,
+                    'stok_sebelum' => $stokSebelum,
+                    'stok_sesudah' => $stokSesudah,
+                    'referensi_type' => 'SuratJalan',
+                    'referensi_id' => $suratJalan->id,
+                    'created_by' => Auth::id(),
+                    'keterangan' => $keterangan,
+                ]);
             }
 
             // Update peminjaman status if applicable

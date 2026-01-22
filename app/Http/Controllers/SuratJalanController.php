@@ -1295,6 +1295,10 @@ class SuratJalanController extends Controller
                         'batas_waktu_kembali' => $tanggalKembali,
                         'catatan_pengiriman' => $validated['catatan'] ?? null,
                     ]);
+
+                    // Sync peminjaman_items with surat_jalan_items
+                    $peminjaman->items()->delete();
+                    $this->createPeminjamanItems($peminjaman->id, $validated['items']);
                 }
             }
         });
@@ -1961,11 +1965,16 @@ class SuratJalanController extends Controller
                 ->with('error', 'Hanya surat jalan dengan status Draft atau Ditolak yang bisa dihapus.');
         }
 
-        DB::transaction(function () use ($suratJalan) {
+        $relatedSuratJalanKirimId = null;
+
+        DB::transaction(function () use ($suratJalan, &$relatedSuratJalanKirimId) {
             if ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
 
                 if ($peminjaman) {
+                    // Store the related surat jalan kirim ID for cache invalidation
+                    $relatedSuratJalanKirimId = $peminjaman->surat_jalan_kirim_id;
+
                     $peminjaman->update([
                         'surat_jalan_kembali_id' => null,
                         'status' => $this->resolvePeminjamanStatusAfterReturnDraftDelete($peminjaman),
@@ -1985,6 +1994,11 @@ class SuratJalanController extends Controller
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
+        // Also invalidate cache for the related PEMINJAMAN surat jalan when deleting PENGEMBALIAN
+        if ($relatedSuratJalanKirimId) {
+            $this->bumpSuratJalanDetailCacheVersion($relatedSuratJalanKirimId);
+        }
 
         return redirect()
             ->route('gudang.surat-jalan.index')

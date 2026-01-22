@@ -157,8 +157,11 @@ class StokController extends Controller
 
         $stocks->getCollection()->transform(function ($stock) use ($borrowedTotals) {
             $borrowed = (int) ($borrowedTotals[$stock->item_id] ?? 0);
-            $stock->borrowed_qty = $borrowed;
-            $stock->own_qty = max(0, (int) $stock->jumlah - $borrowed);
+            // Borrowed qty tidak boleh melebihi jumlah stok yang ada
+            // Jika barang sudah dikembalikan (OUT) tapi peminjaman belum SELESAI,
+            // borrowed_qty harus reflect stok yang sebenarnya ada di gudang
+            $stock->borrowed_qty = min($borrowed, (int) $stock->jumlah);
+            $stock->own_qty = max(0, (int) $stock->jumlah - $stock->borrowed_qty);
             return $stock;
         });
 

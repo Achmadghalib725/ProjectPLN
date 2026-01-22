@@ -1289,6 +1289,10 @@ class AdminSuratJalanController extends Controller
                         'batas_waktu_kembali' => $tanggalKembali,
                         'catatan_pengiriman' => $validated['catatan'] ?? null,
                     ]);
+
+                    // Sync peminjaman_items with surat_jalan_items
+                    $peminjaman->items()->delete();
+                    $this->createPeminjamanItems($peminjaman->id, $validated['items']);
                 }
             }
         });
@@ -1949,8 +1953,9 @@ class AdminSuratJalanController extends Controller
 
         $nomorSuratJalan = $suratJalan->nomor;
         $hasStockMovements = $this->hasStockMovements($suratJalan->id);
+        $relatedSuratJalanKirimId = null;
 
-        DB::transaction(function () use ($suratJalan, $hasStockMovements) {
+        DB::transaction(function () use ($suratJalan, $hasStockMovements, &$relatedSuratJalanKirimId) {
             // Rollback stock movements jika ada
             if ($hasStockMovements) {
                 $this->reverseStockMovements($suratJalan);
@@ -1961,6 +1966,9 @@ class AdminSuratJalanController extends Controller
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
 
                 if ($peminjaman) {
+                    // Store the related surat jalan kirim ID for cache invalidation
+                    $relatedSuratJalanKirimId = $peminjaman->surat_jalan_kirim_id;
+
                     $peminjaman->update([
                         'surat_jalan_kembali_id' => null,
                         'status' => $this->resolvePeminjamanStatusAfterReturnDraftDelete($peminjaman),
@@ -1988,6 +1996,11 @@ class AdminSuratJalanController extends Controller
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
+        // Also invalidate cache for the related PEMINJAMAN surat jalan when deleting PENGEMBALIAN
+        if ($relatedSuratJalanKirimId) {
+            $this->bumpSuratJalanDetailCacheVersion($relatedSuratJalanKirimId);
+        }
 
         $message = $hasStockMovements
             ? "Surat Jalan {$nomorSuratJalan} berhasil dibatalkan dan stok telah dikembalikan."
