@@ -47,6 +47,7 @@
                         @switch($notification->type)
                             @case('surat_masuk') bg-blue-100 text-blue-600 @break
                             @case('surat_siap_terima') bg-green-100 text-green-600 @break
+                            @case('surat_diajukan') bg-amber-100 text-amber-600 @break
                             @case('surat_diterima') bg-teal-100 text-teal-600 @break
                             @case('surat_ditolak') bg-red-100 text-red-600 @break
                             @default bg-gray-100 text-gray-600
@@ -61,6 +62,11 @@
                             @case('surat_siap_terima')
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                @break
+                            @case('surat_diajukan')
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 5h6" />
                                 </svg>
                                 @break
                             @case('surat_diterima')

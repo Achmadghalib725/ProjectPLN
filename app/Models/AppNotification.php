@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AppNotification extends Model
 {
@@ -17,6 +19,7 @@ class AppNotification extends Model
     const TYPE_SURAT_SIAP_TERIMA = 'surat_siap_terima'; // Surat sudah diperiksa security
     const TYPE_SURAT_DITERIMA = 'surat_diterima';     // Surat sudah diterima
     const TYPE_SURAT_DITOLAK = 'surat_ditolak';       // Surat ditolak
+    const TYPE_SURAT_DIAJUKAN = 'surat_diajukan';     // Surat jalan menunggu persetujuan manager
 
     public function user()
     {
@@ -64,6 +67,7 @@ class AppNotification extends Model
             self::TYPE_SURAT_SIAP_TERIMA => 'check-circle',
             self::TYPE_SURAT_DITERIMA => 'inbox',
             self::TYPE_SURAT_DITOLAK => 'x-circle',
+            self::TYPE_SURAT_DIAJUKAN => 'clipboard-check',
             default => 'bell',
         };
     }
@@ -76,6 +80,7 @@ class AppNotification extends Model
             self::TYPE_SURAT_SIAP_TERIMA => 'green',
             self::TYPE_SURAT_DITERIMA => 'teal',
             self::TYPE_SURAT_DITOLAK => 'red',
+            self::TYPE_SURAT_DIAJUKAN => 'amber',
             default => 'gray',
         };
     }
@@ -131,6 +136,7 @@ class AppNotification extends Model
                 'url' => $url,
                 'link' => $url, // Support both columns
             ]);
+            self::pushToUser($operator->id, $title, $message, $url, $suratJalanId);
         }
     }
 
@@ -160,5 +166,98 @@ class AppNotification extends Model
             'url' => $url,
             'link' => $url, // Support both columns
         ]);
+        self::pushToUser($userId, $title, $message, $url, $suratJalanId);
+    }
+
+    public static function notifyGudangManagers(
+        int $gudangId,
+        string $type,
+        string $title,
+        string $message,
+        ?int $suratJalanId = null,
+        ?string $url = null
+    ): void {
+        $managers = User::where('role', 'manager')
+            ->whereHas('managedGudangs', function ($query) use ($gudangId) {
+                $query->where('gudangs.id', $gudangId);
+            })
+            ->get();
+
+        foreach ($managers as $manager) {
+            self::create([
+                'user_id' => $manager->id,
+                'type' => $type,
+                'title' => $title,
+                'message' => $message,
+                'surat_jalan_id' => $suratJalanId,
+                'url' => $url,
+                'link' => $url, // Support both columns
+            ]);
+            self::pushToUser($manager->id, $title, $message, $url, $suratJalanId);
+        }
+    }
+
+    private static function pushToUser(
+        int $userId,
+        string $title,
+        string $message,
+        ?string $url = null,
+        ?int $suratJalanId = null
+    ): void {
+        if (!config('services.onesignal.enabled')) {
+            return;
+        }
+
+        $appId = config('services.onesignal.app_id');
+        $apiKey = config('services.onesignal.rest_api_key');
+        if (!$appId || !$apiKey) {
+            return;
+        }
+
+        $payload = [
+            'app_id' => $appId,
+            'headings' => ['en' => $title],
+            'contents' => ['en' => $message],
+        ];
+
+        if (str_starts_with($apiKey, 'os_v2_')) {
+            $payload['include_aliases'] = [
+                'external_id' => [(string) $userId],
+            ];
+            $payload['target_channel'] = 'push';
+        } else {
+            $payload['include_external_user_ids'] = [(string) $userId];
+            $payload['channel_for_external_user_ids'] = 'push';
+        }
+
+        if ($url) {
+            $payload['url'] = $url;
+        }
+
+        if ($suratJalanId) {
+            $payload['data'] = ['surat_jalan_id' => $suratJalanId];
+        }
+
+        try {
+            $response = Http::timeout(5)
+                ->withHeaders([
+                    'Authorization' => 'Basic ' . $apiKey,
+                    'Accept' => 'application/json',
+                ])
+                ->post('https://onesignal.com/api/v1/notifications', $payload);
+
+            if (!$response->successful()) {
+                Log::warning('OneSignal push failed', [
+                    'user_id' => $userId,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('OneSignal push error', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

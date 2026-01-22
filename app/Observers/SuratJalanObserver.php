@@ -54,6 +54,18 @@ class SuratJalanObserver
 
         try {
             switch ($status) {
+                case 'MENUNGGU_PERSETUJUAN':
+                    if ($suratJalan->gudang_asal_id) {
+                        AppNotification::notifyGudangManagers(
+                            $suratJalan->gudang_asal_id,
+                            AppNotification::TYPE_SURAT_DIAJUKAN,
+                            'Pengajuan Surat Jalan',
+                            "Surat jalan {$nomor} dari {$gudangAsal} menunggu persetujuan Anda.",
+                            $suratJalan->id,
+                            route('manager.surat-jalan.show', $suratJalan->id)
+                        );
+                    }
+                    break;
                 case 'DIKIRIM':
                     // Notify operator gudang tujuan: ada surat masuk
                     if ($suratJalan->gudang_tujuan_id) {
