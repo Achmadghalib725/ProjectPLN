@@ -322,6 +322,7 @@ function notificationBell(initialCount, gudangId) {
             const classes = {
                 'surat_masuk': 'bg-blue-100 text-blue-600',
                 'surat_siap_terima': 'bg-green-100 text-green-600',
+                'surat_diajukan': 'bg-amber-100 text-amber-600',
                 'surat_diterima': 'bg-teal-100 text-teal-600',
                 'surat_ditolak': 'bg-red-100 text-red-600'
             };
@@ -332,6 +333,7 @@ function notificationBell(initialCount, gudangId) {
             const paths = {
                 'surat_masuk': 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4',
                 'surat_siap_terima': 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                'surat_diajukan': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 5h6',
                 'surat_diterima': 'M5 13l4 4L19 7',
                 'surat_ditolak': 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z'
             };

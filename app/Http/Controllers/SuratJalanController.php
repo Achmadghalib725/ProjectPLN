@@ -1295,6 +1295,10 @@ class SuratJalanController extends Controller
                         'batas_waktu_kembali' => $tanggalKembali,
                         'catatan_pengiriman' => $validated['catatan'] ?? null,
                     ]);
+
+                    // Sync peminjaman_items with surat_jalan_items
+                    $peminjaman->items()->delete();
+                    $this->createPeminjamanItems($peminjaman->id, $validated['items']);
                 }
             }
         });
@@ -1540,13 +1544,16 @@ class SuratJalanController extends Controller
                         ? $this->getBorrowedItemTotals($gudangId, $itemTotals->keys())
                         : collect();
 
-                    // Validasi stok terlebih dahulu (per item total)
+                    // Validasi dan kurangi stok dalam satu loop untuk mencegah race condition
+                    // Lock dipertahankan sampai decrement selesai
+                    $movementUserId = $suratJalan->created_by ?: Auth::id();
                     foreach ($itemTotals as $itemId => $qty) {
                         $stock = ItemStock::where('gudang_id', $gudangId)
                             ->where('item_id', $itemId)
                             ->lockForUpdate()
                             ->first();
 
+                        // Validasi stok
                         $available = $stock?->jumlah ?? 0;
                         if ($suratJalan->tipe === 'PEMINJAMAN') {
                             $available -= (int) ($borrowedTotals[$itemId] ?? 0);
@@ -1559,15 +1566,8 @@ class SuratJalanController extends Controller
                                 : "Stok tidak cukup untuk {$itemName}.";
                             throw new \RuntimeException($detail);
                         }
-                    }
 
-                    // Kurangi stok dan catat movement (per item total)
-                    $movementUserId = $suratJalan->created_by ?: Auth::id();
-                    foreach ($itemTotals as $itemId => $qty) {
-                        $stock = ItemStock::where('gudang_id', $gudangId)
-                            ->where('item_id', $itemId)
-                            ->first();
-
+                        // Langsung kurangi stok dalam lock yang sama
                         $stokSebelum = $stock->jumlah;
                         $stokSesudah = $stokSebelum - $qty;
 
@@ -1961,11 +1961,16 @@ class SuratJalanController extends Controller
                 ->with('error', 'Hanya surat jalan dengan status Draft atau Ditolak yang bisa dihapus.');
         }
 
-        DB::transaction(function () use ($suratJalan) {
+        $relatedSuratJalanKirimId = null;
+
+        DB::transaction(function () use ($suratJalan, &$relatedSuratJalanKirimId) {
             if ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
 
                 if ($peminjaman) {
+                    // Store the related surat jalan kirim ID for cache invalidation
+                    $relatedSuratJalanKirimId = $peminjaman->surat_jalan_kirim_id;
+
                     $peminjaman->update([
                         'surat_jalan_kembali_id' => null,
                         'status' => $this->resolvePeminjamanStatusAfterReturnDraftDelete($peminjaman),
@@ -1985,6 +1990,11 @@ class SuratJalanController extends Controller
 
         $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
         $this->bumpSuratJalanDetailCacheVersion($suratJalan->id);
+
+        // Also invalidate cache for the related PEMINJAMAN surat jalan when deleting PENGEMBALIAN
+        if ($relatedSuratJalanKirimId) {
+            $this->bumpSuratJalanDetailCacheVersion($relatedSuratJalanKirimId);
+        }
 
         return redirect()
             ->route('gudang.surat-jalan.index')
@@ -2396,14 +2406,24 @@ class SuratJalanController extends Controller
 
     private function getBorrowedItemTotals(int $gudangId, $itemIds = null)
     {
+        // Hitung borrowed qty hanya untuk peminjaman yang barangnya MASIH ADA di gudang peminjam
+        // Exclude:
+        // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam
+        // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
         $query = PeminjamanItem::query()
             ->select('peminjaman_items.item_id', DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total'))
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
+            ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
             ->where('peminjamans.gudang_peminjam_id', $gudangId)
-            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
             ->where(function ($query) {
                 $query->whereNotNull('peminjamans.waktu_diterima')
                     ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
+            })
+            // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
+            ->where(function ($query) {
+                $query->whereNull('peminjamans.surat_jalan_kembali_id')
+                    ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
             });
 
         if ($itemIds !== null) {
