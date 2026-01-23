@@ -120,6 +120,7 @@
                             @if(!$isDivisi)
                                 <button type="button"
                                         class="inline-flex items-center justify-center px-4 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold rounded-lg sm:rounded-md transition duration-150 text-sm"
+                                        data-open-modal="export-excel"
                                         @click="$dispatch('open-modal', 'export-excel')">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -1751,7 +1752,17 @@
                             <option value="ALL">Semua Tipe</option>
                             <option value="TRANSFER">Transfer</option>
                             <option value="PEMINJAMAN">Peminjaman</option>
-                            <option value="PENGEMBALIAN">Pengembalian</option>
+                        </select>
+                    </div>
+
+                    {{-- Status Filter --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Status Surat Jalan</label>
+                        <select name="status"
+                                class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
+                            <option value="ALL">Semua</option>
+                            <option value="BERLANGSUNG">Sedang Berlangsung</option>
+                            <option value="SELESAI">Selesai</option>
                         </select>
                     </div>
 
@@ -1778,21 +1789,23 @@
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Dari Tanggal</label>
                                 <input type="date"
                                        name="tanggal_mulai"
-                                       required
+                                       x-bind:required="showCustom"
+                                       x-bind:disabled="!showCustom"
                                        class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Sampai Tanggal</label>
                                 <input type="date"
                                        name="tanggal_selesai"
-                                       required
+                                       x-bind:required="showCustom"
+                                       x-bind:disabled="!showCustom"
                                        class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
                             </div>
                         </div>
                     </div>
 
                     {{-- Info --}}
-                    <p class="text-xs text-gray-500">Data yang diekspor hanya surat jalan keluar dengan status SELESAI.</p>
+                    <p class="text-xs text-gray-500">Data yang diekspor mengikuti pilihan status, dan tidak memasukkan surat jalan draft.</p>
                 </div>
 
                 {{-- Action Buttons --}}
@@ -2213,6 +2226,20 @@
                     wrapper._stopCamera();
                 }
             });
+        });
+
+        document.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-open-modal]');
+            if (!trigger || trigger.hasAttribute('disabled')) {
+                return;
+            }
+
+            const modalName = trigger.getAttribute('data-open-modal');
+            if (!modalName) {
+                return;
+            }
+
+            window.dispatchEvent(new CustomEvent('open-modal', { detail: modalName }));
         });
     </script>
 </x-app-layout>

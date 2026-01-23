@@ -37,13 +37,22 @@ class StokController extends Controller
         $totalItems = ItemStock::where('gudang_id', $gudangId)->count();
 
         // Total unit yang sedang dipinjam dari gudang lain
+        // Exclude:
+        // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam (dalam perjalanan kembali)
+        // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
         $totalBorrowed = PeminjamanItem::query()
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
+            ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
             ->where('peminjamans.gudang_peminjam_id', $gudangId)
-            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
             ->where(function ($query) {
                 $query->whereNotNull('peminjamans.waktu_diterima')
                     ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
+            })
+            // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
+            ->where(function ($query) {
+                $query->whereNull('peminjamans.surat_jalan_kembali_id')
+                    ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
             })
             ->sum('peminjaman_items.jumlah_dipinjam');
 
@@ -141,14 +150,25 @@ class StokController extends Controller
         $borrowedTotals = collect();
         if ($stocks->count() > 0) {
             $itemIds = $stocks->pluck('item_id')->unique()->values();
+            // Hitung borrowed qty hanya untuk peminjaman yang barangnya MASIH ADA di gudang peminjam
+            // Exclude:
+            // - SELESAI/DITOLAK: peminjaman sudah selesai
+            // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam (dalam proses pengembalian)
+            // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
             $borrowedTotals = PeminjamanItem::query()
                 ->select('peminjaman_items.item_id', DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total'))
                 ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
+                ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
                 ->where('peminjamans.gudang_peminjam_id', $gudangId)
-                ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
+                ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
                 ->where(function ($query) {
                     $query->whereNotNull('peminjamans.waktu_diterima')
                         ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
+                })
+                // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
+                ->where(function ($query) {
+                    $query->whereNull('peminjamans.surat_jalan_kembali_id')
+                        ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
                 })
                 ->whereIn('peminjaman_items.item_id', $itemIds)
                 ->groupBy('peminjaman_items.item_id')
@@ -157,8 +177,11 @@ class StokController extends Controller
 
         $stocks->getCollection()->transform(function ($stock) use ($borrowedTotals) {
             $borrowed = (int) ($borrowedTotals[$stock->item_id] ?? 0);
-            $stock->borrowed_qty = $borrowed;
-            $stock->own_qty = max(0, (int) $stock->jumlah - $borrowed);
+            // Borrowed qty tidak boleh melebihi jumlah stok yang ada
+            // Jika barang sudah dikembalikan (OUT) tapi peminjaman belum SELESAI,
+            // borrowed_qty harus reflect stok yang sebenarnya ada di gudang
+            $stock->borrowed_qty = min($borrowed, (int) $stock->jumlah);
+            $stock->own_qty = max(0, (int) $stock->jumlah - $stock->borrowed_qty);
             return $stock;
         });
 
@@ -299,14 +322,23 @@ class StokController extends Controller
         // Security check
         $this->verifyStockOwnership($stock);
 
+        // Exclude:
+        // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam
+        // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
         $borrowedQty = PeminjamanItem::query()
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
+            ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
             ->where('peminjamans.gudang_peminjam_id', $stock->gudang_id)
             ->where('peminjaman_items.item_id', $stock->item_id)
-            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
             ->where(function ($query) {
                 $query->whereNotNull('peminjamans.waktu_diterima')
                     ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
+            })
+            // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
+            ->where(function ($query) {
+                $query->whereNull('peminjamans.surat_jalan_kembali_id')
+                    ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
             })
             ->sum('peminjaman_items.jumlah_dipinjam');
 

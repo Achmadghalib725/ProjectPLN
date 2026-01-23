@@ -277,21 +277,17 @@
 
                     <div class="space-y-2" x-data="{
                         open: false,
-                        search: '',
+                        selectedText: '',
                         selectedId: @js(old('kategori_id', '')),
                         options: @js($categories->map(fn($c) => ['id' => $c->id, 'nama' => $c->nama])),
                         init() {
                             if (this.selectedId) {
                                 const found = this.options.find(o => o.id == this.selectedId);
-                                if (found) this.search = found.nama;
+                                if (found) this.selectedText = found.nama;
                             }
                         },
-                        get filtered() {
-                            if (!this.search) return this.options;
-                            return this.options.filter(opt => opt.nama.toLowerCase().includes(this.search.toLowerCase()));
-                        },
                         select(option) {
-                            this.search = option.nama;
+                            this.selectedText = option.nama;
                             this.selectedId = option.id;
                             this.open = false;
                         }
@@ -299,32 +295,28 @@
                         <x-input-label for="kategori" :value="'Kategori *'" class="text-gray-700 font-semibold" />
                         <input type="hidden" name="kategori_id" x-model="selectedId">
                         <div class="relative" @click.outside="open = false">
-                            <input type="text"
-                                   id="kategori"
-                                   x-model="search"
-                                   @focus="open = true"
-                                   @click="open = true"
-                                   @input="open = true; selectedId = ''"
-                                   @keydown.escape="open = false"
-                                   @keydown.tab="open = false"
-                                   autocomplete="off"
-                                   class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all"
-                                   placeholder="Pilih kategori..."
-                                   readonly />
-                            <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </button>
+                            <div class="relative cursor-pointer" @click="open = !open">
+                                <input type="text"
+                                       id="kategori"
+                                       :value="selectedText"
+                                       readonly
+                                       class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer pointer-events-none"
+                                       placeholder="Pilih kategori..." />
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
                             <div x-show="open && options.length > 0"
                                  x-transition
                                  class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                <template x-for="option in filtered" :key="option.id">
+                                <template x-for="option in options" :key="option.id">
                                     <div @click="select(option)"
                                          class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
+                                         :class="{ 'bg-cyan-50 text-cyan-700': selectedId == option.id }"
                                          x-text="option.nama"></div>
                                 </template>
-                                <div x-show="filtered.length === 0" class="px-4 py-2 text-sm text-gray-500">Tidak ada kategori ditemukan</div>
                             </div>
                             <div x-show="open && options.length === 0"
                                  x-transition
@@ -358,21 +350,17 @@
 
                     <div class="space-y-2" x-data="{
                         open: false,
-                        search: '',
+                        selectedText: '',
                         selectedId: @js(old('satuan_id', '')),
                         options: @js($satuans->map(fn($s) => ['id' => $s->id, 'nama' => $s->nama])),
                         init() {
                             if (this.selectedId) {
                                 const found = this.options.find(o => o.id == this.selectedId);
-                                if (found) this.search = found.nama;
+                                if (found) this.selectedText = found.nama;
                             }
                         },
-                        get filtered() {
-                            if (!this.search) return this.options;
-                            return this.options.filter(opt => opt.nama.toLowerCase().includes(this.search.toLowerCase()));
-                        },
                         select(option) {
-                            this.search = option.nama;
+                            this.selectedText = option.nama;
                             this.selectedId = option.id;
                             this.open = false;
                         }
@@ -380,32 +368,28 @@
                         <x-input-label for="satuan" :value="'Satuan *'" class="text-gray-700 font-semibold" />
                         <input type="hidden" name="satuan_id" x-model="selectedId">
                         <div class="relative" @click.outside="open = false">
-                            <input type="text"
-                                   id="satuan"
-                                   x-model="search"
-                                   @focus="open = true"
-                                   @click="open = true"
-                                   @input="open = true; selectedId = ''"
-                                   @keydown.escape="open = false"
-                                   @keydown.tab="open = false"
-                                   autocomplete="off"
-                                   class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all"
-                                   placeholder="Pilih satuan..."
-                                   readonly />
-                            <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </button>
+                            <div class="relative cursor-pointer" @click="open = !open">
+                                <input type="text"
+                                       id="satuan"
+                                       :value="selectedText"
+                                       readonly
+                                       class="block w-full border-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer pointer-events-none"
+                                       placeholder="Pilih satuan..." />
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
                             <div x-show="open && options.length > 0"
                                  x-transition
                                  class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                <template x-for="option in filtered" :key="option.id">
+                                <template x-for="option in options" :key="option.id">
                                     <div @click="select(option)"
                                          class="px-4 py-2 cursor-pointer hover:bg-cyan-50 text-sm text-gray-700 hover:text-cyan-700"
+                                         :class="{ 'bg-cyan-50 text-cyan-700': selectedId == option.id }"
                                          x-text="option.nama"></div>
                                 </template>
-                                <div x-show="filtered.length === 0" class="px-4 py-2 text-sm text-gray-500">Tidak ada satuan ditemukan</div>
                             </div>
                             <div x-show="open && options.length === 0"
                                  x-transition

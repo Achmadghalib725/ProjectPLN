@@ -65,7 +65,7 @@
           }"
           class="space-y-6">
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             {{-- Gudang Filter --}}
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Gudang</label>
@@ -86,7 +86,17 @@
                     <option value="ALL">Semua Tipe</option>
                     <option value="TRANSFER">Transfer</option>
                     <option value="PEMINJAMAN">Peminjaman</option>
-                    <option value="PENGEMBALIAN">Pengembalian</option>
+                </select>
+            </div>
+
+            {{-- Status Filter --}}
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Status Surat Jalan</label>
+                <select name="status"
+                        class="w-full rounded-md border-slate-300 shadow-sm focus:border-[#035b71] focus:ring focus:ring-[#035b71] focus:ring-opacity-50">
+                    <option value="ALL">Semua</option>
+                    <option value="BERLANGSUNG">Sedang Berlangsung</option>
+                    <option value="SELESAI">Selesai</option>
                 </select>
             </div>
 

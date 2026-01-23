@@ -75,14 +75,60 @@
                         itemStocks: @js(($availableStocks ?? collect())->mapWithKeys(function ($stock) {
                             return [$stock->item_id => (int) ($stock->jumlah ?? 0)];
                         })),
+                        itemsCatalog: @js(($availableStocks ?? collect())->map(fn($stock) => [
+                            'id' => $stock->item_id,
+                            'nama' => $stock->item->nama ?? 'Item',
+                            'kode' => $stock->item->kode ?? '',
+                            'stok' => (int) ($stock->jumlah ?? 0),
+                        ])->values()),
                         pics: @js(($pics ?? collect())->map(fn($pic) => [
                             'id' => $pic->id,
                             'nama' => $pic->nama,
                             'jabatan' => $pic->jabatan,
                             'gudang_id' => $pic->gudang_id,
                         ])->values()),
-                        addRow() { this.items.push({ item_id: '', jumlah: 1, keterangan: '' }); },
+                        newItemRow(data = {}) {
+                            const itemId = data.item_id ?? '';
+                            return {
+                                item_id: itemId,
+                                jumlah: data.jumlah ?? 1,
+                                keterangan: data.keterangan ?? '',
+                                search: this.itemLabel(itemId),
+                                open: false,
+                            };
+                        },
+                        addRow() { this.items.push(this.newItemRow()); },
                         removeRow(i) { if (this.items.length > 1) this.items.splice(i, 1); },
+                        itemLabel(id) {
+                            if (!id) return '';
+                            const item = this.itemsCatalog.find(i => String(i.id) === String(id));
+                            if (!item) return '';
+                            return item.kode ? `${item.nama} (${item.kode})` : item.nama;
+                        },
+                        filteredItems(term) {
+                            const q = (term ?? '').toLowerCase().trim();
+                            if (!q) return this.itemsCatalog;
+                            return this.itemsCatalog.filter(item =>
+                                item.nama.toLowerCase().includes(q) ||
+                                (item.kode || '').toLowerCase().includes(q)
+                            );
+                        },
+                        selectItem(row, item) {
+                            row.item_id = item.id;
+                            row.search = this.itemLabel(item.id);
+                            row.open = false;
+                        },
+                        hasSearch(row) {
+                            return (row.search ?? '').trim() !== '';
+                        },
+                        itemErrorMessage(row) {
+                            if (row.item_id || !this.hasSearch(row)) {
+                                return '';
+                            }
+                            return this.filteredItems(row.search).length === 0
+                                ? 'Barang tidak ditemukan.'
+                                : 'Pilih barang dari daftar.';
+                        },
                         filteredPics() {
                             // Untuk PENGEMBALIAN, selalu tampilkan PIC dari gudang tujuan
                             if (this.isPengembalian) {
@@ -102,6 +148,7 @@
                             return { value: String(pic.id), label };
                         },
                         init() {
+                            this.items = this.items.map(row => this.newItemRow(row));
                             this.selectedPic = this.initialPic;
                             if (this.gudangMode === 'custom') {
                                 this.selectedGudang = '';
@@ -357,16 +404,35 @@
                                                 {{-- Barang --}}
                                                 <div class="mb-3">
                                                     <label class="block text-xs font-medium text-gray-600 mb-1">Barang <span class="text-red-500">*</span></label>
-                                                    <select class="w-full text-sm rounded-md border-gray-300 py-2.5"
-                                                            x-model="row.item_id"
-                                                            :name="`items[${idx}][item_id]`">
-                                                        <option value="">Pilih item...</option>
-                                                        @foreach($availableStocks as $stock)
-                                                            <option value="{{ $stock->item_id }}">
-                                                                {{ $stock->item->kode ?? '-' }} - {{ $stock->item->nama ?? 'Item' }} (Stok: {{ $stock->jumlah }})
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
+                                                    <div class="relative" @click.away="row.open = false">
+                                                        <input type="text"
+                                                               x-model="row.search"
+                                                               @input="row.open = true; row.item_id = ''"
+                                                               @focus="row.open = true"
+                                                               placeholder="Ketik untuk mencari barang..."
+                                                               class="w-full text-sm rounded-md border-gray-300 py-2.5">
+                                                        <input type="hidden" x-model="row.item_id" :name="`items[${idx}][item_id]`">
+                                                        <div x-show="row.open"
+                                                             x-cloak
+                                                             @wheel.stop
+                                                             @touchmove.stop
+                                                             class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto overscroll-contain">
+                                                            <template x-for="item in filteredItems(row.search)" :key="item.id">
+                                                                <button type="button"
+                                                                        @click="selectItem(row, item)"
+                                                                        class="w-full text-left px-3 py-2.5 text-sm hover:bg-pln-primary hover:text-white transition">
+                                                                    <div class="font-medium" x-text="item.nama"></div>
+                                                                    <div class="text-xs opacity-70" x-text="(item.kode ? item.kode + ' • ' : '') + 'Sisa: ' + item.stok"></div>
+                                                                </button>
+                                                            </template>
+                                                            <div x-show="filteredItems(row.search).length === 0" class="px-3 py-2 text-sm text-gray-500">
+                                                                Item tidak ditemukan.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <template x-if="itemErrorMessage(row)">
+                                                        <p class="mt-1 text-xs text-red-500" x-text="itemErrorMessage(row)"></p>
+                                                    </template>
                                                 </div>
                                                 {{-- Jumlah & Keterangan --}}
                                                 <div class="grid grid-cols-3 gap-2">
@@ -389,7 +455,7 @@
                                 </div>
 
                                 {{-- Desktop Table Layout --}}
-                                <div class="hidden sm:block overflow-x-auto">
+                                <div class="hidden sm:block overflow-visible">
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-white">
                                             <tr>
@@ -403,16 +469,35 @@
                                             <template x-for="(row, idx) in items" :key="idx">
                                                 <tr>
                                                     <td class="px-4 py-3">
-                                                        <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50"
-                                                                x-model="row.item_id"
-                                                                :name="`items[${idx}][item_id]`">
-                                                            <option value="">Pilih item...</option>
-                                                            @foreach($availableStocks as $stock)
-                                                                <option value="{{ $stock->item_id }}">
-                                                                    {{ $stock->item->kode ?? '-' }} - {{ $stock->item->nama ?? 'Item' }} (Stok: {{ $stock->jumlah }})
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
+                                                        <div class="relative" @click.away="row.open = false">
+                                                            <input type="text"
+                                                                   x-model="row.search"
+                                                                   @input="row.open = true; row.item_id = ''"
+                                                                   @focus="row.open = true"
+                                                                   placeholder="Cari barang..."
+                                                                   class="w-full text-sm rounded-md border-gray-300">
+                                                            <input type="hidden" x-model="row.item_id" :name="`items[${idx}][item_id]`">
+                                                            <div x-show="row.open"
+                                                                 x-cloak
+                                                                 @wheel.stop
+                                                                 @touchmove.stop
+                                                                 class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto overscroll-contain">
+                                                                <template x-for="item in filteredItems(row.search)" :key="item.id">
+                                                                    <button type="button"
+                                                                            @click="selectItem(row, item)"
+                                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-pln-primary hover:text-white transition">
+                                                                        <div class="font-medium" x-text="item.nama"></div>
+                                                                        <div class="text-[10px] opacity-70" x-text="(item.kode ? item.kode + ' • ' : '') + 'Sisa: ' + item.stok"></div>
+                                                                    </button>
+                                                                </template>
+                                                                <div x-show="filteredItems(row.search).length === 0" class="px-3 py-2 text-xs text-gray-500">
+                                                                    Item tidak ditemukan.
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <template x-if="itemErrorMessage(row)">
+                                                            <p class="mt-1 text-xs text-red-500" x-text="itemErrorMessage(row)"></p>
+                                                        </template>
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <input type="number"

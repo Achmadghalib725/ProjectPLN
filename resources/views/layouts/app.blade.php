@@ -10,6 +10,11 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
         <link rel="icon" type="image/x-icon" href="{{ asset('Logo_PLN.png') }}">
+        <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+        <link rel="apple-touch-icon" href="{{ asset('Logo_PLN.png') }}">
+        <meta name="theme-color" content="#035b71">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -50,7 +55,7 @@
                         </button>
                         <span class="font-bold text-lg text-pln-primary">E-Gudang PLN</span>
                     </div>
-                    @if(in_array(Auth::user()->role, ['operator_gudang', 'penerima']))
+                    @if(in_array(Auth::user()->role, ['operator_gudang', 'penerima', 'manager']))
                         <x-notification-bell />
                     @endif
                 </div>
@@ -60,6 +65,32 @@
                 </main>
             </div>
         </div>
+
+        @if(config('services.onesignal.enabled') && config('services.onesignal.app_id'))
+            <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+            <script>
+                window.OneSignalDeferred = window.OneSignalDeferred || [];
+                OneSignalDeferred.push(async function(OneSignal) {
+                    await OneSignal.init({
+                        appId: "{{ config('services.onesignal.app_id') }}",
+                        safari_web_id: "{{ config('services.onesignal.safari_web_id') }}",
+                        notifyButton: { enable: false },
+                        allowLocalhostAsSecureOrigin: {{ app()->environment('production') ? 'false' : 'true' }},
+                    });
+
+                    @if(Auth::check())
+                        OneSignal.login("{{ (string) Auth::id() }}");
+                    @endif
+
+                    if (OneSignal.Notifications) {
+                        const permission = await OneSignal.Notifications.permission;
+                        if (permission === 'default') {
+                            OneSignal.Slidedown.promptPush();
+                        }
+                    }
+                });
+            </script>
+        @endif
 
         {{-- Global AJAX Navigation Script --}}
         <script>

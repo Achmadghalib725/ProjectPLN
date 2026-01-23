@@ -1739,7 +1739,17 @@
                             <option value="ALL">Semua Tipe</option>
                             <option value="TRANSFER">Transfer</option>
                             <option value="PEMINJAMAN">Peminjaman</option>
-                            <option value="PENGEMBALIAN">Pengembalian</option>
+                        </select>
+                    </div>
+
+                    {{-- Status Filter --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Status Surat Jalan</label>
+                        <select name="status"
+                                class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
+                            <option value="ALL">Semua</option>
+                            <option value="BERLANGSUNG">Sedang Berlangsung</option>
+                            <option value="SELESAI">Selesai</option>
                         </select>
                     </div>
 
@@ -1766,21 +1776,23 @@
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Dari Tanggal</label>
                                 <input type="date"
                                        name="tanggal_mulai"
-                                       required
+                                       x-bind:required="showCustom"
+                                       x-bind:disabled="!showCustom"
                                        class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Sampai Tanggal</label>
                                 <input type="date"
                                        name="tanggal_selesai"
-                                       required
+                                       x-bind:required="showCustom"
+                                       x-bind:disabled="!showCustom"
                                        class="w-full rounded-lg border-gray-300 bg-white text-sm focus:ring-2 focus:ring-[#035b71]/20 focus:border-[#035b71]">
                             </div>
                         </div>
                     </div>
 
                     {{-- Info --}}
-                    <p class="text-xs text-gray-500">Data yang diekspor mencakup semua surat jalan dengan status SELESAI.</p>
+                    <p class="text-xs text-gray-500">Data yang diekspor mengikuti pilihan status, dan tidak memasukkan surat jalan draft.</p>
                 </div>
 
                 {{-- Action Buttons --}}
