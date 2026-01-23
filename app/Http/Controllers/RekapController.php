@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\SuratJalanExport;
+use App\Exports\SuratJalanMultiSheetExport;
 use App\Models\Gudang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -30,7 +30,8 @@ class RekapController extends Controller
     {
         $validated = $request->validate([
             'gudang_id' => ['nullable', 'integer', 'exists:gudangs,id'],
-            'tipe' => ['nullable', 'string', Rule::in(['ALL', 'TRANSFER', 'PEMINJAMAN', 'PENGEMBALIAN'])],
+            'tipe' => ['nullable', 'string', Rule::in(['ALL', 'TRANSFER', 'PEMINJAMAN'])],
+            'status' => ['nullable', 'string', Rule::in(['ALL', 'BERLANGSUNG', 'SELESAI'])],
             'periode' => ['nullable', 'string', Rule::in(['1_minggu', '1_bulan', '3_bulan', '6_bulan', '1_tahun', 'custom'])],
             'tanggal_mulai' => ['nullable', 'date', 'required_if:periode,custom'],
             'tanggal_selesai' => ['nullable', 'date', 'required_if:periode,custom', 'after_or_equal:tanggal_mulai'],
@@ -45,11 +46,12 @@ class RekapController extends Controller
         $fileName = 'rekap-surat-jalan-' . date('Y-m-d-His') . '.xlsx';
 
         return Excel::download(
-            new SuratJalanExport(
+            new SuratJalanMultiSheetExport(
                 $validated['gudang_id'] ?? null, // null = all gudang
                 $validated['tipe'] ?? null,
                 $dates['start'],
-                $dates['end']
+                $dates['end'],
+                $validated['status'] ?? null
             ),
             $fileName
         );

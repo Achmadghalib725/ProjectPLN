@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Exports\SuratJalanExport;
+use App\Exports\SuratJalanMultiSheetExport;
 use Maatwebsite\Excel\Facades\Excel;
 
 class AdminSuratJalanController extends Controller
@@ -3061,7 +3061,8 @@ class AdminSuratJalanController extends Controller
         }
 
         $validated = $request->validate([
-            'tipe' => ['nullable', 'string', Rule::in(['ALL', 'TRANSFER', 'PEMINJAMAN', 'PENGEMBALIAN'])],
+            'tipe' => ['nullable', 'string', Rule::in(['ALL', 'TRANSFER', 'PEMINJAMAN'])],
+            'status' => ['nullable', 'string', Rule::in(['ALL', 'BERLANGSUNG', 'SELESAI'])],
             'periode' => ['nullable', 'string', Rule::in(['1_minggu', '1_bulan', '3_bulan', '6_bulan', '1_tahun', 'custom'])],
             'tanggal_mulai' => ['nullable', 'date', 'required_if:periode,custom'],
             'tanggal_selesai' => ['nullable', 'date', 'required_if:periode,custom', 'after_or_equal:tanggal_mulai'],
@@ -3077,11 +3078,12 @@ class AdminSuratJalanController extends Controller
         $fileName = 'surat-jalan-' . date('Y-m-d-His') . '.xlsx';
 
         return Excel::download(
-            new SuratJalanExport(
+            new SuratJalanMultiSheetExport(
                 $gudangId,
                 $validated['tipe'] ?? null,
                 $dates['start'],
-                $dates['end']
+                $dates['end'],
+                $validated['status'] ?? null
             ),
             $fileName
         );
