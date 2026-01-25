@@ -66,7 +66,7 @@ class ItemMetaController extends Controller
      */
     public function destroyCategory(ItemCategory $category)
     {
-        $count = Item::whereRaw('LOWER(kategori) = ?', [strtolower($category->nama)])->count();
+        $count = Item::where('kategori_id', $category->id)->count();
 
         if ($count > 0) {
             return response()->json([
@@ -140,7 +140,7 @@ class ItemMetaController extends Controller
      */
     public function destroyUnit(ItemUnit $unit)
     {
-        $count = Item::whereRaw('LOWER(satuan) = ?', [strtolower($unit->nama)])->count();
+        $count = Item::where('satuan_id', $unit->id)->count();
 
         if ($count > 0) {
             return response()->json([
