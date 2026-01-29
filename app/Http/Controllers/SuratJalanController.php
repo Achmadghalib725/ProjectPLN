@@ -152,10 +152,16 @@ class SuratJalanController extends Controller
             foreach ($activePeminjamans as $peminjaman) {
                 foreach ($peminjaman->items as $peminjamanItem) {
                     $itemId = $peminjamanItem->item_id;
-                    $jumlah = $peminjamanItem->jumlah_diterima ?? $peminjamanItem->jumlah_dipinjam;
+                    $base = $peminjamanItem->jumlah_diterima ?? $peminjamanItem->jumlah_dipinjam;
+                    $returned = $peminjamanItem->jumlah_dikembalikan ?? 0;
+                    $jumlah = max(0, (int) $base - (int) $returned);
                     $borrowedItems[$itemId] = ($borrowedItems[$itemId] ?? 0) + $jumlah;
                 }
             }
+
+            $activePeminjamans = $activePeminjamans
+                ->filter(fn ($peminjaman) => $this->hasOutstandingItems($peminjaman))
+                ->values();
 
             // Get available stocks and subtract borrowed items, hide items with 0 own stock
             $availableStocks = Schema::hasTable('item_stocks') && $activeGudangId
@@ -605,16 +611,7 @@ class SuratJalanController extends Controller
                         $query->where('gudang_peminjam_id', $gudangId);
                     }
 
-                    $query->where('status', 'DITERIMA')
-                        ->where(function ($subQuery) {
-                            $subQuery->whereNull('surat_jalan_kembali_id')
-                                ->orWhereIn('surat_jalan_kembali_id', function ($inner) {
-                                    $inner->select('id')
-                                        ->from('surat_jalans')
-                                        ->where('status', 'DITOLAK')
-                                        ->where('tipe', 'PENGEMBALIAN');
-                                });
-                        });
+                    $query->where('status', 'DITERIMA');
                 }),
             ],
             'pic_tujuan_id' => [
@@ -651,6 +648,9 @@ class SuratJalanController extends Controller
             'nama_driver' => ['required', 'string', 'max:100'],
             'jenis_kendaraan' => ['required', 'string', 'max:100'],
             'nomor_plat' => ['required', 'string', 'max:50'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.peminjaman_item_id' => ['required', 'integer'],
+            'items.*.jumlah' => ['nullable', 'integer', 'min:0'],
             'attachments' => ['nullable', 'array', 'max:3'],
             'attachments.*' => ['file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], [
@@ -661,14 +661,92 @@ class SuratJalanController extends Controller
             'nama_driver.required' => 'Nama driver wajib diisi.',
             'jenis_kendaraan.required' => 'Jenis kendaraan wajib diisi.',
             'nomor_plat.required' => 'Nomor plat wajib diisi.',
+            'items.required' => 'Minimal pilih 1 barang untuk dikembalikan.',
+            'items.array' => 'Format item pengembalian tidak valid.',
+            'items.*.peminjaman_item_id.required' => 'Item pengembalian wajib dipilih.',
+            'items.*.jumlah.integer' => 'Jumlah pengembalian harus berupa angka.',
+            'items.*.jumlah.min' => 'Jumlah pengembalian minimal 0.',
         ]);
 
-        $peminjaman = Peminjaman::with(['items', 'gudangPemilik', 'suratJalanKirim.attachments'])
+        $peminjaman = Peminjaman::with(['items.item', 'gudangPemilik', 'suratJalanKirim.attachments', 'suratJalanKembali'])
             ->where('id', $validated['peminjaman_id'])
             ->firstOrFail();
 
         if (!$gudangId) {
             $gudangId = $peminjaman->gudang_peminjam_id;
+        }
+
+        if ($peminjaman->status !== 'DITERIMA') {
+            return redirect()
+                ->back()
+                ->withErrors(['peminjaman_id' => 'Kode peminjaman tidak dalam status DITERIMA.'])
+                ->withInput();
+        }
+
+        $activeReturn = $peminjaman->suratJalanKembali;
+        if ($activeReturn && !in_array($activeReturn->status, ['DITOLAK', 'SELESAI'], true)) {
+            return redirect()
+                ->back()
+                ->withErrors(['peminjaman_id' => 'Surat pengembalian sebelumnya masih diproses.'])
+                ->withInput();
+        }
+
+        if (!$this->hasOutstandingItems($peminjaman)) {
+            return redirect()
+                ->back()
+                ->withErrors(['items' => 'Semua barang pada peminjaman ini sudah dikembalikan.'])
+                ->withInput();
+        }
+
+        $itemsInput = collect($validated['items'] ?? []);
+        $groupedItems = $itemsInput->groupBy(fn ($row) => (int) ($row['peminjaman_item_id'] ?? 0));
+        $returnRows = [];
+        $itemTotals = [];
+        $itemErrors = [];
+
+        foreach ($groupedItems as $peminjamanItemId => $rows) {
+            if ($peminjamanItemId <= 0) {
+                continue;
+            }
+            $peminjamanItem = $peminjaman->items->firstWhere('id', $peminjamanItemId);
+            if (!$peminjamanItem) {
+                $itemErrors[] = 'Item pengembalian tidak sesuai dengan peminjaman.';
+                continue;
+            }
+            $qty = (int) $rows->sum(fn ($row) => (int) ($row['jumlah'] ?? 0));
+            if ($qty <= 0) {
+                continue;
+            }
+            $baseQty = (int) ($peminjamanItem->jumlah_diterima ?? $peminjamanItem->jumlah_dipinjam);
+            $returnedQty = (int) ($peminjamanItem->jumlah_dikembalikan ?? 0);
+            $remainingQty = max(0, $baseQty - $returnedQty);
+            $itemName = $peminjamanItem->item?->nama ?? 'Item';
+
+            if ($remainingQty <= 0) {
+                $itemErrors[] = "Barang {$itemName} sudah dikembalikan.";
+                continue;
+            }
+            if ($qty > $remainingQty) {
+                $itemErrors[] = "Jumlah pengembalian {$itemName} melebihi sisa {$remainingQty}.";
+                continue;
+            }
+
+            $returnRows[] = [
+                'item_id' => $peminjamanItem->item_id,
+                'jumlah' => $qty,
+                'keterangan' => 'Pengembalian barang peminjaman.',
+            ];
+            $itemTotals[$peminjamanItem->item_id] = ($itemTotals[$peminjamanItem->item_id] ?? 0) + $qty;
+        }
+
+        if (empty($returnRows)) {
+            $itemErrors[] = 'Pilih minimal satu item untuk dikembalikan.';
+        }
+        if (!empty($itemErrors)) {
+            return redirect()
+                ->back()
+                ->withErrors(['items' => implode(' ', $itemErrors)])
+                ->withInput();
         }
 
         $managerSignerId = null;
@@ -707,7 +785,7 @@ class SuratJalanController extends Controller
 
         $tanggalKirim = Carbon::parse($validated['tanggal_kirim'])->startOfDay();
 
-        $suratJalanId = DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman, $adminFinish, $picTujuanId, $picCustomData, $managerSignerId) {
+        $suratJalanId = DB::transaction(function () use ($validated, $gudangId, $tanggalKirim, $peminjaman, $adminFinish, $picTujuanId, $picCustomData, $managerSignerId, $returnRows, $itemTotals) {
             $kembaliAt = $tanggalKirim->copy()->setTime(15, 0);
             $selesaiAt = $kembaliAt->copy()->addHour();
 
@@ -736,28 +814,17 @@ class SuratJalanController extends Controller
                 'updated_at' => $adminFinish ? $selesaiAt : now(),
             ]);
 
-            $rows = $peminjaman->items->map(function ($item) use ($suratJalan) {
-                return [
-                    'surat_jalan_id' => $suratJalan->id,
-                    'item_id' => $item->item_id,
-                    'jumlah' => (int) $item->jumlah_dipinjam,
-                    'keterangan' => 'Pengembalian barang peminjaman.',
-                ];
-            })->all();
+            $rows = collect($returnRows)
+                ->map(fn ($row) => array_merge(['surat_jalan_id' => $suratJalan->id], $row))
+                ->all();
 
             SuratJalanItem::insert($rows);
 
             $peminjaman->update([
                 'surat_jalan_kembali_id' => $suratJalan->id,
-                'status' => $adminFinish ? 'SELESAI' : $peminjaman->status,
-                'waktu_pengembalian' => $adminFinish ? $kembaliAt : $peminjaman->waktu_pengembalian,
-                'waktu_selesai' => $adminFinish ? $selesaiAt : $peminjaman->waktu_selesai,
             ]);
 
             if ($adminFinish) {
-                $itemTotals = $peminjaman->items
-                    ->groupBy('item_id')
-                    ->map(fn ($rows) => (int) $rows->sum('jumlah_dipinjam'));
                 $gudangPemilikNama = $peminjaman->gudangPemilik->nama ?? 'Gudang Pemilik';
 
                 $this->applyStockIn(
@@ -768,11 +835,25 @@ class SuratJalanController extends Controller
                     "Pengembalian via {$suratJalan->nomor} dari {$gudangPemilikNama}"
                 );
 
-                // Also update the original surat jalan kirim status to SELESAI
+                $this->incrementReturnQuantities($peminjaman, $itemTotals);
+                $peminjaman->refresh();
+                $fullyReturned = $this->isPeminjamanFullyReturned($peminjaman);
+
+                $peminjaman->update([
+                    'status' => $fullyReturned ? 'SELESAI' : 'DITERIMA',
+                    'waktu_pengembalian' => $kembaliAt,
+                    'waktu_selesai' => $fullyReturned ? $selesaiAt : null,
+                ]);
+
+                // Also update the original surat jalan kirim status to SELESAI if all items returned
                 if ($peminjaman->surat_jalan_kirim_id) {
                     $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
                     if ($suratJalanKirim) {
-                        $suratJalanKirim->update(['status' => 'SELESAI']);
+                        if ($fullyReturned) {
+                            $suratJalanKirim->update(['status' => 'SELESAI']);
+                        } elseif ($suratJalanKirim->status === 'DIKEMBALIKAN') {
+                            $suratJalanKirim->update(['status' => 'DITERIMA']);
+                        }
                     }
                 }
             }
@@ -877,12 +958,12 @@ class SuratJalanController extends Controller
         }
 
         $pics = collect();
-        // Load PICs jika: (1) belum ada surat kembali, atau (2) surat kembali ditolak (buat ulang)
-        $shouldLoadPics = $peminjaman && $peminjaman->status === 'DITERIMA' && (
+        $hasOutstandingItems = $peminjaman ? $this->hasOutstandingItems($peminjaman) : false;
+        $canCreateReturn = $peminjaman && $peminjaman->status === 'DITERIMA' && $hasOutstandingItems && (
             !$peminjaman->surat_jalan_kembali_id ||
-            $peminjaman->suratJalanKembali?->status === 'DITOLAK'
+            in_array($peminjaman->suratJalanKembali?->status, ['DITOLAK', 'SELESAI'], true)
         );
-        if ($shouldLoadPics) {
+        if ($canCreateReturn) {
             $pics = Schema::hasTable('pics')
                 ? Pic::query()->where('gudang_id', $peminjaman->gudang_pemilik_id)->orderBy('nama')->get()
                 : collect();
@@ -891,7 +972,7 @@ class SuratJalanController extends Controller
         $isAdmin = $user?->role === 'admin';
         $isManager = $user?->role === 'manager';
 
-        return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin', 'isManager', 'accessibleGudangIds'));
+        return view('gudang.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin', 'isManager', 'accessibleGudangIds', 'canCreateReturn', 'hasOutstandingItems'));
     }
 
     public function edit($id)
@@ -928,8 +1009,7 @@ class SuratJalanController extends Controller
             ? Peminjaman::query()
                 ->with('items')
                 ->where('gudang_peminjam_id', $gudangId)
-                ->where('status', 'DITERIMA')
-                ->whereNull('surat_jalan_kembali_id')
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIPERIKSA'])
                 ->get()
             : collect();
 
@@ -937,7 +1017,9 @@ class SuratJalanController extends Controller
         foreach ($activePeminjamans as $peminjamanItem) {
             foreach ($peminjamanItem->items as $item) {
                 $itemId = $item->item_id;
-                $jumlah = $item->jumlah_diterima ?? $item->jumlah_dipinjam;
+                $base = $item->jumlah_diterima ?? $item->jumlah_dipinjam;
+                $returned = $item->jumlah_dikembalikan ?? 0;
+                $jumlah = max(0, (int) $base - (int) $returned);
                 $borrowedItems[$itemId] = ($borrowedItems[$itemId] ?? 0) + $jumlah;
             }
         }
@@ -1631,6 +1713,13 @@ class SuratJalanController extends Controller
                         }
                     }
 
+                    $peminjaman = Peminjaman::with('items')
+                        ->where('surat_jalan_kembali_id', $suratJalan->id)
+                        ->first();
+                    if ($peminjaman) {
+                        $this->incrementReturnQuantities($peminjaman, $itemTotals->all());
+                    }
+
                     $suratJalan->update([
                         'status' => 'DIPERIKSA_PENGIRIM',
                         'ttd_pembuat_id' => $suratJalan->ttd_pembuat_id ?? $managerSignerId,
@@ -1745,19 +1834,26 @@ class SuratJalanController extends Controller
                         'signature_metadata_penerima' => SuratJalan::generateSignatureMetadata(),
                     ]);
 
-                    // Update peminjaman status to SELESAI
-                    $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                    // Update peminjaman status based on remaining items
+                    $peminjaman = Peminjaman::with('items')
+                        ->where('surat_jalan_kembali_id', $suratJalan->id)
+                        ->first();
                     if ($peminjaman) {
+                        $fullyReturned = $this->isPeminjamanFullyReturned($peminjaman);
                         $peminjaman->update([
-                            'status' => 'SELESAI',
-                            'waktu_selesai' => now(),
+                            'status' => $fullyReturned ? 'SELESAI' : 'DITERIMA',
+                            'waktu_selesai' => $fullyReturned ? now() : null,
                         ]);
 
-                        // Also update the original surat jalan kirim status to SELESAI
+                        // Update original surat jalan kirim status when fully returned
                         if ($peminjaman->surat_jalan_kirim_id) {
                             $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
                             if ($suratJalanKirim) {
-                                $suratJalanKirim->update(['status' => 'SELESAI']);
+                                if ($fullyReturned) {
+                                    $suratJalanKirim->update(['status' => 'SELESAI']);
+                                } elseif ($suratJalanKirim->status === 'DIKEMBALIKAN') {
+                                    $suratJalanKirim->update(['status' => 'DITERIMA']);
+                                }
                             }
                         }
                     }
@@ -1819,8 +1915,16 @@ class SuratJalanController extends Controller
                 }
             });
 
+            $fullyReturned = null;
+            if ($suratJalan->tipe === 'PENGEMBALIAN') {
+                $peminjaman = Peminjaman::with('items')
+                    ->where('surat_jalan_kembali_id', $suratJalan->id)
+                    ->first();
+                $fullyReturned = $peminjaman ? $this->isPeminjamanFullyReturned($peminjaman) : null;
+            }
+
             $message = $suratJalan->tipe === 'PENGEMBALIAN'
-                ? 'Barang pengembalian berhasil diterima. Peminjaman selesai.'
+                ? ($fullyReturned ? 'Barang pengembalian berhasil diterima. Peminjaman selesai.' : 'Barang pengembalian berhasil diterima. Peminjaman masih berjalan.')
                 : 'Barang berhasil diterima dan stok telah ditambahkan.';
 
             $this->bumpSuratJalanCacheVersion([$suratJalan->gudang_asal_id, $suratJalan->gudang_tujuan_id]);
@@ -2406,24 +2510,15 @@ class SuratJalanController extends Controller
 
     private function getBorrowedItemTotals(int $gudangId, $itemIds = null)
     {
-        // Hitung borrowed qty hanya untuk peminjaman yang barangnya MASIH ADA di gudang peminjam
-        // Exclude:
-        // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam
-        // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
+        // Hitung borrowed qty berdasarkan sisa (dipinjam - dikembalikan)
         $query = PeminjamanItem::query()
-            ->select('peminjaman_items.item_id', DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total'))
+            ->select('peminjaman_items.item_id', DB::raw('SUM(GREATEST(COALESCE(peminjaman_items.jumlah_diterima, peminjaman_items.jumlah_dipinjam) - COALESCE(peminjaman_items.jumlah_dikembalikan, 0), 0)) as total'))
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
-            ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
             ->where('peminjamans.gudang_peminjam_id', $gudangId)
-            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
             ->where(function ($query) {
                 $query->whereNotNull('peminjamans.waktu_diterima')
                     ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
-            })
-            // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
-            ->where(function ($query) {
-                $query->whereNull('peminjamans.surat_jalan_kembali_id')
-                    ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
             });
 
         if ($itemIds !== null) {
@@ -2433,6 +2528,40 @@ class SuratJalanController extends Controller
         return $query
             ->groupBy('peminjaman_items.item_id')
             ->pluck('total', 'peminjaman_items.item_id');
+    }
+
+    private function calculateRemainingQty(PeminjamanItem $item): int
+    {
+        $base = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam);
+        $returned = (int) ($item->jumlah_dikembalikan ?? 0);
+        return max(0, $base - $returned);
+    }
+
+    private function hasOutstandingItems(Peminjaman $peminjaman): bool
+    {
+        return $peminjaman->items->contains(fn ($item) => $this->calculateRemainingQty($item) > 0);
+    }
+
+    private function incrementReturnQuantities(Peminjaman $peminjaman, array $itemTotals): void
+    {
+        $itemsByItemId = $peminjaman->items->keyBy('item_id');
+        foreach ($itemTotals as $itemId => $qty) {
+            $peminjamanItem = $itemsByItemId->get((int) $itemId);
+            if (!$peminjamanItem) {
+                continue;
+            }
+            $base = (int) ($peminjamanItem->jumlah_diterima ?? $peminjamanItem->jumlah_dipinjam);
+            $returned = (int) ($peminjamanItem->jumlah_dikembalikan ?? 0);
+            $newReturned = min($base, $returned + (int) $qty);
+            if ($newReturned !== $returned) {
+                $peminjamanItem->update(['jumlah_dikembalikan' => $newReturned]);
+            }
+        }
+    }
+
+    private function isPeminjamanFullyReturned(Peminjaman $peminjaman): bool
+    {
+        return !$this->hasOutstandingItems($peminjaman);
     }
 
     /**
