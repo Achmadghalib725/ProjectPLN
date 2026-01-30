@@ -138,8 +138,17 @@
                 $isOverdue = $peminjaman->batas_waktu_kembali &&
                              $peminjaman->batas_waktu_kembali->isPast() &&
                              $isActiveStatus;
-                $itemCount = $peminjaman->items->count();
-                $totalQty = $peminjaman->items->sum(fn($i) => $i->jumlah_dipinjam ?? $i->jumlah);
+                $remainingItems = $peminjaman->items
+                    ->map(function ($item) {
+                        $base = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam ?? $item->jumlah);
+                        $returned = (int) ($item->jumlah_dikembalikan ?? 0);
+                        $item->remaining_qty = max(0, $base - $returned);
+                        return $item;
+                    })
+                    ->filter(fn ($item) => $item->remaining_qty > 0)
+                    ->values();
+                $itemCount = $remainingItems->count();
+                $totalQty = $remainingItems->sum('remaining_qty');
                 $statusColor = match($peminjaman->status) {
                     'DIKIRIM' => 'bg-blue-100 text-blue-800',
                     'DIPERIKSA' => 'bg-cyan-100 text-cyan-800',
@@ -271,6 +280,15 @@
                             : $peminjaman->waktu_diterima;
                         $endDate = $peminjaman->status === 'SELESAI' ? $peminjaman->waktu_selesai : now();
                         $canCalculateDuration = $startDate !== null;
+                        $remainingItems = $peminjaman->items
+                            ->map(function ($item) {
+                                $base = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam ?? $item->jumlah);
+                                $returned = (int) ($item->jumlah_dikembalikan ?? 0);
+                                $item->remaining_qty = max(0, $base - $returned);
+                                return $item;
+                            })
+                            ->filter(fn ($item) => $item->remaining_qty > 0)
+                            ->values();
                     @endphp
                     <tr class="{{ $isOverdue ? 'bg-red-50' : '' }}">
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -284,8 +302,8 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $itemCount = $peminjaman->items->count();
-                                $totalQty = $peminjaman->items->sum(fn($i) => $i->jumlah_dipinjam ?? $i->jumlah);
+                                $itemCount = $remainingItems->count();
+                                $totalQty = $remainingItems->sum('remaining_qty');
                             @endphp
                             <div x-data="{
                                     showItems: false,
@@ -326,23 +344,27 @@
                                          x-transition:leave-end="opacity-0 scale-95"
                                          :style="'position: fixed; top: ' + position.top + 'px; left: ' + position.left + 'px; z-index: 9999;' + (openAbove ? ' transform: translateY(-100%);' : '')"
                                          class="w-72 bg-white rounded-lg shadow-2xl border border-gray-200">
-                                        <div class="bg-gray-50 px-3 py-2 border-b border-gray-200 rounded-t-lg">
-                                            <span class="text-xs font-semibold text-gray-500 uppercase">Daftar Item ({{ $itemCount }})</span>
-                                        </div>
-                                        <div class="p-2 space-y-1 max-h-36 overflow-y-auto">
-                                            @foreach($peminjaman->items as $item)
-                                                <div class="text-sm text-gray-900 flex justify-between items-center p-2 hover:bg-gray-50 rounded">
-                                                    <div class="flex-1 min-w-0 mr-2">
-                                                        <span class="font-medium">{{ $item->item->kode ?? '-' }}</span>
-                                                        <span class="text-gray-500 block text-xs truncate">{{ $item->item->nama ?? '-' }}</span>
-                                                    </div>
-                                                    <span class="text-pln-primary font-bold bg-pln-primary/10 px-2 py-0.5 rounded shrink-0">{{ $item->jumlah_dipinjam ?? $item->jumlah }}</span>
-                                                </div>
-                                            @endforeach
-                                        </div>
+                                    <div class="bg-gray-50 px-3 py-2 border-b border-gray-200 rounded-t-lg">
+                                        <span class="text-xs font-semibold text-gray-500 uppercase">Daftar Item ({{ $itemCount }})</span>
                                     </div>
-                                </template>
-                            </div>
+                                    <div class="p-2 space-y-1 max-h-36 overflow-y-auto">
+                                            @if($remainingItems->isEmpty())
+                                                <div class="text-xs text-gray-500 px-2 py-2">Semua item sudah dikembalikan.</div>
+                                            @else
+                                                @foreach($remainingItems as $item)
+                                                    <div class="text-sm text-gray-900 flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                        <div class="flex-1 min-w-0 mr-2">
+                                                            <span class="font-medium">{{ $item->item->kode ?? '-' }}</span>
+                                                            <span class="text-gray-500 block text-xs truncate">{{ $item->item->nama ?? '-' }}</span>
+                                                        </div>
+                                                        <span class="text-pln-primary font-bold bg-pln-primary/10 px-2 py-0.5 rounded shrink-0">{{ $item->remaining_qty }}</span>
+                                                    </div>
+                                                @endforeach
+                                            @endif
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @if($canCalculateDuration)

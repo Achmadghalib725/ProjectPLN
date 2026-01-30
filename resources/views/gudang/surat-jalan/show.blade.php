@@ -453,10 +453,14 @@
             @php
                 // Determine if we should show blurred overlay instead of progress
                 $returnStatus = $peminjaman?->suratJalanKembali?->status;
+                $totalReturnedQty = ($tipe === 'PEMINJAMAN' && $peminjaman) ? $peminjaman->items->sum(fn ($item) => (int) ($item->jumlah_dikembalikan ?? 0)) : 0;
+                $totalBorrowedQty = ($tipe === 'PEMINJAMAN' && $peminjaman) ? $peminjaman->items->sum(fn ($item) => (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam)) : 0;
+                $isPartialReturnPending = $tipe === 'PEMINJAMAN' && $peminjaman && $totalReturnedQty > 0 && $totalBorrowedQty > $totalReturnedQty;
                 $showBlurredOverlay = in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true)
-                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true))
+                    || $isPartialReturnPending;
                 // Exception: show progress if PEMINJAMAN is already in progress
-                $showProgress = !$showBlurredOverlay || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK' && !in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+                $showProgress = !$showBlurredOverlay || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK' && !in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true) && !$isPartialReturnPending);
             @endphp
 
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
@@ -693,7 +697,9 @@
                 // Check if PEMINJAMAN with return pending (security check or manager approval)
                 $isPeminjamanReturnPending = $tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true);
 
-                if ($isPeminjamanReturnPending) {
+                if ($isPartialReturnPending) {
+                    $draftMessage = 'Status: MENUNGGU PERSETUJUAN - Menunggu sisa barang dikembalikan.';
+                } elseif ($isPeminjamanReturnPending) {
                     $draftMessage = $returnStatus === 'MENUNGGU_PERSETUJUAN'
                         ? 'Status: MENUNGGU PERSETUJUAN - Surat pengembalian terkait sedang menunggu persetujuan manager.'
                         : 'Status: MENUNGGU PEMERIKSAAN - Surat pengembalian terkait sedang menunggu pemeriksaan security.';
@@ -707,7 +713,7 @@
                     };
                 }
 
-                $draftIcon = $isPeminjamanReturnPending ? 'clock' : match ($suratStatus) {
+                $draftIcon = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'clock' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
                     'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
@@ -715,7 +721,7 @@
                     default => 'document',
                 };
 
-                $draftBgClass = $isPeminjamanReturnPending ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
+                $draftBgClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
@@ -723,7 +729,7 @@
                     default => 'bg-gray-50 border-gray-200',
                 };
 
-                $draftTextClass = $isPeminjamanReturnPending ? 'text-orange-800' : match ($suratStatus) {
+                $draftTextClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'text-orange-800' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
                     'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
@@ -731,7 +737,7 @@
                     default => 'text-gray-700',
                 };
 
-                $draftIconBgClass = $isPeminjamanReturnPending ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
+                $draftIconBgClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
@@ -860,19 +866,29 @@
                         @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && !$suratJalan->gudang_tujuan_is_custom)
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Surat Pengembalian Terkait</p>
-                            @if($peminjaman->suratJalanKembali)
+                            @php
+                                $returnSuratJalans = $peminjaman->suratJalanPengembalians ?? collect();
+                                if ($peminjaman->suratJalanKembali && !$returnSuratJalans->contains('id', $peminjaman->suratJalanKembali->id)) {
+                                    $returnSuratJalans = $returnSuratJalans->push($peminjaman->suratJalanKembali);
+                                }
+                            @endphp
+                            @if($returnSuratJalans->isNotEmpty())
                                 @if($isDivisiView)
                                     <div class="mt-1 text-sm font-medium text-gray-700">
-                                        <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
+                                        <span>{{ $returnSuratJalans->pluck('nomor')->join(', ') }}</span>
                                     </div>
                                 @else
-                                    <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKembali->id) }}"
-                                       class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                        </svg>
-                                        <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
-                                    </a>
+                                    <div class="mt-1 flex flex-wrap gap-3 text-sm font-medium">
+                                        @foreach($returnSuratJalans as $returnSuratJalan)
+                                            <a href="{{ route('gudang.surat-jalan.show', $returnSuratJalan->id) }}"
+                                               class="inline-flex items-center gap-2 text-green-600 hover:text-green-800 transition">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                                </svg>
+                                                <span>{{ $returnSuratJalan->nomor }}</span>
+                                            </a>
+                                        @endforeach
+                                    </div>
                                 @endif
                             @else
                                 <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
@@ -1092,8 +1108,12 @@
                 </div>
             @endif
 
-            {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin (status DITERIMA, tipe PEMINJAMAN) --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && ($isGudangTujuan || ($isAdmin ?? false)) && $peminjaman && !$peminjaman->surat_jalan_kembali_id && !$isManagerView && !$isDivisiView)
+            @php
+                $allowReturnAction = ($canCreateReturn ?? false) && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView && !$isDivisiView;
+            @endphp
+
+            {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin --}}
+            @if($allowReturnAction)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Barang</h3>
@@ -1101,7 +1121,7 @@
                             @if($isAdmin ?? false)
                                 Mode admin: Anda dapat membuat surat jalan pengembalian untuk peminjaman ini.
                             @else
-                                Barang peminjaman sudah diterima. Jika sudah selesai digunakan, Anda dapat membuat surat jalan pengembalian.
+                                Barang peminjaman sudah diterima. Isi jumlah barang yang dikembalikan (boleh sebagian).
                             @endif
                         </p>
                         <button type="button"
@@ -1117,7 +1137,7 @@
             @endif
 
             {{-- Tombol Buat Ulang Pengembalian jika surat pengembalian ditolak --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->suratJalanKembali?->status === 'DITOLAK' && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView && !$isDivisiView)
+            @if($allowReturnAction && $peminjaman?->suratJalanKembali?->status === 'DITOLAK')
                 <div class="bg-red-50 border border-red-200 rounded-xl mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-red-900 mb-3 sm:mb-4">Pengembalian Ditolak</h3>
@@ -1240,7 +1260,7 @@
     </style>
 
     {{-- Modal Pengembalian Peminjaman --}}
-    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && (!$peminjaman->surat_jalan_kembali_id || $peminjaman->suratJalanKembali?->status === 'DITOLAK') && !$isDivisiView)
+    @if(($canCreateReturn ?? false) && !$isDivisiView)
     <x-modal name="return-peminjaman-modal" focusable>
         <div class="p-6"
              x-data="{
@@ -1488,12 +1508,17 @@
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
                     <div class="p-4">
                         <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
-                        <p class="text-xs text-gray-500">Jumlah otomatis penuh sesuai peminjaman.</p>
+                        <p class="text-xs text-gray-500">Isi jumlah yang dikembalikan (boleh sebagian). Sisa otomatis dihitung.</p>
                     </div>
 
                     {{-- Mobile Card Layout --}}
                     <div class="sm:hidden">
                         @forelse($peminjaman->items as $index => $item)
+                            @php
+                                $baseQty = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam);
+                                $returnedQty = (int) ($item->jumlah_dikembalikan ?? 0);
+                                $remainingQty = max(0, $baseQty - $returnedQty);
+                            @endphp
                             <div class="p-3 bg-white border-t border-gray-200">
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="text-xs font-semibold text-gray-500">Item #{{ $index + 1 }}</span>
@@ -1507,8 +1532,22 @@
                                         <span class="text-sm text-gray-900">{{ $item->item->satuan?->nama ?? '-' }}</span>
                                     </div>
                                     <div>
-                                        <span class="block text-xs text-gray-500">Jumlah</span>
-                                        <span class="text-sm font-semibold text-gray-900">{{ $item->jumlah_dipinjam }}</span>
+                                        <span class="block text-xs text-gray-500">Sisa</span>
+                                        <span class="text-sm font-semibold text-gray-900">{{ $remainingQty }}</span>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-xs text-gray-500 mb-1">Jumlah Dikembalikan</label>
+                                        <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}">
+                                        <input type="number"
+                                               name="items[{{ $index }}][jumlah]"
+                                               min="0"
+                                               max="{{ $remainingQty }}"
+                                               value="{{ old("items.$index.jumlah", $remainingQty) }}"
+                                               @disabled($remainingQty === 0)
+                                               class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                        @if($remainingQty === 0)
+                                            <p class="text-xs text-emerald-600 mt-1">Sudah dikembalikan.</p>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -1526,19 +1565,38 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Dikembalikan</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($peminjaman->items as $item)
+                                @forelse($peminjaman->items as $index => $item)
+                                    @php
+                                        $baseQty = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam);
+                                        $returnedQty = (int) ($item->jumlah_dikembalikan ?? 0);
+                                        $remainingQty = max(0, $baseQty - $returnedQty);
+                                    @endphp
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $item->jumlah_dipinjam }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $remainingQty }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}">
+                                            <input type="number"
+                                                   name="items[{{ $index }}][jumlah]"
+                                                   min="0"
+                                                   max="{{ $remainingQty }}"
+                                                   value="{{ old("items.$index.jumlah", $remainingQty) }}"
+                                                   @disabled($remainingQty === 0)
+                                                   class="w-28 rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                            @if($remainingQty === 0)
+                                                <span class="ml-2 text-xs text-emerald-600">Sudah dikembalikan</span>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">
+                                        <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">
                                             Tidak ada data item.
                                         </td>
                                     </tr>

@@ -42,19 +42,13 @@ class StokController extends Controller
         // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
         $totalBorrowed = PeminjamanItem::query()
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
-            ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
             ->where('peminjamans.gudang_peminjam_id', $gudangId)
-            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
             ->where(function ($query) {
                 $query->whereNotNull('peminjamans.waktu_diterima')
                     ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
             })
-            // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
-            ->where(function ($query) {
-                $query->whereNull('peminjamans.surat_jalan_kembali_id')
-                    ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
-            })
-            ->sum('peminjaman_items.jumlah_dipinjam');
+            ->sum(DB::raw('GREATEST(COALESCE(peminjaman_items.jumlah_diterima, peminjaman_items.jumlah_dipinjam) - COALESCE(peminjaman_items.jumlah_dikembalikan, 0), 0)'));
 
         $categories = ItemCategory::orderBy('nama')->get();
         $satuans = ItemUnit::orderBy('nama')->get();
@@ -156,19 +150,13 @@ class StokController extends Controller
             // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam (dalam proses pengembalian)
             // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
             $borrowedTotals = PeminjamanItem::query()
-                ->select('peminjaman_items.item_id', DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total'))
+                ->select('peminjaman_items.item_id', DB::raw('SUM(GREATEST(COALESCE(peminjaman_items.jumlah_diterima, peminjaman_items.jumlah_dipinjam) - COALESCE(peminjaman_items.jumlah_dikembalikan, 0), 0)) as total'))
                 ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
-                ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
                 ->where('peminjamans.gudang_peminjam_id', $gudangId)
-                ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
+                ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
                 ->where(function ($query) {
                     $query->whereNotNull('peminjamans.waktu_diterima')
                         ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
-                })
-                // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
-                ->where(function ($query) {
-                    $query->whereNull('peminjamans.surat_jalan_kembali_id')
-                        ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
                 })
                 ->whereIn('peminjaman_items.item_id', $itemIds)
                 ->groupBy('peminjaman_items.item_id')
@@ -196,7 +184,7 @@ class StokController extends Controller
      */
     private function getBarangDipinjamkan(int $gudangId, ?string $search, ?string $status, string $sort = 'terbaru')
     {
-        return Peminjaman::with(['gudangPeminjam', 'items.item'])
+        return Peminjaman::with(['gudangPeminjam', 'items.item', 'suratJalanKirim', 'suratJalanKembali'])
             ->where('gudang_pemilik_id', $gudangId)
             ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
             ->when($search, function ($query, $search) {
@@ -230,7 +218,7 @@ class StokController extends Controller
      */
     private function getBarangPinjaman(int $gudangId, ?string $search, ?string $status, string $sort = 'terbaru')
     {
-        return Peminjaman::with(['gudangPemilik', 'items.item'])
+        return Peminjaman::with(['gudangPemilik', 'items.item', 'suratJalanKirim', 'suratJalanKembali'])
             ->where('gudang_peminjam_id', $gudangId)
             ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
             ->when($search, function ($query, $search) {
@@ -322,25 +310,16 @@ class StokController extends Controller
         // Security check
         $this->verifyStockOwnership($stock);
 
-        // Exclude:
-        // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam
-        // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
         $borrowedQty = PeminjamanItem::query()
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
-            ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
             ->where('peminjamans.gudang_peminjam_id', $stock->gudang_id)
             ->where('peminjaman_items.item_id', $stock->item_id)
-            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
             ->where(function ($query) {
                 $query->whereNotNull('peminjamans.waktu_diterima')
                     ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
             })
-            // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
-            ->where(function ($query) {
-                $query->whereNull('peminjamans.surat_jalan_kembali_id')
-                    ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
-            })
-            ->sum('peminjaman_items.jumlah_dipinjam');
+            ->sum(DB::raw('GREATEST(COALESCE(peminjaman_items.jumlah_diterima, peminjaman_items.jumlah_dipinjam) - COALESCE(peminjaman_items.jumlah_dikembalikan, 0), 0)'));
 
         $stock->borrowed_qty = (int) $borrowedQty;
         $stock->own_qty = max(0, (int) $stock->jumlah - $stock->borrowed_qty);
