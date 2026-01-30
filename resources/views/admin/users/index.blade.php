@@ -154,7 +154,7 @@
                                 </td>
 
                                 <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
-                                    @if($user->role === 'manager' && $user->managedGudangs->count() > 0)
+                                    @if(in_array($user->role, ['manager', 'admin'], true) && $user->managedGudangs->count() > 0)
                                         <div class="text-gray-700">
                                             {{ implode(', ', $user->managedGudangs->pluck('nama')->all()) }}
                                         </div>
@@ -279,7 +279,7 @@
                                 </div>
                             </div>
 
-                            <div x-show="form.role !== 'manager'">
+                            <div x-show="form.role !== 'manager' && form.role !== 'admin'">
                                 <label class="block text-sm font-medium text-gray-700">Lokasi Gudang</label>
                                 <select name="gudang_id" x-model="form.gudang_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
                                     <option value="">Tidak ada gudang</option>
