@@ -48,6 +48,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::with([
@@ -61,6 +63,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
             }
 
@@ -88,6 +92,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::with([
@@ -101,6 +107,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
             }
 
@@ -130,6 +138,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::with([
@@ -143,6 +153,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
             }
 

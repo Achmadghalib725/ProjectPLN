@@ -342,9 +342,13 @@
             @php
                 // Determine if we should show blurred overlay instead of progress
                 $returnStatus = $peminjaman?->suratJalanKembali?->status;
+                $totalReturnedQty = ($tipe === 'PEMINJAMAN' && $peminjaman) ? $peminjaman->items->sum(fn ($item) => (int) ($item->jumlah_dikembalikan ?? 0)) : 0;
+                $totalBorrowedQty = ($tipe === 'PEMINJAMAN' && $peminjaman) ? $peminjaman->items->sum(fn ($item) => (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam)) : 0;
+                $isPartialReturnPending = $tipe === 'PEMINJAMAN' && $peminjaman && $totalReturnedQty > 0 && $totalBorrowedQty > $totalReturnedQty;
                 $showBlurredOverlay = in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DITOLAK'], true)
                     || ($tipe === 'PENGEMBALIAN' && $suratStatus === 'DIPERIKSA_PENGIRIM')
-                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true))
+                    || $isPartialReturnPending;
             @endphp
 
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
@@ -579,7 +583,9 @@
 
                 // Custom message for PENGEMBALIAN with DIPERIKSA_PENGIRIM
                 $returnStatus = $peminjaman?->suratJalanKembali?->status;
-                if ($tipe === 'PENGEMBALIAN' && $suratStatus === 'DIPERIKSA_PENGIRIM') {
+                if ($isPartialReturnPending) {
+                    $draftMessage = 'Status: MENUNGGU PERSETUJUAN - Menunggu sisa barang dikembalikan.';
+                } elseif ($tipe === 'PENGEMBALIAN' && $suratStatus === 'DIPERIKSA_PENGIRIM') {
                     $draftMessage = 'Status: MENUNGGU PEMERIKSAAN - Menunggu pemeriksaan security pengirim (Gudang Peminjam).';
                 } elseif ($tipe === 'PEMINJAMAN' && $returnStatus === 'DIPERIKSA_PENGIRIM') {
                     $draftMessage = 'Status: MENUNGGU PEMERIKSAAN PENGEMBALIAN - Surat pengembalian terkait sedang menunggu pemeriksaan security.';
@@ -598,7 +604,7 @@
                 // Check if PEMINJAMAN with return pending (security check or manager approval)
                 $isPeminjamanReturnPending = $tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true);
 
-                $draftIcon = $isPeminjamanReturnPending ? 'clock' : match ($suratStatus) {
+                $draftIcon = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'clock' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
                     'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
@@ -606,7 +612,7 @@
                     default => 'document',
                 };
 
-                $draftBgClass = $isPeminjamanReturnPending ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
+                $draftBgClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
@@ -614,7 +620,7 @@
                     default => 'bg-gray-50 border-gray-200',
                 };
 
-                $draftTextClass = $isPeminjamanReturnPending ? 'text-orange-800' : match ($suratStatus) {
+                $draftTextClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'text-orange-800' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
                     'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
@@ -622,7 +628,7 @@
                     default => 'text-gray-700',
                 };
 
-                $draftIconBgClass = $isPeminjamanReturnPending ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
+                $draftIconBgClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
@@ -745,15 +751,24 @@
                         @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && !$suratJalan->gudang_tujuan_is_custom)
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Surat Pengembalian Terkait</p>
-                            @if($peminjaman->suratJalanKembali)
-                                <a href="{{ route('security.show', $peminjaman->suratJalanKembali->id) }}"
-                                   class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                    </svg>
-                                    <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
-
-                                </a>
+                            @php
+                                $returnSuratJalans = $peminjaman->suratJalanPengembalians ?? collect();
+                                if ($peminjaman->suratJalanKembali && !$returnSuratJalans->contains('id', $peminjaman->suratJalanKembali->id)) {
+                                    $returnSuratJalans = $returnSuratJalans->push($peminjaman->suratJalanKembali);
+                                }
+                            @endphp
+                            @if($returnSuratJalans->isNotEmpty())
+                                <div class="mt-1 flex flex-wrap gap-3 text-sm font-medium">
+                                    @foreach($returnSuratJalans as $returnSuratJalan)
+                                        <a href="{{ route('security.show', $returnSuratJalan->id) }}"
+                                           class="inline-flex items-center gap-2 text-green-600 hover:text-green-800 transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                            </svg>
+                                            <span>{{ $returnSuratJalan->nomor }}</span>
+                                        </a>
+                                    @endforeach
+                                </div>
                             @else
                                 <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -913,6 +928,15 @@
                 $returnInfoMessage = $peminjaman->suratJalanKembali->status === 'MENUNGGU_PERSETUJUAN'
                     ? 'sedang menunggu persetujuan manager.'
                     : 'sedang menunggu pemeriksaan security pengirim.';
+                $returnSuratJalans = $peminjaman->suratJalanPengembalians ?? collect();
+                if ($peminjaman->suratJalanKembali && !$returnSuratJalans->contains('id', $peminjaman->suratJalanKembali->id)) {
+                    $returnSuratJalans = $returnSuratJalans->push($peminjaman->suratJalanKembali);
+                }
+                $returnLinks = $returnSuratJalans->map(function ($returnSuratJalan) {
+                    $url = route('security.show', $returnSuratJalan->id);
+                    $nomor = $returnSuratJalan->nomor;
+                    return "<a href=\"{$url}\" class=\"underline hover:text-orange-900\">{$nomor}</a>";
+                })->implode(', ');
             @endphp
             <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 sm:p-6 mt-4 sm:mt-6">
                 <div class="flex items-start sm:items-center gap-3 text-orange-800">
@@ -920,7 +944,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     <span class="font-semibold text-sm sm:text-base">
-                        Surat Pengembalian Terkait (<a href="{{ route('security.show', $peminjaman->suratJalanKembali->id) }}" class="underline hover:text-orange-900">{{ $peminjaman->suratJalanKembali->nomor }}</a>) {{ $returnInfoMessage }}
+                        Surat Pengembalian Terkait ({!! $returnLinks !!}) {{ $returnInfoMessage }}
                     </span>
                 </div>
             </div>

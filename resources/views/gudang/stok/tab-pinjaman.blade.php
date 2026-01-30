@@ -335,6 +335,12 @@
                                     ->values();
                                 $itemCount = $remainingItems->count();
                                 $totalQty = $remainingItems->sum('remaining_qty');
+                                $canReturn = $peminjaman->status === 'DITERIMA'
+                                    && $remainingItems->isNotEmpty()
+                                    && (
+                                        !$peminjaman->suratJalanKembali
+                                        || in_array($peminjaman->suratJalanKembali->status, ['SELESAI', 'DITOLAK'], true)
+                                    );
                             @endphp
                             <div x-data="{
                                     showItems: false,
@@ -548,7 +554,7 @@
                                 @endif
 
                                 {{-- Tombol Kembalikan --}}
-                                @if($peminjaman->status === 'DITERIMA' && !$peminjaman->suratJalanKembali)
+                                @if($canReturn)
                                     <a href="{{ route('gudang.surat-jalan.index') }}?open_return=1&peminjaman_id={{ $peminjaman->id }}"
                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
                                        title="Kembalikan Barang">

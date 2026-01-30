@@ -804,6 +804,7 @@ class AdminSuratJalanController extends Controller
                 'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
                 'gudang_asal_id' => $gudangId,
                 'gudang_tujuan_id' => $peminjaman->gudang_pemilik_id,
+                'peminjaman_id' => $peminjaman->id,
                 'pic_tujuan_id' => $picTujuanId,
                 'pic_tujuan_custom_nama' => $picCustomData['nama'] ?? null,
                 'pic_tujuan_custom_jabatan' => $picCustomData['jabatan'] ?? null,

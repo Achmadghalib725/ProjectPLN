@@ -453,10 +453,14 @@
             @php
                 // Determine if we should show blurred overlay instead of progress
                 $returnStatus = $peminjaman?->suratJalanKembali?->status;
+                $totalReturnedQty = ($tipe === 'PEMINJAMAN' && $peminjaman) ? $peminjaman->items->sum(fn ($item) => (int) ($item->jumlah_dikembalikan ?? 0)) : 0;
+                $totalBorrowedQty = ($tipe === 'PEMINJAMAN' && $peminjaman) ? $peminjaman->items->sum(fn ($item) => (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam)) : 0;
+                $isPartialReturnPending = $tipe === 'PEMINJAMAN' && $peminjaman && $totalReturnedQty > 0 && $totalBorrowedQty > $totalReturnedQty;
                 $showBlurredOverlay = in_array($suratStatus, ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK_PERSETUJUAN', 'DIPERIKSA_PENGIRIM', 'DITOLAK'], true)
-                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+                    || ($tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true))
+                    || $isPartialReturnPending;
                 // Exception: show progress if PEMINJAMAN is already in progress
-                $showProgress = !$showBlurredOverlay || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK' && !in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true));
+                $showProgress = !$showBlurredOverlay || ($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status !== 'DIAJUKAN' && $suratStatus !== 'DITOLAK' && !in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true) && !$isPartialReturnPending);
             @endphp
 
             <div id="surat-jalan-progress-container" data-surat-jalan-progress>
@@ -693,7 +697,9 @@
                 // Check if PEMINJAMAN with return pending (security check or manager approval)
                 $isPeminjamanReturnPending = $tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true);
 
-                if ($isPeminjamanReturnPending) {
+                if ($isPartialReturnPending) {
+                    $draftMessage = 'Status: MENUNGGU PERSETUJUAN - Menunggu sisa barang dikembalikan.';
+                } elseif ($isPeminjamanReturnPending) {
                     $draftMessage = $returnStatus === 'MENUNGGU_PERSETUJUAN'
                         ? 'Status: MENUNGGU PERSETUJUAN - Surat pengembalian terkait sedang menunggu persetujuan manager.'
                         : 'Status: MENUNGGU PEMERIKSAAN - Surat pengembalian terkait sedang menunggu pemeriksaan security.';
@@ -707,7 +713,7 @@
                     };
                 }
 
-                $draftIcon = $isPeminjamanReturnPending ? 'clock' : match ($suratStatus) {
+                $draftIcon = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'clock' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'clock',
                     'DIPERIKSA_PENGIRIM' => 'clock',
                     'DITOLAK_PERSETUJUAN' => 'x-circle',
@@ -715,7 +721,7 @@
                     default => 'document',
                 };
 
-                $draftBgClass = $isPeminjamanReturnPending ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
+                $draftBgClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'bg-orange-50 border-orange-200' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-50 border-orange-200',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-50 border-orange-200',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-50 border-red-200',
@@ -723,7 +729,7 @@
                     default => 'bg-gray-50 border-gray-200',
                 };
 
-                $draftTextClass = $isPeminjamanReturnPending ? 'text-orange-800' : match ($suratStatus) {
+                $draftTextClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'text-orange-800' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'text-orange-800',
                     'DIPERIKSA_PENGIRIM' => 'text-orange-800',
                     'DITOLAK_PERSETUJUAN' => 'text-red-800',
@@ -731,7 +737,7 @@
                     default => 'text-gray-700',
                 };
 
-                $draftIconBgClass = $isPeminjamanReturnPending ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
+                $draftIconBgClass = ($isPeminjamanReturnPending || $isPartialReturnPending) ? 'bg-orange-100 text-orange-600' : match ($suratStatus) {
                     'MENUNGGU_PERSETUJUAN' => 'bg-orange-100 text-orange-600',
                     'DIPERIKSA_PENGIRIM' => 'bg-orange-100 text-orange-600',
                     'DITOLAK_PERSETUJUAN' => 'bg-red-100 text-red-600',
@@ -860,19 +866,29 @@
                         @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && !$suratJalan->gudang_tujuan_is_custom)
                         <div class="col-span-2">
                             <p class="text-xs sm:text-sm text-gray-500">Surat Pengembalian Terkait</p>
-                            @if($peminjaman->suratJalanKembali)
+                            @php
+                                $returnSuratJalans = $peminjaman->suratJalanPengembalians ?? collect();
+                                if ($peminjaman->suratJalanKembali && !$returnSuratJalans->contains('id', $peminjaman->suratJalanKembali->id)) {
+                                    $returnSuratJalans = $returnSuratJalans->push($peminjaman->suratJalanKembali);
+                                }
+                            @endphp
+                            @if($returnSuratJalans->isNotEmpty())
                                 @if($isDivisiView)
                                     <div class="mt-1 text-sm font-medium text-gray-700">
-                                        <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
+                                        <span>{{ $returnSuratJalans->pluck('nomor')->join(', ') }}</span>
                                     </div>
                                 @else
-                                    <a href="{{ route('gudang.surat-jalan.show', $peminjaman->suratJalanKembali->id) }}"
-                                       class="inline-flex items-center gap-2 mt-1 text-sm font-medium text-green-600 hover:text-green-800 transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                        </svg>
-                                        <span>{{ $peminjaman->suratJalanKembali->nomor }}</span>
-                                    </a>
+                                    <div class="mt-1 flex flex-wrap gap-3 text-sm font-medium">
+                                        @foreach($returnSuratJalans as $returnSuratJalan)
+                                            <a href="{{ route('gudang.surat-jalan.show', $returnSuratJalan->id) }}"
+                                               class="inline-flex items-center gap-2 text-green-600 hover:text-green-800 transition">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                                </svg>
+                                                <span>{{ $returnSuratJalan->nomor }}</span>
+                                            </a>
+                                        @endforeach
+                                    </div>
                                 @endif
                             @else
                                 <p class="inline-flex items-center gap-2 mt-1 text-sm text-yellow-600">

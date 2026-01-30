@@ -184,7 +184,7 @@ class StokController extends Controller
      */
     private function getBarangDipinjamkan(int $gudangId, ?string $search, ?string $status, string $sort = 'terbaru')
     {
-        return Peminjaman::with(['gudangPeminjam', 'items.item'])
+        return Peminjaman::with(['gudangPeminjam', 'items.item', 'suratJalanKirim', 'suratJalanKembali'])
             ->where('gudang_pemilik_id', $gudangId)
             ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
             ->when($search, function ($query, $search) {
@@ -218,7 +218,7 @@ class StokController extends Controller
      */
     private function getBarangPinjaman(int $gudangId, ?string $search, ?string $status, string $sort = 'terbaru')
     {
-        return Peminjaman::with(['gudangPemilik', 'items.item'])
+        return Peminjaman::with(['gudangPemilik', 'items.item', 'suratJalanKirim', 'suratJalanKembali'])
             ->where('gudang_peminjam_id', $gudangId)
             ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
             ->when($search, function ($query, $search) {

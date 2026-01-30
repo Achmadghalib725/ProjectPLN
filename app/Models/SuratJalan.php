@@ -96,6 +96,11 @@ class SuratJalan extends Model
         return $this->hasOne(Peminjaman::class, 'surat_jalan_kembali_id');
     }
 
+    public function peminjamanRef()
+    {
+        return $this->belongsTo(Peminjaman::class, 'peminjaman_id');
+    }
+
     /**
      * Generate hash SHA256 dari data dokumen untuk tanda tangan elektronik.
      * Hash ini akan digunakan untuk memverifikasi integritas dokumen.

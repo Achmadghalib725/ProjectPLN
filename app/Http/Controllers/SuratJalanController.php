@@ -675,6 +675,9 @@ class SuratJalanController extends Controller
         if (!$gudangId) {
             $gudangId = $peminjaman->gudang_peminjam_id;
         }
+        if ($gudangId !== $peminjaman->gudang_peminjam_id) {
+            abort(403, 'Hanya gudang peminjam yang dapat membuat surat pengembalian.');
+        }
 
         if ($peminjaman->status !== 'DITERIMA') {
             return redirect()
@@ -793,6 +796,7 @@ class SuratJalanController extends Controller
                 'nomor' => $this->generateSuratJalanNomor($tanggalKirim),
                 'gudang_asal_id' => $gudangId,
                 'gudang_tujuan_id' => $peminjaman->gudang_pemilik_id,
+                'peminjaman_id' => $peminjaman->id,
                 'pic_tujuan_id' => $picTujuanId,
                 'pic_tujuan_custom_nama' => $picCustomData['nama'] ?? null,
                 'pic_tujuan_custom_jabatan' => $picCustomData['jabatan'] ?? null,
@@ -907,6 +911,7 @@ class SuratJalanController extends Controller
                 'gudangPeminjam',
                 'gudangPemilik',
                 'items.item',
+                'suratJalanPengembalians',
             ];
             if ($withStatusHistories) {
                 $peminjamanRelations[] = 'suratJalanKirim.statusHistories.actor';
@@ -959,7 +964,8 @@ class SuratJalanController extends Controller
 
         $pics = collect();
         $hasOutstandingItems = $peminjaman ? $this->hasOutstandingItems($peminjaman) : false;
-        $canCreateReturn = $peminjaman && $peminjaman->status === 'DITERIMA' && $hasOutstandingItems && (
+        $isBorrowerGudang = $peminjaman && $user?->gudang_id && $peminjaman->gudang_peminjam_id === $user->gudang_id;
+        $canCreateReturn = $peminjaman && $peminjaman->status === 'DITERIMA' && $hasOutstandingItems && $isBorrowerGudang && (
             !$peminjaman->surat_jalan_kembali_id ||
             in_array($peminjaman->suratJalanKembali?->status, ['DITOLAK', 'SELESAI'], true)
         );
@@ -2128,6 +2134,7 @@ class SuratJalanController extends Controller
                 'pembuat',
                 'picTujuan',
                 'peminjaman.suratJalanKembali:id,nomor',  // Untuk PEMINJAMAN: cek apakah sudah ada pengembalian
+                'peminjaman.items',
                 'peminjamanKembali.suratJalanKirim:id,nomor',  // Untuk PENGEMBALIAN: ambil surat peminjaman asal
             ])
             ->withCount('items')
