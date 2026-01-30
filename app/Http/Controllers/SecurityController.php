@@ -48,6 +48,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::with([
@@ -61,6 +63,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
             }
 
@@ -88,6 +92,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::with([
@@ -101,6 +107,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
             }
 
@@ -130,6 +138,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
                 $peminjaman = Peminjaman::with([
@@ -143,6 +153,8 @@ class SecurityController extends Controller
                     'suratJalanKembali.statusHistories.actor',
                     'gudangPeminjam',
                     'gudangPemilik',
+                    'items',
+                    'suratJalanPengembalians',
                 ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
             }
 
@@ -394,12 +406,31 @@ class SecurityController extends Controller
                     $peminjaman->update(['status' => 'DITOLAK']);
                 }
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-                $peminjaman = Peminjaman::where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with('items')
+                    ->where('surat_jalan_kembali_id', $suratJalan->id)
+                    ->first();
                 if ($peminjaman) {
                     $peminjaman->update([
                         'status' => 'DITERIMA',
                         'waktu_pengembalian' => null,
                     ]);
+
+                    $returnTotals = $suratJalan->items
+                        ->groupBy('item_id')
+                        ->map(fn ($rows) => (int) $rows->sum('jumlah'));
+
+                    $itemsByItemId = $peminjaman->items->keyBy('item_id');
+                    foreach ($returnTotals as $itemId => $qty) {
+                        $peminjamanItem = $itemsByItemId->get((int) $itemId);
+                        if (!$peminjamanItem) {
+                            continue;
+                        }
+                        $returned = (int) ($peminjamanItem->jumlah_dikembalikan ?? 0);
+                        $newReturned = max(0, $returned - (int) $qty);
+                        if ($newReturned !== $returned) {
+                            $peminjamanItem->update(['jumlah_dikembalikan' => $newReturned]);
+                        }
+                    }
 
                     // Sync status surat jalan peminjaman (kirim)
                     if ($peminjaman->surat_jalan_kirim_id) {

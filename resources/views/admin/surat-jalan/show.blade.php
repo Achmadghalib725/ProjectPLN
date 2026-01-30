@@ -1055,8 +1055,12 @@
                 </div>
             @endif
 
-            {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin (status DITERIMA, tipe PEMINJAMAN) --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $suratJalan->status === 'DITERIMA' && ($isGudangTujuan || ($isAdmin ?? false)) && $peminjaman && !$peminjaman->surat_jalan_kembali_id && !$isManagerView)
+            @php
+                $allowReturnAction = ($canCreateReturn ?? false) && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView;
+            @endphp
+
+            {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin --}}
+            @if($allowReturnAction)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Barang</h3>
@@ -1064,7 +1068,7 @@
                             @if($isAdmin ?? false)
                                 Mode admin: Anda dapat membuat surat jalan pengembalian untuk peminjaman ini.
                             @else
-                                Barang peminjaman sudah diterima. Jika sudah selesai digunakan, Anda dapat membuat surat jalan pengembalian.
+                                Barang peminjaman sudah diterima. Isi jumlah barang yang dikembalikan (boleh sebagian).
                             @endif
                         </p>
                         <button type="button"
@@ -1080,7 +1084,7 @@
             @endif
 
             {{-- Tombol Buat Ulang Pengembalian jika surat pengembalian ditolak --}}
-            @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->suratJalanKembali?->status === 'DITOLAK' && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView)
+            @if($allowReturnAction && $peminjaman?->suratJalanKembali?->status === 'DITOLAK')
                 <div class="bg-red-50 border border-red-200 rounded-xl mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-red-900 mb-3 sm:mb-4">Pengembalian Ditolak</h3>
@@ -1203,7 +1207,7 @@
     </style>
 
     {{-- Modal Pengembalian Peminjaman --}}
-    @if($suratJalan->tipe === 'PEMINJAMAN' && $peminjaman && $peminjaman->status === 'DITERIMA' && (!$peminjaman->surat_jalan_kembali_id || $peminjaman->suratJalanKembali?->status === 'DITOLAK'))
+    @if(($canCreateReturn ?? false))
     <x-modal name="return-peminjaman-modal" focusable>
         <div class="p-6"
              x-data="{
@@ -1449,12 +1453,17 @@
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
                     <div class="p-4">
                         <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
-                        <p class="text-xs text-gray-500">Jumlah otomatis penuh sesuai peminjaman.</p>
+                        <p class="text-xs text-gray-500">Isi jumlah yang dikembalikan (boleh sebagian). Sisa otomatis dihitung.</p>
                     </div>
 
                     {{-- Mobile Card Layout --}}
                     <div class="sm:hidden">
                         @forelse($peminjaman->items as $index => $item)
+                            @php
+                                $baseQty = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam);
+                                $returnedQty = (int) ($item->jumlah_dikembalikan ?? 0);
+                                $remainingQty = max(0, $baseQty - $returnedQty);
+                            @endphp
                             <div class="p-3 bg-white border-t border-gray-200">
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="text-xs font-semibold text-gray-500">Item #{{ $index + 1 }}</span>
@@ -1468,8 +1477,22 @@
                                         <span class="text-sm text-gray-900">{{ $item->item->satuan?->nama ?? '-' }}</span>
                                     </div>
                                     <div>
-                                        <span class="block text-xs text-gray-500">Jumlah</span>
-                                        <span class="text-sm font-semibold text-gray-900">{{ $item->jumlah_dipinjam }}</span>
+                                        <span class="block text-xs text-gray-500">Sisa</span>
+                                        <span class="text-sm font-semibold text-gray-900">{{ $remainingQty }}</span>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-xs text-gray-500 mb-1">Jumlah Dikembalikan</label>
+                                        <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}">
+                                        <input type="number"
+                                               name="items[{{ $index }}][jumlah]"
+                                               min="0"
+                                               max="{{ $remainingQty }}"
+                                               value="{{ old("items.$index.jumlah", $remainingQty) }}"
+                                               @disabled($remainingQty === 0)
+                                               class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                        @if($remainingQty === 0)
+                                            <p class="text-xs text-emerald-600 mt-1">Sudah dikembalikan.</p>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -1487,19 +1510,38 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Dikembalikan</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($peminjaman->items as $item)
+                                @forelse($peminjaman->items as $index => $item)
+                                    @php
+                                        $baseQty = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam);
+                                        $returnedQty = (int) ($item->jumlah_dikembalikan ?? 0);
+                                        $remainingQty = max(0, $baseQty - $returnedQty);
+                                    @endphp
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $item->item->kode ?? '-' }} - {{ $item->item->nama ?? 'Item' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $item->jumlah_dipinjam }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ $remainingQty }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}">
+                                            <input type="number"
+                                                   name="items[{{ $index }}][jumlah]"
+                                                   min="0"
+                                                   max="{{ $remainingQty }}"
+                                                   value="{{ old("items.$index.jumlah", $remainingQty) }}"
+                                                   @disabled($remainingQty === 0)
+                                                   class="w-28 rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                            @if($remainingQty === 0)
+                                                <span class="ml-2 text-xs text-emerald-600">Sudah dikembalikan</span>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">
+                                        <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">
                                             Tidak ada data item.
                                         </td>
                                     </tr>

@@ -1334,10 +1334,14 @@
                     'tanggal_kirim' => $p->suratJalanKirim?->tanggal?->format('Y-m-d')
                         ?? $p->waktu_kirim?->format('Y-m-d'),
                     'items' => $p->items->map(fn($item) => [
+                        'id' => $item->id,
                         'kode' => $item->item->kode ?? '-',
                         'nama' => $item->item->nama ?? 'Item',
                         'satuan' => $item->item->satuan?->nama ?? '-',
-                        'jumlah' => $item->jumlah_dipinjam,
+                        'jumlah_dipinjam' => $item->jumlah_dipinjam,
+                        'jumlah_diterima' => $item->jumlah_diterima,
+                        'jumlah_dikembalikan' => $item->jumlah_dikembalikan,
+                        'remaining' => max(0, (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam) - (int) ($item->jumlah_dikembalikan ?? 0)),
                     ]),
                 ])->values()),
                 pics: @js(($pics ?? collect())->map(fn($pic) => [
@@ -1622,7 +1626,7 @@
                 <div class="bg-gray-50 rounded-lg border border-gray-200">
                     <div class="p-4">
                         <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
-                        <p class="text-xs text-gray-500">Jumlah otomatis penuh sesuai peminjaman.</p>
+                        <p class="text-xs text-gray-500">Isi jumlah yang dikembalikan (boleh sebagian). Sisa otomatis dihitung.</p>
                     </div>
 
                     {{-- Mobile Card Layout --}}
@@ -1646,8 +1650,22 @@
                                                 <span class="text-sm text-gray-900" x-text="item.satuan"></span>
                                             </div>
                                             <div>
-                                                <span class="block text-xs text-gray-500">Jumlah</span>
-                                                <span class="text-sm font-semibold text-gray-900" x-text="item.jumlah"></span>
+                                                <span class="block text-xs text-gray-500">Sisa</span>
+                                                <span class="text-sm font-semibold text-gray-900" x-text="item.remaining"></span>
+                                            </div>
+                                            <div class="col-span-2">
+                                                <label class="block text-xs text-gray-500 mb-1">Jumlah Dikembalikan</label>
+                                                <input type="hidden"
+                                                       :name="`items[${idx}][peminjaman_item_id]`"
+                                                       :value="item.id">
+                                                <input type="number"
+                                                       :name="`items[${idx}][jumlah]`"
+                                                       min="0"
+                                                       :max="item.remaining"
+                                                       :value="item.remaining"
+                                                       :disabled="item.remaining === 0"
+                                                       class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                                <p class="text-xs text-emerald-600 mt-1" x-show="item.remaining === 0">Sudah dikembalikan.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1663,13 +1681,14 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Dikembalikan</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <template x-if="!selectedPeminjaman()">
                                     <tr>
-                                        <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">
+                                        <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">
                                             Pilih kode peminjaman untuk melihat item.
                                         </td>
                                     </tr>
@@ -1679,7 +1698,20 @@
                                         <tr>
                                             <td class="px-4 py-3 text-sm text-gray-900" x-text="item.kode + ' - ' + item.nama"></td>
                                             <td class="px-4 py-3 text-sm text-gray-500" x-text="item.satuan"></td>
-                                            <td class="px-4 py-3 text-sm text-gray-900" x-text="item.jumlah"></td>
+                                            <td class="px-4 py-3 text-sm text-gray-900" x-text="item.remaining"></td>
+                                            <td class="px-4 py-3 text-sm text-gray-900">
+                                                <input type="hidden"
+                                                       :name="`items[${idx}][peminjaman_item_id]`"
+                                                       :value="item.id">
+                                                <input type="number"
+                                                       :name="`items[${idx}][jumlah]`"
+                                                       min="0"
+                                                       :max="item.remaining"
+                                                       :value="item.remaining"
+                                                       :disabled="item.remaining === 0"
+                                                       class="w-28 rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
+                                                <span class="ml-2 text-xs text-emerald-600" x-show="item.remaining === 0">Sudah dikembalikan</span>
+                                            </td>
                                         </tr>
                                     </template>
                                 </template>

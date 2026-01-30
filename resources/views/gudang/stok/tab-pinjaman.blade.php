@@ -152,8 +152,23 @@
                 $isOverdue = $peminjaman->batas_waktu_kembali &&
                              $peminjaman->batas_waktu_kembali->isPast() &&
                              $isActiveStatus;
-                $itemCount = $peminjaman->items->count();
-                $totalQty = $peminjaman->items->sum(fn($i) => $i->jumlah_dipinjam ?? $i->jumlah);
+                $remainingItems = $peminjaman->items
+                    ->map(function ($item) {
+                        $base = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam);
+                        $returned = (int) ($item->jumlah_dikembalikan ?? 0);
+                        $item->remaining_qty = max(0, $base - $returned);
+                        return $item;
+                    })
+                    ->filter(fn ($item) => $item->remaining_qty > 0)
+                    ->values();
+                $itemCount = $remainingItems->count();
+                $totalQty = $remainingItems->sum('remaining_qty');
+                $canReturn = $peminjaman->status === 'DITERIMA'
+                    && $remainingItems->isNotEmpty()
+                    && (
+                        !$peminjaman->suratJalanKembali
+                        || in_array($peminjaman->suratJalanKembali->status, ['SELESAI', 'DITOLAK'], true)
+                    );
                 $statusColor = match($peminjaman->status) {
                     'DIKIRIM' => 'bg-blue-100 text-blue-800',
                     'DIPERIKSA' => 'bg-cyan-100 text-cyan-800',
@@ -245,7 +260,7 @@
                     @endif
 
                     {{-- Tombol Kembalikan --}}
-                    @if($peminjaman->status === 'DITERIMA' && !$peminjaman->suratJalanKembali)
+                    @if($canReturn)
                         <a href="{{ route('gudang.surat-jalan.index') }}?open_return=1&peminjaman_id={{ $peminjaman->id }}"
                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
                            title="Kembalikan Barang">
@@ -309,8 +324,23 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $itemCount = $peminjaman->items->count();
-                                $totalQty = $peminjaman->items->sum(fn($i) => $i->jumlah_dipinjam ?? $i->jumlah);
+                                $remainingItems = $peminjaman->items
+                                    ->map(function ($item) {
+                                        $base = (int) ($item->jumlah_diterima ?? $item->jumlah_dipinjam);
+                                        $returned = (int) ($item->jumlah_dikembalikan ?? 0);
+                                        $item->remaining_qty = max(0, $base - $returned);
+                                        return $item;
+                                    })
+                                    ->filter(fn ($item) => $item->remaining_qty > 0)
+                                    ->values();
+                                $itemCount = $remainingItems->count();
+                                $totalQty = $remainingItems->sum('remaining_qty');
+                                $canReturn = $peminjaman->status === 'DITERIMA'
+                                    && $remainingItems->isNotEmpty()
+                                    && (
+                                        !$peminjaman->suratJalanKembali
+                                        || in_array($peminjaman->suratJalanKembali->status, ['SELESAI', 'DITOLAK'], true)
+                                    );
                             @endphp
                             <div x-data="{
                                     showItems: false,
@@ -355,15 +385,19 @@
                                             <span class="text-xs font-semibold text-gray-500 uppercase">Daftar Item ({{ $itemCount }})</span>
                                         </div>
                                         <div class="p-2 space-y-1 max-h-36 overflow-y-auto">
-                                            @foreach($peminjaman->items as $item)
-                                                <div class="text-sm text-gray-900 flex justify-between items-center p-2 hover:bg-gray-50 rounded">
-                                                    <div class="flex-1 min-w-0 mr-2">
-                                                        <span class="font-medium">{{ $item->item->kode ?? '-' }}</span>
-                                                        <span class="text-gray-500 block text-xs truncate">{{ $item->item->nama ?? '-' }}</span>
+                                            @if($remainingItems->isEmpty())
+                                                <div class="text-xs text-gray-500 px-2 py-2">Semua item sudah dikembalikan.</div>
+                                            @else
+                                                @foreach($remainingItems as $item)
+                                                    <div class="text-sm text-gray-900 flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                        <div class="flex-1 min-w-0 mr-2">
+                                                            <span class="font-medium">{{ $item->item->kode ?? '-' }}</span>
+                                                            <span class="text-gray-500 block text-xs truncate">{{ $item->item->nama ?? '-' }}</span>
+                                                        </div>
+                                                        <span class="text-pln-primary font-bold bg-pln-primary/10 px-2 py-0.5 rounded shrink-0">{{ $item->remaining_qty }}</span>
                                                     </div>
-                                                    <span class="text-pln-primary font-bold bg-pln-primary/10 px-2 py-0.5 rounded shrink-0">{{ $item->jumlah_dipinjam ?? $item->jumlah }}</span>
-                                                </div>
-                                            @endforeach
+                                                @endforeach
+                                            @endif
                                         </div>
                                     </div>
                                 </template>
@@ -520,7 +554,7 @@
                                 @endif
 
                                 {{-- Tombol Kembalikan --}}
-                                @if($peminjaman->status === 'DITERIMA' && !$peminjaman->suratJalanKembali)
+                                @if($canReturn)
                                     <a href="{{ route('gudang.surat-jalan.index') }}?open_return=1&peminjaman_id={{ $peminjaman->id }}"
                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
                                        title="Kembalikan Barang">
