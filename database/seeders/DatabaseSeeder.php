@@ -136,5 +136,10 @@ class DatabaseSeeder extends Seeder
         // 7. PANGGIL ITEM MEKANIK SEEDER
         // ========================================
         $this->call(ItemMekanikSeeder::class);
+
+        // ========================================
+        // 8. PANGGIL ITEM TARAHAN SEEDER
+        // ========================================
+        $this->call(ItemTarahanSeeder::class);
     }
 }

@@ -100,7 +100,7 @@
                             <select name="role" onchange="this.form.submit()" class="border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-[#035b71] focus:border-[#035b71] block w-full md:w-48 p-2.5 cursor-pointer hover:bg-gray-50 transition-colors">
                                 <option value="">Semua Role</option>
                                 <option value="admin" {{ request('role') == 'admin' ? 'selected' : '' }}>Admin</option>
-                                <option value="operator_gudang" {{ request('role') == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
+                                <option value="operator_gudang" {{ request('role') == 'operator_gudang' ? 'selected' : '' }}>Tool Man</option>
                                 <option value="manager" {{ request('role') == 'manager' ? 'selected' : '' }}>Manager</option>
                                 <option value="security" {{ request('role') == 'security' ? 'selected' : '' }}>Security</option>
                                 <option value="penerima" {{ request('role') == 'penerima' ? 'selected' : '' }}>Penerima</option>
@@ -148,13 +148,13 @@
 
                                 <td class="px-4 py-2 whitespace-nowrap">
                                     <div class="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                                        {{ ucfirst(str_replace('_', ' ', $user->role)) }}
+                                        {{ $user->role_display_name }}
                                     </div>
                                     <div class="text-xs text-gray-500">{{ $user->jabatan ?? '-' }}</div>
                                 </td>
 
                                 <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
-                                    @if($user->role === 'manager' && $user->managedGudangs->count() > 0)
+                                    @if(in_array($user->role, ['manager', 'admin'], true) && $user->managedGudangs->count() > 0)
                                         <div class="text-gray-700">
                                             {{ implode(', ', $user->managedGudangs->pluck('nama')->all()) }}
                                         </div>
@@ -267,7 +267,7 @@
                                     <select name="role" x-model="form.role" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
                                         <option value="">Pilih Role</option>
                                         <option value="admin">Admin</option>
-                                        <option value="operator_gudang">Operator Gudang</option>
+                                        <option value="operator_gudang">Tool Man</option>
                                         <option value="manager">Manager</option>
                                         <option value="security">Security</option>
                                         <option value="penerima">Penerima</option>
@@ -279,7 +279,7 @@
                                 </div>
                             </div>
 
-                            <div x-show="form.role !== 'manager'">
+                            <div x-show="form.role !== 'manager' && form.role !== 'admin'">
                                 <label class="block text-sm font-medium text-gray-700">Lokasi Gudang</label>
                                 <select name="gudang_id" x-model="form.gudang_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
                                     <option value="">Tidak ada gudang</option>

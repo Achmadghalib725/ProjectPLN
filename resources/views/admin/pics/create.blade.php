@@ -58,7 +58,7 @@
                                 <select id="role" name="role" required class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer">
                                     <option value="">-- Pilih Role --</option>
                                     <option value="penerima" {{ old('role') === 'penerima' ? 'selected' : '' }}>Penerima</option>
-                                    <option value="operator_gudang" {{ old('role') === 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
+                                    <option value="operator_gudang" {{ old('role') === 'operator_gudang' ? 'selected' : '' }}>Tool Man</option>
                                 </select>
                                 <x-input-error :messages="$errors->get('role')" />
                             </div>

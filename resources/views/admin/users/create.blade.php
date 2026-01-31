@@ -73,7 +73,7 @@
                                     class="text-gray-700 font-semibold" />
                                 <select id="role" name="role" x-model="role"
                                     class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer">
-                                    <option value="operator_gudang" {{ old('role') == 'operator_gudang' ? 'selected' : '' }}>Operator Gudang</option>
+                                    <option value="operator_gudang" {{ old('role') == 'operator_gudang' ? 'selected' : '' }}>Tool Man</option>
                                     <option value="manager" {{ old('role') == 'manager' ? 'selected' : '' }}>Manager</option>
                                     <option value="security" {{ old('role') == 'security' ? 'selected' : '' }}>Security</option>
                                     <option value="penerima" {{ old('role') == 'penerima' ? 'selected' : '' }}>Penerima</option>
@@ -83,12 +83,12 @@
                             </div>
 
                             {{-- Gudang --}}
-                            <div class="space-y-2" x-show="role !== 'manager'">
+                            <div class="space-y-2" x-show="role !== 'manager' && role !== 'admin'">
                                 <x-input-label for="gudang_id" :value="__('Penempatan Gudang')"
                                     class="text-gray-700 font-semibold" />
                                 <select id="gudang_id" name="gudang_id"
                                     class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer">
-                                    <option value="">-- Pilih Gudang (Opsional untuk Admin) --</option>
+                                    <option value="">-- Pilih Gudang --</option>
                                     @foreach($gudangs as $gudang)
                                         <option value="{{ $gudang->id }}" {{ old('gudang_id') == $gudang->id ? 'selected' : '' }}>
                                             {{ $gudang->nama }} {{ $gudang->kode ? '(' . $gudang->kode . ')' : '' }}

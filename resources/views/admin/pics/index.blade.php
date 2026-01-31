@@ -263,7 +263,7 @@
                                         <select name="role" x-model="form.role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm">
                                             <option value="">-- Pilih Role --</option>
                                             <option value="penerima">Penerima</option>
-                                            <option value="operator_gudang">Operator Gudang</option>
+                                            <option value="operator_gudang">Tool Man</option>
                                         </select>
                                         @error('role') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>

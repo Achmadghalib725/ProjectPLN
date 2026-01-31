@@ -79,7 +79,7 @@ class UserController extends Controller
         ]);
 
         $user = DB::transaction(function () use ($validated) {
-            $gudangId = $validated['role'] === 'manager'
+            $gudangId = in_array($validated['role'], ['manager', 'admin'], true)
                 ? null
                 : ($validated['gudang_id'] ?? null);
 
@@ -97,6 +97,9 @@ class UserController extends Controller
 
             if ($validated['role'] === 'manager') {
                 $user->managedGudangs()->sync($validated['gudang_ids'] ?? []);
+            } elseif ($validated['role'] === 'admin') {
+                $allGudangIds = Gudang::where('kode', '!=', 'GDG-EXT')->pluck('id')->all();
+                $user->managedGudangs()->sync($allGudangIds);
             }
 
             if (in_array($validated['role'], ['operator_gudang', 'penerima'], true)) {
@@ -161,7 +164,7 @@ class UserController extends Controller
             $data['password'] = Hash::make($request->password);
         }
 
-        if ($request->role === 'manager') {
+        if (in_array($request->role, ['manager', 'admin'], true)) {
             $data['gudang_id'] = null;
         }
 
@@ -169,6 +172,9 @@ class UserController extends Controller
 
         if ($request->role === 'manager') {
             $user->managedGudangs()->sync($request->input('gudang_ids', []));
+        } elseif ($request->role === 'admin') {
+            $allGudangIds = Gudang::where('kode', '!=', 'GDG-EXT')->pluck('id')->all();
+            $user->managedGudangs()->sync($allGudangIds);
         } else {
             $user->managedGudangs()->detach();
         }
