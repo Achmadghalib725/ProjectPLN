@@ -1,6 +1,6 @@
-# ProjectPLN
+# E-Dispatch & Tool Management System
 
-ProjectPLN adalah aplikasi manajemen gudang dan surat jalan untuk pengiriman dan peminjaman barang antar gudang. Fokusnya adalah kontrol stok, alur persetujuan yang jelas, dan pelacakan status per peran.
+E-Dispatch & Tool Management System adalah aplikasi manajemen gudang dan surat jalan untuk pengiriman dan peminjaman barang antar gudang. Fokusnya adalah kontrol stok, alur persetujuan yang jelas, dan pelacakan status per peran.
 
 ## Daftar isi
 - Gambaran umum
@@ -95,7 +95,7 @@ Jika ingin manual:
 ## Konfigurasi .env penting
 Contoh isian inti yang perlu disesuaikan:
 ```
-APP_NAME=ProjectPLN
+APP_NAME=E-Dispatch & Tool Management System
 APP_ENV=local
 APP_DEBUG=true
 APP_URL=http://localhost:8000

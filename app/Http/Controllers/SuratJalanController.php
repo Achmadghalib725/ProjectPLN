@@ -24,6 +24,7 @@ use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\SuratJalanMultiSheetExport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Http\UploadedFile;
 
 class SuratJalanController extends Controller
 {
@@ -3050,13 +3051,93 @@ class SuratJalanController extends Controller
     private function storeAttachments(int $suratJalanId, array $files): void
     {
         foreach ($files as $file) {
-            $path = $file->store('surat-jalan-attachments', 'public');
+            $path = $this->storeOptimizedAttachment($file);
 
             SuratJalanAttachment::create([
                 'surat_jalan_id' => $suratJalanId,
                 'file_path' => $path,
                 'file_name' => $file->getClientOriginalName(),
             ]);
+        }
+    }
+
+    private function storeOptimizedAttachment(UploadedFile $file): string
+    {
+        $disk = Storage::disk('public');
+        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $path = 'surat-jalan-attachments/' . uniqid() . '_' . time() . '.' . $ext;
+        $maxDimension = 1600;
+        $jpegQuality = 82;
+        $pngCompression = 6;
+
+        try {
+            $imageInfo = @getimagesize($file->getPathname());
+            if (!$imageInfo) {
+                return $file->store('surat-jalan-attachments', 'public');
+            }
+
+            $imageType = $imageInfo[2] ?? null;
+            if (!in_array($imageType, [IMAGETYPE_JPEG, IMAGETYPE_PNG], true)) {
+                return $file->store('surat-jalan-attachments', 'public');
+            }
+
+            $source = $imageType === IMAGETYPE_PNG
+                ? @imagecreatefrompng($file->getPathname())
+                : @imagecreatefromjpeg($file->getPathname());
+
+            if (!$source) {
+                return $file->store('surat-jalan-attachments', 'public');
+            }
+
+            if ($imageType === IMAGETYPE_JPEG && function_exists('exif_read_data')) {
+                $exif = @exif_read_data($file->getPathname());
+                $orientation = (int) ($exif['Orientation'] ?? 1);
+                if ($orientation === 3) {
+                    $source = imagerotate($source, 180, 0);
+                } elseif ($orientation === 6) {
+                    $source = imagerotate($source, -90, 0);
+                } elseif ($orientation === 8) {
+                    $source = imagerotate($source, 90, 0);
+                }
+            }
+
+            $width = imagesx($source);
+            $height = imagesy($source);
+            $largestSide = max($width, $height);
+            $scale = $largestSide > 0 ? min(1, $maxDimension / $largestSide) : 1;
+
+            if ($scale < 1) {
+                $newWidth = (int) floor($width * $scale);
+                $newHeight = (int) floor($height * $scale);
+                $resized = imagecreatetruecolor($newWidth, $newHeight);
+                if ($imageType === IMAGETYPE_PNG) {
+                    imagealphablending($resized, false);
+                    imagesavealpha($resized, true);
+                    $transparent = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+                    imagefilledrectangle($resized, 0, 0, $newWidth, $newHeight, $transparent);
+                }
+                imagecopyresampled($resized, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                imagedestroy($source);
+                $source = $resized;
+            }
+
+            ob_start();
+            if ($imageType === IMAGETYPE_PNG) {
+                imagepng($source, null, $pngCompression);
+            } else {
+                imagejpeg($source, null, $jpegQuality);
+            }
+            $binary = ob_get_clean();
+            imagedestroy($source);
+
+            if ($binary === false) {
+                return $file->store('surat-jalan-attachments', 'public');
+            }
+
+            $disk->put($path, $binary);
+            return $path;
+        } catch (\Throwable $e) {
+            return $file->store('surat-jalan-attachments', 'public');
         }
     }
 
