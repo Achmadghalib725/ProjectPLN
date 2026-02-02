@@ -622,7 +622,7 @@ class AdminSuratJalanController extends Controller
                         $query->where('gudang_peminjam_id', $gudangId);
                     }
 
-                    $query->where('status', 'DITERIMA');
+                    $query->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN_SEBAGIAN']);
                 }),
             ],
             'pic_tujuan_id' => [
@@ -687,18 +687,23 @@ class AdminSuratJalanController extends Controller
             $gudangId = $peminjaman->gudang_peminjam_id;
         }
 
-        if ($peminjaman->status !== 'DITERIMA') {
+        if (!in_array($peminjaman->status, ['DITERIMA', 'DIKEMBALIKAN_SEBAGIAN'])) {
             return redirect()
                 ->back()
-                ->withErrors(['peminjaman_id' => 'Kode peminjaman tidak dalam status DITERIMA.'])
+                ->withErrors(['peminjaman_id' => 'Kode peminjaman tidak dalam status yang dapat dikembalikan.'])
                 ->withInput();
         }
 
-        $activeReturn = $peminjaman->suratJalanKembali;
-        if ($activeReturn && !in_array($activeReturn->status, ['DITOLAK', 'SELESAI'], true)) {
+        // Check for ANY return that is NOT completed (including DITOLAK)
+        // User must resubmit/edit the existing rejected return, not create a new one
+        $hasPendingReturn = $peminjaman->suratJalanPengembalians()
+            ->where('status', '!=', 'SELESAI')
+            ->exists();
+
+        if ($hasPendingReturn) {
             return redirect()
                 ->back()
-                ->withErrors(['peminjaman_id' => 'Surat pengembalian sebelumnya masih diproses.'])
+                ->withErrors(['peminjaman_id' => 'Masih ada surat pengembalian yang belum selesai. Silakan edit atau ajukan ulang surat yang sudah ada.'])
                 ->withInput();
         }
 
@@ -852,19 +857,19 @@ class AdminSuratJalanController extends Controller
                 $fullyReturned = $this->isPeminjamanFullyReturned($peminjaman);
 
                 $peminjaman->update([
-                    'status' => $fullyReturned ? 'SELESAI' : 'DITERIMA',
+                    'status' => $fullyReturned ? 'SELESAI' : 'DIKEMBALIKAN_SEBAGIAN',
                     'waktu_pengembalian' => $kembaliAt,
                     'waktu_selesai' => $fullyReturned ? $selesaiAt : null,
                 ]);
 
-                // Also update the original surat jalan kirim status to SELESAI if all items returned
+                // Also update the original surat jalan kirim status
                 if ($peminjaman->surat_jalan_kirim_id) {
                     $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
                     if ($suratJalanKirim) {
                         if ($fullyReturned) {
                             $suratJalanKirim->update(['status' => 'SELESAI']);
                         } elseif ($suratJalanKirim->status === 'DIKEMBALIKAN') {
-                            $suratJalanKirim->update(['status' => 'DITERIMA']);
+                            $suratJalanKirim->update(['status' => 'DIKEMBALIKAN_SEBAGIAN']);
                         }
                     }
                 }
@@ -955,10 +960,15 @@ class AdminSuratJalanController extends Controller
 
         $pics = collect();
         $hasOutstandingItems = $peminjaman ? $this->hasOutstandingItems($peminjaman) : false;
-        $canCreateReturn = $peminjaman && $peminjaman->status === 'DITERIMA' && $hasOutstandingItems && (
-            !$peminjaman->surat_jalan_kembali_id ||
-            in_array($peminjaman->suratJalanKembali?->status, ['DITOLAK', 'SELESAI'], true)
-        );
+
+        // Get pending return (if any) - NOT completed (including DITOLAK)
+        // User must resubmit rejected return, not create a new one
+        $pendingReturn = $peminjaman ? $peminjaman->suratJalanPengembalians()
+            ->where('status', '!=', 'SELESAI')
+            ->orderByDesc('id')
+            ->first() : null;
+
+        $canCreateReturn = $peminjaman && in_array($peminjaman->status, ['DITERIMA', 'DIKEMBALIKAN_SEBAGIAN']) && $hasOutstandingItems && !$pendingReturn;
         if ($canCreateReturn) {
             $pics = Schema::hasTable('pics')
                 ? Pic::query()->where('gudang_id', $peminjaman->gudang_pemilik_id)->orderBy('nama')->get()
@@ -968,7 +978,7 @@ class AdminSuratJalanController extends Controller
         $isAdmin = $user?->role === 'admin';
         $isManager = $user?->role === 'manager';
 
-        return view('admin.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin', 'isManager', 'accessibleGudangIds', 'canCreateReturn', 'hasOutstandingItems'));
+        return view('admin.surat-jalan.show', compact('suratJalan', 'peminjaman', 'pics', 'isAdmin', 'isManager', 'accessibleGudangIds', 'canCreateReturn', 'hasOutstandingItems', 'pendingReturn'));
     }
 
     public function edit($id)
@@ -1601,6 +1611,22 @@ class AdminSuratJalanController extends Controller
                 ->with('error', 'Lampiran wajib ada sebelum menyetujui surat jalan.');
         }
 
+        // For PENGEMBALIAN: Check if there's already another active return being processed
+        // This prevents double-approving returns for the same items
+        if ($suratJalan->tipe === 'PENGEMBALIAN' && $suratJalan->peminjaman_id) {
+            $otherActiveReturn = SuratJalan::where('peminjaman_id', $suratJalan->peminjaman_id)
+                ->where('tipe', 'PENGEMBALIAN')
+                ->where('id', '!=', $suratJalan->id)
+                ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DIPERIKSA_PENGIRIM', 'DIPERIKSA_PENERIMA'])
+                ->exists();
+
+            if ($otherActiveReturn) {
+                return redirect()
+                    ->route($redirectRoute, $suratJalan->id)
+                    ->with('error', 'Tidak dapat menyetujui karena ada surat pengembalian lain yang sedang diproses untuk peminjaman ini.');
+            }
+        }
+
         $managerSignerId = $this->resolveManagerSignerId($suratJalan->gudang_asal_id);
         if (!$managerSignerId) {
             return redirect()
@@ -1829,21 +1855,27 @@ class AdminSuratJalanController extends Controller
                     $peminjaman = Peminjaman::with('items')
                         ->where('surat_jalan_kembali_id', $suratJalan->id)
                         ->first();
+
+                    // Also check via peminjaman_id for partial returns
+                    if (!$peminjaman && $suratJalan->peminjaman_id) {
+                        $peminjaman = Peminjaman::with('items')->find($suratJalan->peminjaman_id);
+                    }
+
                     if ($peminjaman) {
                         $fullyReturned = $this->isPeminjamanFullyReturned($peminjaman);
                         $peminjaman->update([
-                            'status' => $fullyReturned ? 'SELESAI' : 'DITERIMA',
+                            'status' => $fullyReturned ? 'SELESAI' : 'DIKEMBALIKAN_SEBAGIAN',
                             'waktu_selesai' => $fullyReturned ? now() : null,
                         ]);
 
-                        // Update original surat jalan kirim status when fully returned
+                        // Update original surat jalan kirim status
                         if ($peminjaman->surat_jalan_kirim_id) {
                             $suratJalanKirim = SuratJalan::find($peminjaman->surat_jalan_kirim_id);
                             if ($suratJalanKirim) {
                                 if ($fullyReturned) {
                                     $suratJalanKirim->update(['status' => 'SELESAI']);
                                 } elseif ($suratJalanKirim->status === 'DIKEMBALIKAN') {
-                                    $suratJalanKirim->update(['status' => 'DITERIMA']);
+                                    $suratJalanKirim->update(['status' => 'DIKEMBALIKAN_SEBAGIAN']);
                                 }
                             }
                         }

@@ -110,6 +110,7 @@
                             <option value="DITERIMA" {{ request('status') === 'DITERIMA' ? 'selected' : '' }}>Diterima</option>
                             <option value="MENUNGGU_DIKEMBALIKAN" {{ request('status') === 'MENUNGGU_DIKEMBALIKAN' ? 'selected' : '' }}>Menunggu Dikembalikan</option>
                             <option value="DIKEMBALIKAN" {{ request('status') === 'DIKEMBALIKAN' ? 'selected' : '' }}>Dikembalikan</option>
+                            <option value="DIKEMBALIKAN_SEBAGIAN" {{ request('status') === 'DIKEMBALIKAN_SEBAGIAN' ? 'selected' : '' }}>Dikembalikan Sebagian</option>
                             <option value="overdue" {{ request('status') === 'overdue' ? 'selected' : '' }}>Overdue</option>
                         </select>
                     </div>
@@ -133,7 +134,7 @@
     <div class="sm:hidden">
         @forelse($peminjamans as $peminjaman)
             @php
-                $activeStatuses = ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'];
+                $activeStatuses = ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'];
                 $isActiveStatus = in_array($peminjaman->status, $activeStatuses);
                 $isOverdue = $peminjaman->batas_waktu_kembali &&
                              $peminjaman->batas_waktu_kembali->isPast() &&
@@ -154,9 +155,14 @@
                     'DIPERIKSA' => 'bg-cyan-100 text-cyan-800',
                     'DITERIMA' => 'bg-yellow-100 text-yellow-800',
                     'DIKEMBALIKAN' => 'bg-orange-100 text-orange-800',
+                    'DIKEMBALIKAN_SEBAGIAN' => 'bg-amber-100 text-amber-800',
                     'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
                     'SELESAI' => 'bg-green-100 text-green-800',
                     default => 'bg-gray-100 text-gray-800'
+                };
+                $statusLabel = match($peminjaman->status) {
+                    'DIKEMBALIKAN_SEBAGIAN' => 'SEBAGIAN',
+                    default => $peminjaman->status
                 };
             @endphp
             <div class="p-4 border-b border-gray-200 {{ $isOverdue ? 'bg-red-50 border-l-4 border-l-red-500' : '' }}">
@@ -166,7 +172,7 @@
                         <p class="text-xs text-gray-500">{{ $peminjaman->waktu_kirim?->format('d M Y') }}</p>
                     </div>
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                        {{ $peminjaman->status }}
+                        {{ $statusLabel }}
                     </span>
                 </div>
 
@@ -270,7 +276,7 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($peminjamans as $peminjaman)
                     @php
-                        $activeStatuses = ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'];
+                        $activeStatuses = ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'];
                         $isActiveStatus = in_array($peminjaman->status, $activeStatuses);
                         $isOverdue = $peminjaman->batas_waktu_kembali &&
                                      $peminjaman->batas_waktu_kembali->isPast() &&
@@ -435,13 +441,18 @@
                                     'DIPERIKSA' => 'bg-cyan-100 text-cyan-800',
                                     'DITERIMA' => 'bg-yellow-100 text-yellow-800',
                                     'DIKEMBALIKAN' => 'bg-orange-100 text-orange-800',
+                                    'DIKEMBALIKAN_SEBAGIAN' => 'bg-amber-100 text-amber-800',
                                     'MENUNGGU_DIKEMBALIKAN' => 'bg-yellow-100 text-yellow-800',
                                     'SELESAI' => 'bg-green-100 text-green-800',
                                     default => 'bg-gray-100 text-gray-800'
                                 };
+                                $statusLabel = match($peminjaman->status) {
+                                    'DIKEMBALIKAN_SEBAGIAN' => 'DIKEMBALIKAN SEBAGIAN',
+                                    default => $peminjaman->status
+                                };
                             @endphp
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                                {{ $peminjaman->status }}
+                                {{ $statusLabel }}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
