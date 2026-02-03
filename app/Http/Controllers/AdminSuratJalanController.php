@@ -969,7 +969,12 @@ class AdminSuratJalanController extends Controller
             ->orderByDesc('id')
             ->first() : null;
 
-        $canCreateReturn = $peminjaman && in_array($peminjaman->status, ['DITERIMA', 'DIKEMBALIKAN_SEBAGIAN']) && $hasOutstandingItems && !$pendingReturn;
+        // Allow creating return if peminjaman has outstanding items and no pending return
+        // Status must indicate items have been received (past DIKIRIM/DIPERIKSA stages)
+        $allowedStatusesForReturn = ['DITERIMA', 'DIKEMBALIKAN_SEBAGIAN', 'DIKEMBALIKAN', 'SELESAI'];
+        $canCreateReturn = $peminjaman &&
+            in_array($peminjaman->status, $allowedStatusesForReturn) &&
+            $hasOutstandingItems && !$pendingReturn;
         if ($canCreateReturn) {
             $pics = Schema::hasTable('pics')
                 ? Pic::query()->where('gudang_id', $peminjaman->gudang_pemilik_id)->orderBy('nama')->get()

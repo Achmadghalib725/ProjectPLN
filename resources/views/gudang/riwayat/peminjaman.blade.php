@@ -412,8 +412,22 @@
                             <div class="text-sm text-gray-900">{{ $pinjam->gudangPemilik?->nama ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div x-data="{ showItems: false, pos: { top: 0, left: 0 } }" @click.away="showItems = false" class="relative">
-                                <button x-ref="itemBtn" @click="pos = { top: $refs.itemBtn.getBoundingClientRect().bottom + 4, left: $refs.itemBtn.getBoundingClientRect().left }; showItems = !showItems" type="button"
+                            <div x-data="{
+                                showItems: false,
+                                pos: { top: 0, left: 0 },
+                                calcPos() {
+                                    const btn = this.$refs.itemBtn;
+                                    const rect = btn.getBoundingClientRect();
+                                    const dropdownHeight = 240;
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+                                        this.pos = { top: rect.top - dropdownHeight - 4, left: rect.left };
+                                    } else {
+                                        this.pos = { top: rect.bottom + 4, left: rect.left };
+                                    }
+                                }
+                            }" @click.away="showItems = false" class="relative">
+                                <button x-ref="itemBtn" @click="calcPos(); showItems = !showItems" type="button"
                                         class="inline-flex items-center gap-2 text-sm text-[#035b71] hover:text-[#035b71]/80 font-medium bg-[#035b71]/5 px-3 py-1.5 rounded-lg transition whitespace-nowrap">
                                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
@@ -494,8 +508,22 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @if($pinjam->surat_jalan_kirim_id || $pengembalianCount > 0)
-                                <div x-data="{ showSJ: false, pos: { top: 0, left: 0 } }" @click.away="showSJ = false" class="relative">
-                                    <button x-ref="sjBtn" @click="pos = { top: $refs.sjBtn.getBoundingClientRect().bottom + 4, left: $refs.sjBtn.getBoundingClientRect().right - 192 }; showSJ = !showSJ" type="button"
+                                <div x-data="{
+                                    showSJ: false,
+                                    pos: { top: 0, left: 0 },
+                                    calcPos() {
+                                        const btn = this.$refs.sjBtn;
+                                        const rect = btn.getBoundingClientRect();
+                                        const dropdownHeight = 120;
+                                        const spaceBelow = window.innerHeight - rect.bottom;
+                                        if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+                                            this.pos = { top: rect.top - dropdownHeight - 4, left: rect.right - 192 };
+                                        } else {
+                                            this.pos = { top: rect.bottom + 4, left: rect.right - 192 };
+                                        }
+                                    }
+                                }" @click.away="showSJ = false" class="relative">
+                                    <button x-ref="sjBtn" @click="calcPos(); showSJ = !showSJ" type="button"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#035b71] bg-[#035b71]/10 rounded-lg hover:bg-[#035b71]/20 transition">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -566,8 +594,22 @@
                                     <div class="text-sm text-gray-900">{{ $pinjam->gudangPemilik?->nama ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div x-data="{ showReturnItems: false, pos: { top: 0, left: 0 } }" @click.away="showReturnItems = false" class="relative">
-                                        <button x-ref="returnItemBtn" @click="pos = { top: $refs.returnItemBtn.getBoundingClientRect().bottom + 4, left: $refs.returnItemBtn.getBoundingClientRect().left }; showReturnItems = !showReturnItems" type="button"
+                                    <div x-data="{
+                                        showReturnItems: false,
+                                        pos: { top: 0, left: 0 },
+                                        calcPos() {
+                                            const btn = this.$refs.returnItemBtn;
+                                            const rect = btn.getBoundingClientRect();
+                                            const dropdownHeight = 240;
+                                            const spaceBelow = window.innerHeight - rect.bottom;
+                                            if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+                                                this.pos = { top: rect.top - dropdownHeight - 4, left: rect.left };
+                                            } else {
+                                                this.pos = { top: rect.bottom + 4, left: rect.left };
+                                            }
+                                        }
+                                    }" @click.away="showReturnItems = false" class="relative">
+                                        <button x-ref="returnItemBtn" @click="calcPos(); showReturnItems = !showReturnItems" type="button"
                                                 class="inline-flex items-center gap-2 text-sm text-[#035b71] hover:text-[#035b71]/80 font-medium bg-[#035b71]/5 px-3 py-1.5 rounded-lg transition whitespace-nowrap">
                                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
