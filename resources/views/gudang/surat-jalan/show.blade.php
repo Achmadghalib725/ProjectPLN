@@ -698,7 +698,7 @@
                 $isPeminjamanReturnPending = $tipe === 'PEMINJAMAN' && in_array($returnStatus, ['DIPERIKSA_PENGIRIM', 'MENUNGGU_PERSETUJUAN'], true);
 
                 if ($isPartialReturnPending) {
-                    $draftMessage = 'Status: MENUNGGU PERSETUJUAN - Menunggu sisa barang dikembalikan.';
+                    $draftMessage = 'Status: Menunggu sisa barang dikembalikan.';
                 } elseif ($isPeminjamanReturnPending) {
                     $draftMessage = $returnStatus === 'MENUNGGU_PERSETUJUAN'
                         ? 'Status: MENUNGGU PERSETUJUAN - Surat pengembalian terkait sedang menunggu persetujuan manager.'

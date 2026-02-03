@@ -57,7 +57,7 @@
                             <div class="space-y-2">
                                 <x-input-label for="gudang_id" :value="__('Lokasi Gudang')" class="text-gray-700 font-semibold" />
                                 <select id="gudang_id" name="gudang_id" class="block w-full border-gray-200 focus:ring-cyan-500 focus:border-cyan-500 rounded-xl shadow-sm bg-gray-50/50 transition-all cursor-pointer">
-                                    <option value="">-- Pilih Gudang (Opsional) --</option>
+                                    <option value="">-- Pilih Gudang --</option>
                                     @foreach($gudangs as $gudang)
                                         <option value="{{ $gudang->id }}" {{ old('gudang_id', $pic->gudang_id) == $gudang->id ? 'selected' : '' }}>
                                             {{ $gudang->nama }}

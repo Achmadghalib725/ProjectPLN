@@ -184,7 +184,7 @@
                     default => $peminjaman->status
                 };
             @endphp
-            <div class="p-4 border-b border-gray-200 {{ $isOverdue ? 'bg-red-50 border-l-4 border-l-red-500' : '' }}">
+            <div class="p-4 border-b border-gray-200 {{ $isOverdue ? 'bg-red-50 border-l-4 border-l-red-500' : '' }}" x-data="{ showItems: false }">
                 <div class="flex items-start justify-between mb-2">
                     <div class="flex-1">
                         <h3 class="font-semibold text-gray-900 text-sm">{{ $peminjaman->kode }}</h3>
@@ -201,8 +201,37 @@
                         <p class="font-medium text-gray-900 truncate">{{ $peminjaman->gudangPemilik->nama ?? '-' }}</p>
                     </div>
                     <div class="bg-gray-50 rounded p-2">
-                        <p class="text-gray-500">Item</p>
-                        <p class="font-medium text-gray-900">{{ $itemCount }} item ({{ $totalQty }} unit)</p>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Item</p>
+                                <p class="font-medium text-gray-900">{{ $itemCount }} item ({{ $totalQty }} unit)</p>
+                            </div>
+                            <button type="button"
+                                    @click="showItems = !showItems"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-pln-primary bg-pln-primary/10 rounded-md hover:bg-pln-primary/20 transition">
+                                <span>Lihat</span>
+                                <svg class="w-3 h-3 transition-transform" :class="showItems ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div x-show="showItems" x-collapse class="mt-2 space-y-1">
+                            @if($remainingItems->isEmpty())
+                                <div class="text-[11px] text-gray-500 px-2 py-1">Semua item sudah dikembalikan.</div>
+                            @else
+                                @foreach($remainingItems as $item)
+                                    <div class="flex items-center justify-between bg-white rounded-md border border-gray-100 px-2 py-1">
+                                        <div class="min-w-0 mr-2">
+                                            <p class="text-[11px] font-semibold text-gray-800 truncate">{{ $item->item->kode ?? '-' }}</p>
+                                            <p class="text-[11px] text-gray-500 truncate">{{ $item->item->nama ?? '-' }}</p>
+                                        </div>
+                                        <span class="text-[11px] font-bold text-pln-primary bg-pln-primary/10 px-2 py-0.5 rounded">
+                                            {{ $item->remaining_qty }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
                     </div>
                 </div>
 

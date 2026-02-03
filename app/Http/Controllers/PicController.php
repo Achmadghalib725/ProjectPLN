@@ -31,14 +31,14 @@ class PicController extends Controller
         }
 
         $pics = $query->latest()->paginate(10)->appends($request->all());
-        $gudangs = Gudang::all();
+        $gudangs = Gudang::where('kode', '!=', 'GDG-EXT')->get();
 
         return view('admin.pics.index', compact('pics', 'gudangs'));
     }
 
     public function create()
     {
-        $gudangs = Gudang::all();
+        $gudangs = Gudang::where('kode', '!=', 'GDG-EXT')->get();
         return view('admin.pics.create', compact('gudangs'));
     }
 
@@ -89,7 +89,7 @@ class PicController extends Controller
 
     public function edit(Pic $pic)
     {
-        $gudangs = Gudang::all();
+        $gudangs = Gudang::where('kode', '!=', 'GDG-EXT')->get();
         return view('admin.pics.edit', compact('pic', 'gudangs'));
     }
 

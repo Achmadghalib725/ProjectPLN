@@ -48,6 +48,7 @@
                     <tr>
                         <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nomor</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Gudang Asal</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tipe</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tanggal</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
@@ -87,10 +88,17 @@
                                 'SELESAI' => 'Selesai',
                                 default => $status,
                             };
+                            $tipeLabel = match ($sj->tipe ?? null) {
+                                'TRANSFER' => 'Transfer',
+                                'PEMINJAMAN' => 'Peminjaman',
+                                'PENGEMBALIAN' => 'Pengembalian',
+                                default => $sj->tipe ?? '-',
+                            };
                         @endphp
                         <tr>
                             <td class="px-5 py-3 text-sm font-semibold text-slate-900">{{ $sj->nomor ?? '-' }}</td>
                             <td class="px-5 py-3 text-sm text-slate-700">{{ $sj->gudangAsal->nama ?? '-' }}</td>
+                            <td class="px-5 py-3 text-sm text-slate-700">{{ $tipeLabel }}</td>
                             <td class="px-5 py-3 text-sm text-slate-500">{{ $sj->tanggal?->format('d M Y') ?? '-' }}</td>
                             <td class="px-5 py-3 text-sm">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusClass }}">
@@ -103,7 +111,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-6 text-center text-sm text-slate-500">Belum ada surat jalan.</td>
+                            <td colspan="6" class="px-5 py-6 text-center text-sm text-slate-500">Belum ada surat jalan.</td>
                         </tr>
                     @endforelse
                 </tbody>

@@ -40,7 +40,7 @@ class ManagerSuratJalanController extends Controller
             ->withCount('items')
             ->withSum('items', 'jumlah')
             ->whereIn('gudang_asal_id', $gudangIds)
-            ->orderBy('tanggal', $direction)
+            ->orderBy('created_at', $direction)
             ->orderBy('id', $direction);
 
         if (!empty($filters['gudang_id'])) {

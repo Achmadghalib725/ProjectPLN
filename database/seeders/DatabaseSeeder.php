@@ -18,15 +18,15 @@ class DatabaseSeeder extends Seeder
         $gudangTarahan = Gudang::create([
             'kode' => 'GDG-TRH',
             'nama' => 'Gudang PLTD/G Tarahan',
-            'alamat' => 'Jl. Raya Tarahan, Kotaagung, Tanggamus, Lampung',
-            'telepon' => '0721-5678901'
+            'alamat' => ' Jl. Lintas Sumatera, Srengsem, Kec. Panjang, Kota Bandar Lampung, Lampung',
+            'telepon' => '-'
         ]);
 
         $gudangTelukBetung = Gudang::create([
             'kode' => 'GDG-TLK',
             'nama' => 'Gudang PLTD Teluk Betung',
-            'alamat' => 'Jl. Yos Sudarso, Teluk Betung, Bandar Lampung',
-            'telepon' => '0721-1234567'
+            'alamat' => 'J Jl. W. R. Supratman, Gedong Pakuon, Kec. Telukbetung Selatan, Kota Bandar Lampung, Lampung',
+            'telepon' => '-'
         ]);
 
         // ========================================

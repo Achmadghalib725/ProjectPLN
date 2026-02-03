@@ -565,7 +565,10 @@ class StokController extends Controller
                 });
             })
             ->when($tanggalPinjam, function ($query, $tanggalPinjam) {
-                $query->whereDate('waktu_diterima', '>=', $tanggalPinjam);
+                $query->whereRaw(
+                    'DATE(COALESCE(waktu_diterima, waktu_kirim, waktu_pengajuan, created_at)) >= ?',
+                    [$tanggalPinjam]
+                );
             })
             ->when($tanggalKembali, function ($query, $tanggalKembali) {
                 $query->whereDate('waktu_selesai', '<=', $tanggalKembali);
@@ -573,9 +576,9 @@ class StokController extends Controller
 
         // Apply sorting
         if ($sort === 'terlama') {
-            $peminjamans = $peminjamans->orderBy('waktu_diterima', 'asc');
+            $peminjamans = $peminjamans->orderByRaw('COALESCE(waktu_diterima, waktu_kirim, waktu_pengajuan, created_at) asc');
         } else {
-            $peminjamans = $peminjamans->orderBy('waktu_diterima', 'desc');
+            $peminjamans = $peminjamans->orderByRaw('COALESCE(waktu_diterima, waktu_kirim, waktu_pengajuan, created_at) desc');
         }
 
         // Paginate
@@ -583,8 +586,16 @@ class StokController extends Controller
 
         // Add computed fields and prepare pengembalian data
         $peminjamans->getCollection()->transform(function ($pinjam) use ($gudangId) {
-            $startTime = $pinjam->waktu_diterima ?? $pinjam->created_at;
-            $endTime = $pinjam->waktu_selesai ?? now();
+            $startTime = $pinjam->waktu_diterima
+                ?? $pinjam->waktu_kirim
+                ?? $pinjam->waktu_pengajuan
+                ?? $pinjam->created_at;
+            $pinjam->waktu_mulai = $startTime;
+            $waktuKembali = $pinjam->waktu_selesai
+                ?? $pinjam->waktu_pengembalian
+                ?? $pinjam->suratJalanPengembalians->first()?->updated_at;
+            $pinjam->waktu_kembali = $waktuKembali;
+            $endTime = $waktuKembali ?? now();
 
             $totalMinutes = 0;
             if ($startTime && $endTime) {

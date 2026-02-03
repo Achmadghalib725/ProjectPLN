@@ -204,12 +204,12 @@
                 $totalQty = $pinjam->items->sum('jumlah_dipinjam');
                 $pengembalianCount = $pinjam->pengembalian_entries->count();
             @endphp
-            <div class="border-b border-gray-200" x-data="{ expanded: false }">
+            <div class="border-b border-gray-200" x-data="{ expanded: false, showItems: false }">
                 <div class="p-4">
                     <div class="flex items-start justify-between mb-2">
                         <div class="flex-1">
                             <h3 class="font-semibold text-gray-900 text-sm">{{ $pinjam->kode }}</h3>
-                            <p class="text-xs text-gray-500">{{ $pinjam->waktu_diterima?->format('d M Y') }}</p>
+                            <p class="text-xs text-gray-500">{{ $pinjam->waktu_mulai?->format('d M Y') }}</p>
                         </div>
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
                             {{ $statusLabel }}
@@ -227,8 +227,33 @@
                         </div>
                     </div>
                     <div class="bg-gray-50 rounded p-2 mb-3 text-xs">
-                        <p class="text-gray-500">Item Dipinjam</p>
-                        <p class="font-medium text-gray-900">{{ $itemCount }} item ({{ $totalQty }} unit)</p>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Item Dipinjam</p>
+                                <p class="font-medium text-gray-900">{{ $itemCount }} item ({{ $totalQty }} unit)</p>
+                            </div>
+                            <button type="button"
+                                    @click="showItems = !showItems"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[#035b71] bg-[#035b71]/10 rounded-md hover:bg-[#035b71]/20 transition">
+                                <span>Lihat</span>
+                                <svg class="w-3 h-3 transition-transform" :class="showItems ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div x-show="showItems" x-collapse class="mt-2 space-y-1">
+                            @foreach($pinjam->items as $item)
+                                <div class="flex items-center justify-between bg-white rounded-md border border-gray-100 px-2 py-1">
+                                    <div class="min-w-0 mr-2">
+                                        <p class="text-[11px] font-semibold text-gray-800 truncate">{{ $item->item->kode ?? '-' }}</p>
+                                        <p class="text-[11px] text-gray-500 truncate">{{ $item->item->nama ?? '-' }}</p>
+                                    </div>
+                                    <span class="text-[11px] font-bold text-[#035b71] bg-[#035b71]/10 px-2 py-0.5 rounded">
+                                        {{ $item->jumlah_dipinjam }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
 
                     @php
@@ -238,7 +263,7 @@
                         if (empty($mobileDurationParts) && ($pinjam->total_menit ?? 0) > 0) $mobileDurationParts[] = $pinjam->total_menit . ' menit';
                         $mobileDurationText = !empty($mobileDurationParts) ? implode(', ', $mobileDurationParts) : '< 1 menit';
                     @endphp
-                    @if($pinjam->waktu_diterima)
+                    @if($pinjam->waktu_mulai)
                     <div class="mb-3 text-xs">
                         <span class="text-gray-500">Durasi:</span>
                         <span class="font-semibold text-[#035b71]">{{ $mobileDurationText }}</span>
@@ -335,9 +360,34 @@
                                     <p class="font-medium text-gray-900">{{ $durasiText }}</p>
                                 </div>
                             </div>
-                            <div class="bg-white rounded p-2 mb-3 text-xs border border-gray-200">
-                                <p class="text-gray-500">Item Dikembalikan</p>
-                                <p class="font-medium text-gray-900">{{ $sjItemCount }} item ({{ $sjTotalQty }} unit)</p>
+                            <div class="bg-white rounded p-2 mb-3 text-xs border border-gray-200" x-data="{ showReturnItems: false }">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-500">Item Dikembalikan</p>
+                                        <p class="font-medium text-gray-900">{{ $sjItemCount }} item ({{ $sjTotalQty }} unit)</p>
+                                    </div>
+                                    <button type="button"
+                                            @click="showReturnItems = !showReturnItems"
+                                            class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[#035b71] bg-[#035b71]/10 rounded-md hover:bg-[#035b71]/20 transition">
+                                        <span>Lihat</span>
+                                        <svg class="w-3 h-3 transition-transform" :class="showReturnItems ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div x-show="showReturnItems" x-collapse class="mt-2 space-y-1">
+                                    @foreach($sjKembali->items as $returnItem)
+                                        <div class="flex items-center justify-between bg-gray-50 rounded-md border border-gray-100 px-2 py-1">
+                                            <div class="min-w-0 mr-2">
+                                                <p class="text-[11px] font-semibold text-gray-800 truncate">{{ $returnItem->item->kode ?? '-' }}</p>
+                                                <p class="text-[11px] text-gray-500 truncate">{{ $returnItem->item->nama ?? '-' }}</p>
+                                            </div>
+                                            <span class="text-[11px] font-bold text-[#035b71] bg-[#035b71]/10 px-2 py-0.5 rounded">
+                                                {{ $returnItem->jumlah }}
+                                            </span>
+                                        </div>
+                                    @endforeach
+                                </div>
                             </div>
 
                             <div class="flex items-center justify-end text-xs">
@@ -446,23 +496,23 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($pinjam->waktu_diterima)
-                                <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_diterima->format('d M Y') }}</div>
-                                <div class="text-xs text-gray-500">{{ $pinjam->waktu_diterima->format('H:i') }} WIB</div>
+                            @if($pinjam->waktu_mulai)
+                                <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_mulai->format('d M Y') }}</div>
+                                <div class="text-xs text-gray-500">{{ $pinjam->waktu_mulai->format('H:i') }} WIB</div>
                             @else
                                 <span class="text-sm text-gray-400 italic">Belum diterima</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($pinjam->waktu_selesai)
-                                <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_selesai->format('d M Y') }}</div>
-                                <div class="text-xs text-gray-500">{{ $pinjam->waktu_selesai->format('H:i') }} WIB</div>
+                            @if($pinjam->waktu_kembali)
+                                <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_kembali->format('d M Y') }}</div>
+                                <div class="text-xs text-gray-500">{{ $pinjam->waktu_kembali->format('H:i') }} WIB</div>
                             @else
                                 <span class="text-sm text-gray-400 italic">-</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($pinjam->waktu_diterima)
+                            @if($pinjam->waktu_mulai)
                                 @php
                                     $durationParts = [];
                                     if (($pinjam->total_hari ?? 0) > 0) $durationParts[] = $pinjam->total_hari . ' hari';
@@ -471,7 +521,7 @@
                                     $durationText = !empty($durationParts) ? implode(', ', $durationParts) : '< 1 menit';
                                 @endphp
                                 <div class="text-sm font-medium text-gray-900">{{ $durationText }}</div>
-                                <div class="text-xs text-gray-500">Sejak {{ $pinjam->waktu_diterima->format('d M Y') }}</div>
+                                <div class="text-xs text-gray-500">Sejak {{ $pinjam->waktu_mulai->format('d M Y') }}</div>
                                 @if($pinjam->status !== 'SELESAI')
                                     <div class="text-xs text-yellow-600 font-medium mt-0.5">Masih berjalan</div>
                                 @endif
@@ -600,9 +650,9 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    @if($pinjam->waktu_diterima)
-                                        <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_diterima->format('d M Y') }}</div>
-                                        <div class="text-xs text-gray-500">{{ $pinjam->waktu_diterima->format('H:i') }} WIB</div>
+                                    @if($pinjam->waktu_mulai)
+                                        <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_mulai->format('d M Y') }}</div>
+                                        <div class="text-xs text-gray-500">{{ $pinjam->waktu_mulai->format('H:i') }} WIB</div>
                                     @else
                                         <span class="text-sm text-gray-400 italic">-</span>
                                     @endif
