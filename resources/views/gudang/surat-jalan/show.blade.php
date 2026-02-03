@@ -1112,8 +1112,13 @@
                 $allowReturnAction = ($canCreateReturn ?? false) && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView && !$isDivisiView;
             @endphp
 
+            @php
+                $latestReturnRejected = $peminjaman?->suratJalanKembali?->status === 'DITOLAK';
+            @endphp
+
             {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin --}}
-            @if($allowReturnAction)
+            {{-- Hanya tampil jika TIDAK ada surat pengembalian yang ditolak --}}
+            @if($allowReturnAction && !$latestReturnRejected)
                 <div class="bg-white overflow-hidden shadow-sm rounded-xl sm:rounded-lg mt-4 sm:mt-6">
                     <div class="p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Pengembalian Barang</h3>
@@ -1136,24 +1141,31 @@
                 </div>
             @endif
 
-            {{-- Tombol Buat Ulang Pengembalian jika surat pengembalian ditolak --}}
-            @if($allowReturnAction && $peminjaman?->suratJalanKembali?->status === 'DITOLAK')
-                <div class="bg-red-50 border border-red-200 rounded-xl mt-4 sm:mt-6">
-                    <div class="p-4 sm:p-6">
-                        <h3 class="text-base sm:text-lg font-bold text-red-900 mb-3 sm:mb-4">Pengembalian Ditolak</h3>
-                        <p class="text-xs sm:text-sm text-red-700 mb-3 sm:mb-4">
-                            Surat pengembalian sebelumnya ditolak oleh security. Silakan buat ulang surat pengembalian.
-                        </p>
-                        <button type="button"
-                                @click="$dispatch('open-modal', 'return-peminjaman-modal')"
-                                class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-                            </svg>
-                            Buat Ulang Surat Pengembalian
-                        </button>
+            {{-- Info: Ada surat pengembalian yang ditolak --}}
+            @if($suratJalan->tipe === 'PEMINJAMAN' && ($pendingReturn ?? null) && ($hasOutstandingItems ?? false) && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView && !$isDivisiView)
+                @php
+                    $pendingIsRejected = in_array($pendingReturn->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN']);
+                @endphp
+                @if($pendingIsRejected)
+                    {{-- Surat pengembalian ditolak - tampilkan info untuk edit/ajukan ulang --}}
+                    <div class="bg-red-50 border border-red-200 rounded-xl mt-4 sm:mt-6">
+                        <div class="p-4 sm:p-6">
+                            <h3 class="text-base sm:text-lg font-bold text-red-900 mb-3 sm:mb-4">Pengembalian Ditolak</h3>
+                            <p class="text-xs sm:text-sm text-red-700 mb-3 sm:mb-4">
+                                Surat pengembalian <strong>{{ $pendingReturn->nomor }}</strong> ditolak.
+                                Silakan edit dan ajukan ulang surat pengembalian yang sudah ada.
+                            </p>
+                            <a href="{{ route('gudang.surat-jalan.show', $pendingReturn->id) }}"
+                               class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-sm sm:text-base rounded-xl sm:rounded-lg shadow-sm transition duration-150 gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                Lihat Surat Pengembalian
+                            </a>
+                        </div>
                     </div>
-                </div>
+                @endif
             @endif
 
             {{-- Konfirmasi Pengembalian Manual untuk Gudang Eksternal --}}
