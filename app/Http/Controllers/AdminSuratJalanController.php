@@ -134,13 +134,13 @@ class AdminSuratJalanController extends Controller
             : collect();
 
         // Only show peminjaman that have been received and items are still with borrower
-        // This includes: DITERIMA (received, no return), DIKEMBALIKAN (return in progress), DIPERIKSA (return being checked)
+        // This includes: DITERIMA (received, no return), DIKEMBALIKAN/DIKEMBALIKAN_SEBAGIAN (return in progress), DIPERIKSA (return being checked)
         // Excludes: SELESAI (returned), DITOLAK (rejected), DIAJUKAN/DIKIRIM (not yet received)
         $activePeminjamans = $activeGudangId && Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
             ? Peminjaman::query()
                 ->with(['items.item', 'gudangPemilik', 'suratJalanKirim'])
                 ->where('gudang_peminjam_id', $activeGudangId)
-                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIPERIKSA'])
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'DIPERIKSA'])
                 ->orderByDesc('waktu_pengajuan')
                 ->get()
             : collect();
@@ -680,7 +680,7 @@ class AdminSuratJalanController extends Controller
             'items.*.jumlah.min' => 'Jumlah pengembalian minimal 0.',
         ]);
 
-        $peminjaman = Peminjaman::with(['items.item', 'gudangPemilik', 'suratJalanKirim.attachments', 'suratJalanKembali'])
+        $peminjaman = Peminjaman::with(['items.item', 'gudangPemilik', 'gudangPeminjam', 'suratJalanKirim.attachments', 'suratJalanKembali'])
             ->where('id', $validated['peminjaman_id'])
             ->firstOrFail();
 
@@ -844,13 +844,26 @@ class AdminSuratJalanController extends Controller
 
             if ($adminFinish) {
                 $gudangPemilikNama = $peminjaman->gudangPemilik->nama ?? 'Gudang Pemilik';
+                $gudangPeminjamNama = $peminjaman->gudang_peminjam_is_custom
+                    ? ($peminjaman->gudang_peminjam_custom_nama ?? 'Gudang Peminjam')
+                    : ($peminjaman->gudangPeminjam->nama ?? 'Gudang Peminjam');
+
+                if (!$peminjaman->gudang_peminjam_is_custom) {
+                    $this->applyStockOut(
+                        $peminjaman->gudang_peminjam_id,
+                        $itemTotals,
+                        $suratJalan,
+                        $kembaliAt,
+                        "Pengembalian via {$suratJalan->nomor} ke {$gudangPemilikNama}"
+                    );
+                }
 
                 $this->applyStockIn(
                     $peminjaman->gudang_pemilik_id,
                     $itemTotals,
                     $suratJalan,
                     $selesaiAt,
-                    "Pengembalian via {$suratJalan->nomor} dari {$gudangPemilikNama}"
+                    "Pengembalian via {$suratJalan->nomor} dari {$gudangPeminjamNama}"
                 );
 
                 $this->incrementReturnQuantities($peminjaman, $itemTotals);
@@ -914,34 +927,31 @@ class AdminSuratJalanController extends Controller
                 ->findOrFail($id);
 
             $peminjaman = null;
+            $peminjamanRelations = [
+                'suratJalanKirim.gudangAsal',
+                'suratJalanKirim.gudangTujuan',
+                'suratJalanKirim.pembuat',
+                'suratJalanKirim.statusHistories.actor',
+                'suratJalanKembali.gudangAsal',
+                'suratJalanKembali.gudangTujuan',
+                'suratJalanKembali.pembuat',
+                'suratJalanKembali.statusHistories.actor',
+                'gudangPeminjam',
+                'gudangPemilik',
+                'items.item',
+            ];
             if ($suratJalan->tipe === 'PEMINJAMAN') {
-                $peminjaman = Peminjaman::with([
-                    'suratJalanKirim.gudangAsal',
-                    'suratJalanKirim.gudangTujuan',
-                    'suratJalanKirim.pembuat',
-                    'suratJalanKirim.statusHistories.actor',
-                    'suratJalanKembali.gudangAsal',
-                    'suratJalanKembali.gudangTujuan',
-                    'suratJalanKembali.pembuat',
-                    'suratJalanKembali.statusHistories.actor',
-                    'gudangPeminjam',
-                    'gudangPemilik',
-                    'items.item',
-                ])->where('surat_jalan_kirim_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with($peminjamanRelations)
+                    ->where('surat_jalan_kirim_id', $suratJalan->id)
+                    ->first();
             } elseif ($suratJalan->tipe === 'PENGEMBALIAN') {
-                $peminjaman = Peminjaman::with([
-                    'suratJalanKirim.gudangAsal',
-                    'suratJalanKirim.gudangTujuan',
-                    'suratJalanKirim.pembuat',
-                    'suratJalanKirim.statusHistories.actor',
-                    'suratJalanKembali.gudangAsal',
-                    'suratJalanKembali.gudangTujuan',
-                    'suratJalanKembali.pembuat',
-                    'suratJalanKembali.statusHistories.actor',
-                    'gudangPeminjam',
-                    'gudangPemilik',
-                    'items.item',
-                ])->where('surat_jalan_kembali_id', $suratJalan->id)->first();
+                $peminjaman = Peminjaman::with($peminjamanRelations)
+                    ->where('surat_jalan_kembali_id', $suratJalan->id)
+                    ->first();
+                if (!$peminjaman && $suratJalan->peminjaman_id) {
+                    $peminjaman = Peminjaman::with($peminjamanRelations)
+                        ->find($suratJalan->peminjaman_id);
+                }
             }
 
             return [$suratJalan, $peminjaman];
@@ -1017,12 +1027,12 @@ class AdminSuratJalanController extends Controller
             : collect();
 
         // Get active borrowed items for this gudang
-        // Include peminjamans where items are still with borrower (DITERIMA, DIKEMBALIKAN, DIPERIKSA)
+        // Include peminjamans where items are still with borrower (DITERIMA, DIKEMBALIKAN, DIKEMBALIKAN_SEBAGIAN, DIPERIKSA)
         $activePeminjamans = Schema::hasTable('peminjamans') && Schema::hasTable('peminjaman_items')
             ? Peminjaman::query()
                 ->with('items')
                 ->where('gudang_peminjam_id', $gudangId)
-                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIPERIKSA'])
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'DIPERIKSA'])
                 ->get()
             : collect();
 

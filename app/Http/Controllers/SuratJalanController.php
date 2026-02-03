@@ -932,6 +932,10 @@ class SuratJalanController extends Controller
                 $peminjaman = Peminjaman::with($peminjamanRelations)
                     ->where('surat_jalan_kembali_id', $suratJalan->id)
                     ->first();
+                if (!$peminjaman && $suratJalan->peminjaman_id) {
+                    $peminjaman = Peminjaman::with($peminjamanRelations)
+                        ->find($suratJalan->peminjaman_id);
+                }
             }
 
             return [$suratJalan, $peminjaman];

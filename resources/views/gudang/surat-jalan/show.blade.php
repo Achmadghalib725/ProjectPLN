@@ -284,6 +284,9 @@
                     // PEMINJAMAN/PENGEMBALIAN: Alur lengkap sinkronisasi
                     $sjKirim = $peminjaman?->suratJalanKirim;
                     $sjKembali = $peminjaman?->suratJalanKembali;
+                    if ($tipe === 'PENGEMBALIAN') {
+                        $sjKembali = $suratJalan;
+                    }
                     $gudangPemilik = $peminjaman?->gudangPemilik;
                     $gudangPeminjam = $peminjaman?->gudangPeminjam;
                     $gudangPemilikNama = $gudangPemilik?->nama ?? $suratJalan->gudangAsal->nama ?? '-';

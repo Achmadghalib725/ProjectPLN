@@ -290,6 +290,9 @@
                     // PEMINJAMAN/PENGEMBALIAN: Alur lengkap sinkronisasi
                     $sjKirim = $peminjaman?->suratJalanKirim;
                     $sjKembali = $peminjaman?->suratJalanKembali;
+                    if ($tipe === 'PENGEMBALIAN') {
+                        $sjKembali = $suratJalan;
+                    }
                     $gudangPemilik = $peminjaman?->gudangPemilik;
                     $gudangPeminjam = $peminjaman?->gudangPeminjam;
                     $gudangPemilikNama = $gudangPemilik?->nama ?? $suratJalan->gudangAsal->nama ?? '-';
@@ -1466,6 +1469,15 @@
                         <p class="text-xs text-gray-500">Isi jumlah yang dikembalikan (boleh sebagian). Sisa otomatis dihitung.</p>
                     </div>
 
+                <div x-data="{
+                        isMobile: window.matchMedia('(max-width: 639px)').matches,
+                        init() {
+                            const mq = window.matchMedia('(max-width: 639px)');
+                            const update = () => { this.isMobile = mq.matches; };
+                            update();
+                            mq.addEventListener('change', update);
+                        }
+                    }" x-init="init()">
                     {{-- Mobile Card Layout --}}
                     <div class="sm:hidden">
                         @forelse($peminjaman->items as $index => $item)
@@ -1492,12 +1504,13 @@
                                     </div>
                                     <div class="col-span-2">
                                         <label class="block text-xs text-gray-500 mb-1">Jumlah Dikembalikan</label>
-                                        <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}">
+                                        <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}" :disabled="!isMobile">
                                         <input type="number"
                                                name="items[{{ $index }}][jumlah]"
                                                min="0"
                                                max="{{ $remainingQty }}"
                                                value="{{ old("items.$index.jumlah", $remainingQty) }}"
+                                               :disabled="!isMobile || {{ $remainingQty === 0 ? 'true' : 'false' }}"
                                                @disabled($remainingQty === 0)
                                                class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                         @if($remainingQty === 0)
@@ -1536,12 +1549,13 @@
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $remainingQty }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">
-                                            <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}">
+                                            <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}" :disabled="isMobile">
                                             <input type="number"
                                                    name="items[{{ $index }}][jumlah]"
                                                    min="0"
                                                    max="{{ $remainingQty }}"
                                                    value="{{ old("items.$index.jumlah", $remainingQty) }}"
+                                                   :disabled="isMobile || {{ $remainingQty === 0 ? 'true' : 'false' }}"
                                                    @disabled($remainingQty === 0)
                                                    class="w-28 rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                             @if($remainingQty === 0)
@@ -1559,6 +1573,7 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
                 </div>
 
                 <div class="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-end">
