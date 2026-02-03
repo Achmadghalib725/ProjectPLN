@@ -10,7 +10,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             </div>
         </div>
-        <span class="inline-flex items-center text-xs text-slate-500 mt-3">Admin, Operator & Security</span>
+        <span class="inline-flex items-center text-xs text-slate-500 mt-3">Admin, Manager, Tool Man, Penerima, Security</span>
     </a>
 
     <a href="{{ route('admin.items.index') }}" class="bg-white p-5 rounded-xl shadow border border-slate-200 hover:border-emerald-500 transition">
@@ -30,15 +30,15 @@
     <a href="{{ route('admin.pics.index') }}" class="bg-white p-5 rounded-xl shadow border border-slate-200 hover:border-amber-500 transition">
         <div class="flex items-start justify-between">
             <div>
-                <p class="text-sm text-slate-500">Data PIC & Gudang</p>
-                <h3 class="text-2xl font-bold text-amber-600 mt-1">{{ number_format($totalGudangs ?? 0) }} Unit</h3>
-                <p class="text-xs text-slate-500 mt-1">Lokasi & penanggung jawab</p>
+                <p class="text-sm text-slate-500">PIC</p>
+                <h3 class="text-2xl font-bold text-amber-600 mt-1">{{ number_format($totalPics ?? 0) }} PIC</h3>
+                <p class="text-xs text-slate-500 mt-1">Penanggung jawab</p>
             </div>
             <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
             </div>
         </div>
-        <span class="inline-flex items-center text-xs text-slate-500 mt-3">Pengaturan gudang</span>
+        <span class="inline-flex items-center text-xs text-slate-500 mt-3">Pengaturan PIC</span>
     </a>
 </div>
 

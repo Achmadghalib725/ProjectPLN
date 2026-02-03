@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\Item;
 use App\Models\Gudang;
 use App\Models\ItemStock;
+use App\Models\Pic;
 use App\Models\SuratJalan;
 use App\Models\Peminjaman;
 use App\Models\PeminjamanItem;
@@ -50,6 +51,7 @@ Route::get('/dashboard', function () {
         'totalUsers'   => User::count(),
         'totalItems'   => Item::count(),
         'totalGudangs' => Gudang::count(),
+        'totalPics'    => Pic::count(),
         // Gudangs list untuk form rekap admin
         'gudangs'      => Gudang::where('kode', '!=', 'GDG-EXT')->orderBy('nama')->get(),
         'totalStockItems' => $gudangId && Schema::hasTable('item_stocks')
