@@ -1057,7 +1057,8 @@
 
             @php
                 $allowReturnAction = ($canCreateReturn ?? false) && ($isGudangTujuan || ($isAdmin ?? false)) && !$isManagerView;
-                $latestReturnRejected = $peminjaman?->suratJalanKembali?->status === 'DITOLAK';
+                // Use $pendingReturn (from controller) to check for rejected returns
+                $latestReturnRejected = ($pendingReturn ?? null) && in_array($pendingReturn->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN']);
             @endphp
 
             {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin --}}

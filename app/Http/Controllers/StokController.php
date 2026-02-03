@@ -537,8 +537,31 @@ class StokController extends Controller
         $tanggalKembali = $request->input('tanggal_kembali');
 
         // Get peminjaman records with their pengembalian surat jalans
-        $peminjamans = Peminjaman::with(['items.item', 'gudangPeminjam', 'gudangPemilik', 'suratJalanKirim', 'suratJalanPengembalians.items.item'])
-            ->whereIn('status', ['SELESAI', 'DIKEMBALIKAN_SEBAGIAN'])
+        // Show peminjaman that:
+        // 1. Are fully completed (SELESAI)
+        // 2. Have partial returns completed (DIKEMBALIKAN_SEBAGIAN)
+        // 3. Have another return in progress BUT already have completed returns (DIKEMBALIKAN with existing SELESAI SJ)
+        $peminjamans = Peminjaman::with([
+            'items.item',
+            'gudangPeminjam',
+            'gudangPemilik',
+            'suratJalanKirim',
+            // Only load SELESAI pengembalian SJ for riwayat display
+            'suratJalanPengembalians' => function ($query) {
+                $query->where('status', 'SELESAI')->with('items.item');
+            },
+        ])
+            ->where(function ($query) {
+                $query->whereIn('status', ['SELESAI', 'DIKEMBALIKAN_SEBAGIAN'])
+                    ->orWhere(function ($q) {
+                        // Has another return in progress but already has at least one completed pengembalian SJ
+                        // Include all intermediate statuses during return process
+                        $q->whereIn('status', ['DIKEMBALIKAN', 'DIPERIKSA', 'DIPERIKSA_PENERIMA', 'MENUNGGU_DIKEMBALIKAN'])
+                            ->whereHas('suratJalanPengembalians', function ($sjq) {
+                                $sjq->where('status', 'SELESAI');
+                            });
+                    });
+            })
             ->where(function ($query) use ($gudangId, $tipePinjam) {
                 if ($tipePinjam === 'dipinjamkan') {
                     $query->where('gudang_pemilik_id', $gudangId);

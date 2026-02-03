@@ -53,9 +53,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                             </svg>
                         </button>
-                        <span class="font-bold text-lg text-pln-primary">E-Gudang PLN</span>
+                        <span class="font-bold text-lg text-pln-primary">E-Dispatch & Tool Management </span>
                     </div>
-                    @if(in_array(Auth::user()->role, ['operator_gudang', 'penerima', 'manager']))
+                    @if(Auth::check() && in_array(Auth::user()->role, ['operator_gudang', 'penerima', 'manager']))
                         <x-notification-bell />
                     @endif
                 </div>

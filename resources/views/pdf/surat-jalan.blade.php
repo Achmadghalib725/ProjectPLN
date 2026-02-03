@@ -491,10 +491,6 @@
                     </div>
                 </div>
                 <div class="info-row">
-                    <div class="info-label">Status</div>
-                    <div class="info-value">: {{ $suratJalan->status ?? 'DRAFT' }}</div>
-                </div>
-                <div class="info-row">
                     <div class="info-label">Nama Driver</div>
                     <div class="info-value">: {{ $suratJalan->nama_driver ?? '-' }}</div>
                 </div>

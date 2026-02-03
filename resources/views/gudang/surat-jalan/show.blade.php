@@ -1113,7 +1113,8 @@
             @endphp
 
             @php
-                $latestReturnRejected = $peminjaman?->suratJalanKembali?->status === 'DITOLAK';
+                // Use $pendingReturn (from controller) to check for rejected returns
+                $latestReturnRejected = ($pendingReturn ?? null) && in_array($pendingReturn->status, ['DITOLAK', 'DITOLAK_PERSETUJUAN']);
             @endphp
 
             {{-- Tombol Pengembalian Pinjaman untuk Operator Gudang Peminjam atau Admin --}}
@@ -1517,7 +1518,17 @@
                     </div>
                 </div>
 
-                <div class="bg-gray-50 rounded-lg border border-gray-200">
+                <div class="bg-gray-50 rounded-lg border border-gray-200"
+                     x-data="{
+                        isMobile: window.innerWidth < 640,
+                        init() {
+                            this.checkMobile();
+                            window.addEventListener('resize', () => this.checkMobile());
+                        },
+                        checkMobile() {
+                            this.isMobile = window.innerWidth < 640;
+                        }
+                     }">
                     <div class="p-4">
                         <p class="font-semibold text-gray-900">Barang yang Dikembalikan</p>
                         <p class="text-xs text-gray-500">Isi jumlah yang dikembalikan (boleh sebagian). Sisa otomatis dihitung.</p>
@@ -1549,13 +1560,13 @@
                                     </div>
                                     <div class="col-span-2">
                                         <label class="block text-xs text-gray-500 mb-1">Jumlah Dikembalikan</label>
-                                        <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}">
+                                        <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}" :disabled="!isMobile">
                                         <input type="number"
                                                name="items[{{ $index }}][jumlah]"
                                                min="0"
                                                max="{{ $remainingQty }}"
                                                value="{{ old("items.$index.jumlah", $remainingQty) }}"
-                                               @disabled($remainingQty === 0)
+                                               :disabled="!isMobile || {{ $remainingQty === 0 ? 'true' : 'false' }}"
                                                class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                         @if($remainingQty === 0)
                                             <p class="text-xs text-emerald-600 mt-1">Sudah dikembalikan.</p>
@@ -1593,13 +1604,13 @@
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $item->item->satuan?->nama ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $remainingQty }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-900">
-                                            <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}">
+                                            <input type="hidden" name="items[{{ $index }}][peminjaman_item_id]" value="{{ $item->id }}" :disabled="isMobile">
                                             <input type="number"
                                                    name="items[{{ $index }}][jumlah]"
                                                    min="0"
                                                    max="{{ $remainingQty }}"
                                                    value="{{ old("items.$index.jumlah", $remainingQty) }}"
-                                                   @disabled($remainingQty === 0)
+                                                   :disabled="isMobile || {{ $remainingQty === 0 ? 'true' : 'false' }}"
                                                    class="w-28 rounded-md border-gray-300 text-sm shadow-sm focus:border-pln-primary focus:ring focus:ring-pln-primary focus:ring-opacity-50">
                                             @if($remainingQty === 0)
                                                 <span class="ml-2 text-xs text-emerald-600">Sudah dikembalikan</span>
