@@ -55,13 +55,6 @@
                                     <h3 class="text-lg font-bold text-gray-900">Detail Titik Ukur</h3>
                                     <p class="text-xs text-gray-500">Lampiran maksimal 1 gambar per titik ukur.</p>
                                 </div>
-                                <button type="button" id="add-grounding-row"
-                                        class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-pln-primary border border-pln-primary/40 rounded-lg hover:bg-pln-primary/10">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                    </svg>
-                                    Tambah Baris
-                                </button>
                             </div>
 
                             @php
@@ -78,9 +71,7 @@
                                     <thead class="bg-gray-50 hidden sm:table-header-group">
                                         <tr>
                                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">No</th>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Titik Ukur Grounding</th>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kriteria</th>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Hasil Uji</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Detail Pengukuran</th>
                                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Lampiran</th>
                                             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Aksi</th>
                                         </tr>
@@ -93,28 +84,32 @@
                                                     <span data-row-number>{{ $index + 1 }}</span>
                                                 </td>
                                                 <td class="px-4 py-3 block sm:table-cell">
-                                                    <span class="block text-[11px] font-semibold uppercase text-gray-400 sm:hidden">Titik ukur</span>
-                                                    <input type="text" name="items[{{ $index }}][titik_ukur]"
-                                                        value="{{ $row['titik_ukur'] ?? '' }}"
-                                                        class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
-                                                        placeholder="Contoh: Depan Ruang HAR" required>
-                                                    <x-input-error :messages="$errors->get('items.' . $index . '.titik_ukur')" />
-                                                </td>
-                                                <td class="px-4 py-3 block sm:table-cell">
-                                                    <span class="block text-[11px] font-semibold uppercase text-gray-400 sm:hidden">Kriteria</span>
-                                                    <input type="number" name="items[{{ $index }}][kriteria]" inputmode="decimal" step="0.01"
-                                                        value="{{ $row['kriteria'] ?? '' }}"
-                                                        class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
-                                                        placeholder="Contoh: 0.12" required>
-                                                    <x-input-error :messages="$errors->get('items.' . $index . '.kriteria')" />
-                                                </td>
-                                                <td class="px-4 py-3 block sm:table-cell">
-                                                    <span class="block text-[11px] font-semibold uppercase text-gray-400 sm:hidden">Hasil uji</span>
-                                                    <input type="number" name="items[{{ $index }}][hasil_uji]" inputmode="decimal" step="0.01"
-                                                        value="{{ $row['hasil_uji'] ?? '' }}"
-                                                        class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
-                                                        placeholder="Contoh: 0.07" required>
-                                                    <x-input-error :messages="$errors->get('items.' . $index . '.hasil_uji')" />
+                                                    <div class="grid gap-3 sm:grid-cols-3">
+                                                        <div class="space-y-1">
+                                                            <span class="block text-[11px] font-semibold uppercase text-gray-400">Titik ukur</span>
+                                                            <input type="text" name="items[{{ $index }}][titik_ukur]"
+                                                                value="{{ $row['titik_ukur'] ?? '' }}"
+                                                                class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
+                                                                placeholder="Contoh: Depan Ruang HAR" required>
+                                                            <x-input-error :messages="$errors->get('items.' . $index . '.titik_ukur')" />
+                                                        </div>
+                                                        <div class="space-y-1">
+                                                            <span class="block text-[11px] font-semibold uppercase text-gray-400">Kriteria</span>
+                                                            <input type="number" name="items[{{ $index }}][kriteria]" inputmode="decimal" step="0.01"
+                                                                value="{{ $row['kriteria'] ?? '' }}"
+                                                                class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
+                                                                placeholder="Contoh: 0.12" required>
+                                                            <x-input-error :messages="$errors->get('items.' . $index . '.kriteria')" />
+                                                        </div>
+                                                        <div class="space-y-1">
+                                                            <span class="block text-[11px] font-semibold uppercase text-gray-400">Hasil uji</span>
+                                                            <input type="number" name="items[{{ $index }}][hasil_uji]" inputmode="decimal" step="0.01"
+                                                                value="{{ $row['hasil_uji'] ?? '' }}"
+                                                                class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
+                                                                placeholder="Contoh: 0.07" required>
+                                                            <x-input-error :messages="$errors->get('items.' . $index . '.hasil_uji')" />
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td class="px-4 py-3 block sm:table-cell">
                                                     <span class="block text-[11px] font-semibold uppercase text-gray-400 sm:hidden">Lampiran</span>
@@ -136,6 +131,16 @@
                                         @endforeach
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <div class="flex items-center justify-start">
+                                <button type="button" id="add-grounding-row"
+                                        class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-pln-primary border border-pln-primary/40 rounded-lg hover:bg-pln-primary/10">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    Tambah Baris
+                                </button>
                             </div>
                         </div>
 
@@ -162,22 +167,26 @@
                 <span data-row-number></span>
             </td>
             <td class="px-4 py-3 block sm:table-cell">
-                <span class="block text-[11px] font-semibold uppercase text-gray-400 sm:hidden">Titik ukur</span>
-                <input type="text" name="items[__INDEX__][titik_ukur]"
-                    class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
-                    placeholder="Contoh: Depan Ruang HAR" required>
-            </td>
-            <td class="px-4 py-3 block sm:table-cell">
-                <span class="block text-[11px] font-semibold uppercase text-gray-400 sm:hidden">Kriteria</span>
-                <input type="number" name="items[__INDEX__][kriteria]" inputmode="decimal" step="0.01"
-                    class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
-                    placeholder="Contoh: 0.12" required>
-            </td>
-            <td class="px-4 py-3 block sm:table-cell">
-                <span class="block text-[11px] font-semibold uppercase text-gray-400 sm:hidden">Hasil uji</span>
-                <input type="number" name="items[__INDEX__][hasil_uji]" inputmode="decimal" step="0.01"
-                    class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
-                    placeholder="Contoh: 0.07" required>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="space-y-1">
+                        <span class="block text-[11px] font-semibold uppercase text-gray-400">Titik ukur</span>
+                        <input type="text" name="items[__INDEX__][titik_ukur]"
+                            class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
+                            placeholder="Contoh: Depan Ruang HAR" required>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="block text-[11px] font-semibold uppercase text-gray-400">Kriteria</span>
+                        <input type="number" name="items[__INDEX__][kriteria]" inputmode="decimal" step="0.01"
+                            class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
+                            placeholder="Contoh: 0.12" required>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="block text-[11px] font-semibold uppercase text-gray-400">Hasil uji</span>
+                        <input type="number" name="items[__INDEX__][hasil_uji]" inputmode="decimal" step="0.01"
+                            class="w-full rounded-lg border-gray-200 focus:border-cyan-500 focus:ring-cyan-500"
+                            placeholder="Contoh: 0.07" required>
+                    </div>
+                </div>
             </td>
             <td class="px-4 py-3 block sm:table-cell">
                 <span class="block text-[11px] font-semibold uppercase text-gray-400 sm:hidden">Lampiran</span>

@@ -1,7 +1,7 @@
 <x-app-layout>
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex flex-col ml-4 md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800 tracking-tight">Surat Hasil Uji Grounding</h2>
                     <p class="text-sm text-gray-500 mt-1">Kelola surat hasil uji grounding dengan lampiran per titik ukur.</p>
