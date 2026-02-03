@@ -14,6 +14,7 @@ use App\Http\Controllers\AdminSuratJalanController;
 use App\Http\Controllers\GudangItemController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ItemMetaController;
+use App\Http\Controllers\GroundingTestController;
 use Illuminate\Support\Facades\Route;
 // Tambahkan Import Model yang dibutuhkan
 use App\Models\User;
@@ -298,6 +299,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::prefix('uji-grounding')->name('grounding-tests.')->group(function () {
+    Route::get('/', [GroundingTestController::class, 'index'])->name('index');
+    Route::get('/create', [GroundingTestController::class, 'create'])->name('create');
+    Route::post('/', [GroundingTestController::class, 'store'])->name('store');
+    Route::get('/{groundingTest}/preview', [GroundingTestController::class, 'previewPdf'])->whereNumber('groundingTest')->name('preview');
+    Route::get('/{groundingTest}/pdf', [GroundingTestController::class, 'pdf'])->whereNumber('groundingTest')->name('pdf');
+    Route::get('/{groundingTest}', [GroundingTestController::class, 'show'])->whereNumber('groundingTest')->name('show');
+    Route::get('/{groundingTest}/edit', [GroundingTestController::class, 'edit'])->whereNumber('groundingTest')->name('edit');
+    Route::patch('/{groundingTest}', [GroundingTestController::class, 'update'])->whereNumber('groundingTest')->name('update');
+    Route::delete('/{groundingTest}', [GroundingTestController::class, 'destroy'])->whereNumber('groundingTest')->name('destroy');
 });
 
 require __DIR__.'/auth.php';

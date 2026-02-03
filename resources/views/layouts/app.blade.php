@@ -55,7 +55,7 @@
                         </button>
                         <span class="font-bold text-lg text-pln-primary">E-Gudang PLN</span>
                     </div>
-                    @if(in_array(Auth::user()->role, ['operator_gudang', 'penerima', 'manager']))
+                    @if(Auth::check() && in_array(Auth::user()->role, ['operator_gudang', 'penerima', 'manager']))
                         <x-notification-bell />
                     @endif
                 </div>
