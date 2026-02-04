@@ -11,16 +11,17 @@ return new class extends Migration
     {
         $driver = Schema::getConnection()->getDriverName();
 
-        DB::statement("UPDATE grounding_test_items SET kriteria = REPLACE(kriteria, ',', '.') WHERE kriteria LIKE '%,%'");
-        DB::statement("UPDATE grounding_test_items SET hasil_uji = REPLACE(hasil_uji, ',', '.') WHERE hasil_uji LIKE '%,%'");
-
         if ($driver === 'mysql') {
+            DB::statement("UPDATE grounding_test_items SET kriteria = REPLACE(kriteria, ',', '.') WHERE kriteria LIKE '%,%'");
+            DB::statement("UPDATE grounding_test_items SET hasil_uji = REPLACE(hasil_uji, ',', '.') WHERE hasil_uji LIKE '%,%'");
             DB::statement("ALTER TABLE grounding_test_items MODIFY kriteria DECIMAL(10,2) NOT NULL");
             DB::statement("ALTER TABLE grounding_test_items MODIFY hasil_uji DECIMAL(10,2) NOT NULL");
             return;
         }
 
         if ($driver === 'pgsql') {
+            DB::statement("UPDATE grounding_test_items SET kriteria = REPLACE(kriteria::text, ',', '.')::numeric WHERE kriteria::text LIKE '%,%'");
+            DB::statement("UPDATE grounding_test_items SET hasil_uji = REPLACE(hasil_uji::text, ',', '.')::numeric WHERE hasil_uji::text LIKE '%,%'");
             DB::statement("ALTER TABLE grounding_test_items ALTER COLUMN kriteria TYPE DECIMAL(10,2) USING kriteria::numeric(10,2)");
             DB::statement("ALTER TABLE grounding_test_items ALTER COLUMN hasil_uji TYPE DECIMAL(10,2) USING hasil_uji::numeric(10,2)");
             return;
