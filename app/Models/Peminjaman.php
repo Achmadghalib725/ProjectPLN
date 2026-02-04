@@ -52,4 +52,12 @@ class Peminjaman extends Model
     {
         return $this->belongsTo(SuratJalan::class, 'surat_jalan_kembali_id');
     }
+
+    public function suratJalanPengembalians()
+    {
+        return $this->hasMany(SuratJalan::class, 'peminjaman_id')
+            ->where('tipe', 'PENGEMBALIAN')
+            ->orderByDesc('tanggal')
+            ->orderByDesc('id');
+    }
 }

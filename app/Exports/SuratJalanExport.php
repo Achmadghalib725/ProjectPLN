@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\SuratJalan;
 use App\Models\Gudang;
+use App\Models\Peminjaman;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
@@ -62,6 +63,9 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
                 'picTujuan',
                 'items.item',
                 'peminjaman',
+                'peminjamanKembali',
+                'peminjamanRef.suratJalanPengembalians',
+                'peminjamanKembali.suratJalanPengembalians',
                 'statusHistories'
             ])
             ->withCount('items')
@@ -107,7 +111,21 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
         $query->where('status', '!=', 'DRAFT');
         if ($this->statusFilter && $this->statusFilter !== 'ALL') {
             if ($this->statusFilter === 'SELESAI') {
-                $query->where('status', 'SELESAI');
+                $query->where(function ($statusQuery) {
+                    $statusQuery->where('status', 'SELESAI');
+
+                    $includePartial =
+                        $this->tipe === 'PEMINJAMAN'
+                        || $this->tipe === 'ALL'
+                        || $this->tipe === null;
+
+                    if ($includePartial) {
+                        $statusQuery->orWhere(function ($partialQuery) {
+                            $partialQuery->where('tipe', 'PEMINJAMAN')
+                                ->where('status', 'DIKEMBALIKAN_SEBAGIAN');
+                        });
+                    }
+                });
             } elseif ($this->statusFilter === 'BERLANGSUNG') {
                 $query->where('status', '!=', 'SELESAI');
             }
@@ -183,11 +201,19 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
             ->values()
             ->implode("\r\n");
 
+        $tipeLabel = $this->formatTipe($suratJalan->tipe);
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $pengembalianLabel = $this->resolvePengembalianLabel($suratJalan);
+            if ($pengembalianLabel) {
+                $tipeLabel = $pengembalianLabel;
+            }
+        }
+
         return [
             $this->rowNumber,
             $suratJalan->nomor ?? '-',
             $suratJalan->tanggal?->format('Y-m-d') ?? '-',
-            $this->formatTipe($suratJalan->tipe),
+            $tipeLabel,
             $this->formatStatus($suratJalan->status),
             $suratJalan->gudangAsal->nama ?? '-',
             $gudangTujuanNama,
@@ -213,27 +239,33 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
      */
     private function calculateLamaPeminjaman($suratJalan): string
     {
-        // Only calculate for PEMINJAMAN type
-        if ($suratJalan->tipe !== 'PEMINJAMAN') {
+        if (!in_array($suratJalan->tipe, ['PEMINJAMAN', 'PENGEMBALIAN'], true)) {
             return '-';
         }
 
-        $peminjaman = $suratJalan->peminjaman;
+        $peminjaman = $this->resolvePeminjamanForDuration($suratJalan);
 
         // If no peminjaman relation found
         if (!$peminjaman) {
             return '-';
         }
 
-        // Determine start time (when items were received)
-        $startTime = $peminjaman->waktu_diterima;
+        // Determine start time (when items were received or shipped)
+        $startTime = $peminjaman->waktu_diterima
+            ?? $peminjaman->waktu_kirim
+            ?? $peminjaman->waktu_pengajuan
+            ?? $peminjaman->created_at;
 
         if (!$startTime) {
             return 'Belum diterima';
         }
 
-        // Determine end time (when items were returned, or now if not yet returned)
-        $endTime = $peminjaman->waktu_pengembalian;
+        // Determine end time (for pengembalian use surat jalan completion time)
+        if ($suratJalan->tipe === 'PENGEMBALIAN') {
+            $endTime = $suratJalan->waktu_ttd_penerima ?? $suratJalan->updated_at;
+        } else {
+            $endTime = $peminjaman->waktu_pengembalian;
+        }
 
         if ($endTime) {
             // Already returned - calculate duration
@@ -268,12 +300,43 @@ class SuratJalanExport implements FromQuery, WithCustomStartCell, WithEvents, Wi
 
         $durationText = !empty($parts) ? implode(' ', $parts) : 'Kurang dari 1 menit';
 
-        // Add suffix if not yet returned
-        if (!$endTime) {
+        // Add suffix if not yet returned (only for peminjaman)
+        if ($suratJalan->tipe === 'PEMINJAMAN' && !$endTime) {
             $durationText .= ' (berlangsung)';
         }
 
         return $durationText;
+    }
+
+    private function resolvePengembalianLabel(SuratJalan $suratJalan): ?string
+    {
+        $peminjaman = $this->resolvePeminjamanForDuration($suratJalan);
+        if (!$peminjaman) {
+            return null;
+        }
+
+        $pengembalians = $peminjaman->suratJalanPengembalians ?? collect();
+        $pengembalians = $pengembalians->values();
+        if ($pengembalians->isEmpty()) {
+            return null;
+        }
+
+        $index = $pengembalians->search(fn ($row) => (int) $row->id === (int) $suratJalan->id);
+        if ($index === false) {
+            return null;
+        }
+
+        return 'Pengembalian #' . ($index + 1);
+    }
+
+    private function resolvePeminjamanForDuration(SuratJalan $suratJalan): ?Peminjaman
+    {
+        if ($suratJalan->tipe === 'PEMINJAMAN') {
+            return $suratJalan->peminjaman;
+        }
+
+        return $suratJalan->peminjamanRef
+            ?? $suratJalan->peminjamanKembali;
     }
 
     public function styles(Worksheet $sheet): array

@@ -190,96 +190,213 @@
                     'DIAJUKAN' => 'bg-gray-100 text-gray-800',
                     'DIKIRIM' => 'bg-blue-100 text-blue-800',
                     'DITERIMA' => 'bg-yellow-100 text-yellow-800',
-                    'DIKEMBALIKAN' => 'bg-orange-100 text-orange-800',
+                    'DIKEMBALIKAN' => 'bg-green-100 text-green-800',
+                    'DIKEMBALIKAN_SEBAGIAN' => 'bg-amber-100 text-amber-800',
                     'SELESAI' => 'bg-green-100 text-green-800',
                     'DITOLAK' => 'bg-red-100 text-red-800',
                     default => 'bg-gray-100 text-gray-800'
                 };
+                $statusLabel = match($pinjam->status) {
+                    'DIKEMBALIKAN_SEBAGIAN' => 'SEBAGIAN',
+                    default => $pinjam->status
+                };
                 $itemCount = $pinjam->items->count();
                 $totalQty = $pinjam->items->sum('jumlah_dipinjam');
+                $pengembalianCount = $pinjam->pengembalian_entries->count();
             @endphp
-            <div class="p-4 border-b border-gray-200">
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-gray-900 text-sm">{{ $pinjam->kode }}</h3>
-                        <p class="text-xs text-gray-500">{{ $pinjam->waktu_pinjam?->format('d M Y') ?? $pinjam->created_at->format('d M Y') }}</p>
+            <div class="border-b border-gray-200" x-data="{ expanded: false, showItems: false }">
+                <div class="p-4">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900 text-sm">{{ $pinjam->kode }}</h3>
+                            <p class="text-xs text-gray-500">{{ $pinjam->waktu_mulai?->format('d M Y') }}</p>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
+                            {{ $statusLabel }}
+                        </span>
                     </div>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                        {{ $pinjam->status }}
-                    </span>
-                </div>
 
-                <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
-                    <div class="bg-gray-50 rounded p-2">
-                        <p class="text-gray-500">Peminjam</p>
-                        <p class="font-medium text-gray-900 truncate">
-                            {{ $pinjam->gudang_peminjam_is_custom ? ($pinjam->gudang_peminjam_custom_nama ?? 'Gudang Lainnya') : ($pinjam->gudangPeminjam->nama ?? '-') }}
-                        </p>
+                    <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
+                        <div class="bg-gray-50 rounded p-2">
+                            <p class="text-gray-500">Peminjam</p>
+                            <p class="font-medium text-gray-900 truncate">{{ $pinjam->gudangPeminjam?->nama ?? '-' }}</p>
+                        </div>
+                        <div class="bg-gray-50 rounded p-2">
+                            <p class="text-gray-500">Pemilik</p>
+                            <p class="font-medium text-gray-900 truncate">{{ $pinjam->gudangPemilik?->nama ?? '-' }}</p>
+                        </div>
                     </div>
-                    <div class="bg-gray-50 rounded p-2">
-                        <p class="text-gray-500">Pemilik</p>
-                        <p class="font-medium text-gray-900 truncate">
-                            {{ $pinjam->gudangPemilik->nama ?? '-' }}
-                        </p>
+                    <div class="bg-gray-50 rounded p-2 mb-3 text-xs">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Item Dipinjam</p>
+                                <p class="font-medium text-gray-900">{{ $itemCount }} item ({{ $totalQty }} unit)</p>
+                            </div>
+                            <button type="button"
+                                    @click="showItems = !showItems"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[#035b71] bg-[#035b71]/10 rounded-md hover:bg-[#035b71]/20 transition">
+                                <span>Lihat</span>
+                                <svg class="w-3 h-3 transition-transform" :class="showItems ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div x-show="showItems" x-collapse class="mt-2 space-y-1">
+                            @foreach($pinjam->items as $item)
+                                <div class="flex items-center justify-between bg-white rounded-md border border-gray-100 px-2 py-1">
+                                    <div class="min-w-0 mr-2">
+                                        <p class="text-[11px] font-semibold text-gray-800 truncate">{{ $item->item->kode ?? '-' }}</p>
+                                        <p class="text-[11px] text-gray-500 truncate">{{ $item->item->nama ?? '-' }}</p>
+                                    </div>
+                                    <span class="text-[11px] font-bold text-[#035b71] bg-[#035b71]/10 px-2 py-0.5 rounded">
+                                        {{ $item->jumlah_dipinjam }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
-                </div>
-                <div class="bg-gray-50 rounded p-2 mb-3 text-xs">
-                    <p class="text-gray-500">Item</p>
-                    <p class="font-medium text-gray-900">{{ $itemCount }} item ({{ $totalQty }} unit)</p>
-                </div>
 
-                {{-- Duration --}}
-                <div class="mb-3 text-xs">
-                    <span class="text-gray-500">Durasi Pinjam:</span>
-                    @if($pinjam->waktu_pinjam)
-                        @php
-                            $mobileDurationParts = [];
-                            if ($pinjam->total_hari > 0) $mobileDurationParts[] = $pinjam->total_hari . ' hari';
-                            if ($pinjam->total_jam > 0) $mobileDurationParts[] = $pinjam->total_jam . ' jam';
-                            if (empty($mobileDurationParts) && isset($pinjam->total_menit)) $mobileDurationParts[] = $pinjam->total_menit . ' menit';
-                            $mobileDurationText = !empty($mobileDurationParts) ? implode(', ', $mobileDurationParts) : '< 1 menit';
-                        @endphp
+                    @php
+                        $mobileDurationParts = [];
+                        if (($pinjam->total_hari ?? 0) > 0) $mobileDurationParts[] = $pinjam->total_hari . ' hari';
+                        if (($pinjam->total_jam ?? 0) > 0) $mobileDurationParts[] = $pinjam->total_jam . ' jam';
+                        if (empty($mobileDurationParts) && ($pinjam->total_menit ?? 0) > 0) $mobileDurationParts[] = $pinjam->total_menit . ' menit';
+                        $mobileDurationText = !empty($mobileDurationParts) ? implode(', ', $mobileDurationParts) : '< 1 menit';
+                    @endphp
+                    @if($pinjam->waktu_mulai)
+                    <div class="mb-3 text-xs">
+                        <span class="text-gray-500">Durasi:</span>
                         <span class="font-semibold text-[#035b71]">{{ $mobileDurationText }}</span>
-                        @if(!$pinjam->waktu_selesai)
-                            <span class="text-yellow-600 ml-1">(Berjalan)</span>
+                    </div>
+                    @endif
+
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full {{ $pinjam->is_owner ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }}">
+                            {{ $pinjam->is_owner ? 'Dipinjamkan' : 'Meminjam' }}
+                        </span>
+                        {{-- Surat Jalan Dropdown --}}
+                        @if($pinjam->surat_jalan_kirim_id || $pengembalianCount > 0)
+                            <div x-data="{ showSJ: false }" @click.away="showSJ = false" class="relative">
+                                <button @click="showSJ = !showSJ" type="button"
+                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-[#035b71] bg-[#035b71]/10 rounded-lg hover:bg-[#035b71]/20 transition">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    <span>Surat Jalan</span>
+                                    <svg class="w-3 h-3 transition-transform" :class="showSJ ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                                <div x-show="showSJ" x-transition class="absolute z-50 right-0 mt-1 w-44 bg-white rounded-lg shadow-xl border border-gray-200 py-1">
+                                    @if($pinjam->surat_jalan_kirim_id)
+                                        <a href="{{ route('gudang.surat-jalan.show', $pinjam->surat_jalan_kirim_id) }}"
+                                           class="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
+                                            <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            SJ Pengiriman
+                                        </a>
+                                    @endif
+                                    @foreach($pinjam->pengembalian_entries as $idx => $sjKembali)
+                                        <a href="{{ route('gudang.surat-jalan.show', $sjKembali->id) }}"
+                                           class="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition">
+                                            <svg class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            SJ Pengembalian{{ $pengembalianCount > 1 ? ' #' . ($idx + 1) : '' }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
                         @endif
-                    @else
-                        <span class="text-gray-400">Belum diterima</span>
+                    </div>
+
+                    {{-- Expandable Pengembalian Button --}}
+                    @if($pengembalianCount > 0)
+                    <button @click="expanded = !expanded" class="mt-3 w-full flex items-center justify-between p-2 bg-gray-100 rounded-lg text-xs text-gray-700 hover:bg-gray-200 transition">
+                        <span class="font-medium">Riwayat Pengembalian ({{ $pengembalianCount }}x)</span>
+                        <svg class="w-4 h-4 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
                     @endif
                 </div>
 
-                <div class="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full {{ $pinjam->is_owner ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }}">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            @if($pinjam->is_owner)
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                            @else
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                            @endif
-                        </svg>
-                        {{ $pinjam->is_owner ? 'Dipinjamkan' : 'Meminjam' }}
-                    </span>
-                    <div class="flex items-center gap-2">
-                        @if($pinjam->surat_jalan_kirim_id)
-                            <a href="{{ route('gudang.surat-jalan.show', $pinjam->surat_jalan_kirim_id) }}"
-                               class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                                </svg>
-                                SJ Kirim
-                            </a>
-                        @endif
-                        @if($pinjam->surat_jalan_kembali_id)
-                            <a href="{{ route('gudang.surat-jalan.show', $pinjam->surat_jalan_kembali_id) }}"
-                               class="inline-flex items-center gap-1 text-green-600 hover:text-green-800 font-medium">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                                </svg>
-                                SJ Kembali
-                            </a>
-                        @endif
-                    </div>
+                {{-- Expandable Pengembalian Details - Same style as main entry --}}
+                @if($pengembalianCount > 0)
+                <div x-show="expanded" x-collapse class="border-t border-gray-200 bg-gray-50">
+                    @foreach($pinjam->pengembalian_entries as $idx => $sjKembali)
+                        @php
+                            $durasiParts = [];
+                            if (($sjKembali->durasi_hari ?? 0) > 0) $durasiParts[] = $sjKembali->durasi_hari . ' hari';
+                            if (($sjKembali->durasi_jam ?? 0) > 0) $durasiParts[] = $sjKembali->durasi_jam . ' jam';
+                            $durasiText = !empty($durasiParts) ? implode(', ', $durasiParts) : '< 1 jam';
+                            $sjItemCount = $sjKembali->items->count();
+                            $sjTotalQty = $sjKembali->items->sum('jumlah');
+                        @endphp
+                        <div class="p-4 border-b border-gray-200 last:border-b-0">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                    </svg>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-900 text-sm">{{ $sjKembali->nomor }}</h3>
+                                        <p class="text-xs text-gray-500">Pengembalian #{{ $idx + 1 }}</p>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    DIKEMBALIKAN
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
+                                <div class="bg-white rounded p-2 border border-gray-200">
+                                    <p class="text-gray-500">Tanggal Kembali</p>
+                                    <p class="font-medium text-gray-900">{{ $sjKembali->tanggal?->format('d M Y') }}</p>
+                                </div>
+                                <div class="bg-white rounded p-2 border border-gray-200">
+                                    <p class="text-gray-500">Durasi Pinjam</p>
+                                    <p class="font-medium text-gray-900">{{ $durasiText }}</p>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded p-2 mb-3 text-xs border border-gray-200" x-data="{ showReturnItems: false }">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-500">Item Dikembalikan</p>
+                                        <p class="font-medium text-gray-900">{{ $sjItemCount }} item ({{ $sjTotalQty }} unit)</p>
+                                    </div>
+                                    <button type="button"
+                                            @click="showReturnItems = !showReturnItems"
+                                            class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[#035b71] bg-[#035b71]/10 rounded-md hover:bg-[#035b71]/20 transition">
+                                        <span>Lihat</span>
+                                        <svg class="w-3 h-3 transition-transform" :class="showReturnItems ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div x-show="showReturnItems" x-collapse class="mt-2 space-y-1">
+                                    @foreach($sjKembali->items as $returnItem)
+                                        <div class="flex items-center justify-between bg-gray-50 rounded-md border border-gray-100 px-2 py-1">
+                                            <div class="min-w-0 mr-2">
+                                                <p class="text-[11px] font-semibold text-gray-800 truncate">{{ $returnItem->item->kode ?? '-' }}</p>
+                                                <p class="text-[11px] text-gray-500 truncate">{{ $returnItem->item->nama ?? '-' }}</p>
+                                            </div>
+                                            <span class="text-[11px] font-bold text-[#035b71] bg-[#035b71]/10 px-2 py-0.5 rounded">
+                                                {{ $returnItem->jumlah }}
+                                            </span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-end text-xs">
+                                <a href="{{ route('gudang.surat-jalan.show', $sjKembali->id) }}" class="text-[#035b71] hover:text-[#035b71]/80 font-medium">Lihat SJ Pengembalian</a>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
+                @endif
             </div>
         @empty
             <div class="p-8 text-center text-gray-500">
@@ -308,22 +425,29 @@
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surat Jalan</th>
                 </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($peminjamans ?? [] as $index => $pinjam)
-                    @php
-                        $statusColor = match($pinjam->status) {
-                            'DIAJUKAN' => 'bg-gray-100 text-gray-800',
-                            'DIKIRIM' => 'bg-blue-100 text-blue-800',
-                            'DITERIMA' => 'bg-yellow-100 text-yellow-800',
-                            'DIKEMBALIKAN' => 'bg-orange-100 text-orange-800',
-                            'SELESAI' => 'bg-green-100 text-green-800',
-                            'DITOLAK' => 'bg-red-100 text-red-800',
-                            default => 'bg-gray-100 text-gray-800'
-                        };
-                        $itemCount = $pinjam->items->count();
-                        $totalQty = $pinjam->items->sum('jumlah_dipinjam');
-                    @endphp
-                    <tr class="hover:bg-gray-50">
+            @forelse($peminjamans ?? [] as $index => $pinjam)
+                @php
+                    $statusColor = match($pinjam->status) {
+                        'DIAJUKAN' => 'bg-gray-100 text-gray-800',
+                        'DIKIRIM' => 'bg-blue-100 text-blue-800',
+                        'DITERIMA' => 'bg-yellow-100 text-yellow-800',
+                        'DIKEMBALIKAN' => 'bg-orange-100 text-orange-800',
+                        'DIKEMBALIKAN_SEBAGIAN' => 'bg-amber-100 text-amber-800',
+                        'SELESAI' => 'bg-green-100 text-green-800',
+                        'DITOLAK' => 'bg-red-100 text-red-800',
+                        default => 'bg-gray-100 text-gray-800'
+                    };
+                    $statusLabel = match($pinjam->status) {
+                        'DIKEMBALIKAN_SEBAGIAN' => 'SEBAGIAN',
+                        default => $pinjam->status
+                    };
+                    $itemCount = $pinjam->items->count();
+                    $totalQty = $pinjam->items->sum('jumlah_dipinjam');
+                    $pengembalianCount = $pinjam->pengembalian_entries->count();
+                @endphp
+                {{-- Wrapper tbody with x-data for Alpine.js scope --}}
+                <tbody x-data="{ expanded: false }" class="bg-white">
+                <tr class="hover:bg-gray-50 border-b border-gray-200">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $peminjamans->firstItem() + $index }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $pinjam->kode }}</div>
@@ -332,36 +456,28 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">
-                                {{ $pinjam->gudang_peminjam_is_custom ? ($pinjam->gudang_peminjam_custom_nama ?? 'Gudang Lainnya') : ($pinjam->gudangPeminjam->nama ?? '-') }}
-                            </div>
+                            <div class="text-sm text-gray-900">{{ $pinjam->gudangPeminjam?->nama ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">
-                                {{ $pinjam->gudangPemilik->nama ?? '-' }}
-                            </div>
+                            <div class="text-sm text-gray-900">{{ $pinjam->gudangPemilik?->nama ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div x-data="{
-                                    showItems: false,
-                                    position: { top: 0, left: 0 },
-                                    openAbove: false,
-                                    updatePosition() {
-                                        const rect = this.$refs.trigger.getBoundingClientRect();
-                                        const spaceBelow = window.innerHeight - rect.bottom;
-                                        this.openAbove = spaceBelow < 200;
-                                        if (this.openAbove) {
-                                            this.position = { top: rect.top - 4, left: rect.left };
-                                        } else {
-                                            this.position = { top: rect.bottom + 4, left: rect.left };
-                                        }
+                                showItems: false,
+                                pos: { top: 0, left: 0 },
+                                calcPos() {
+                                    const btn = this.$refs.itemBtn;
+                                    const rect = btn.getBoundingClientRect();
+                                    const dropdownHeight = 240;
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+                                        this.pos = { top: rect.top - dropdownHeight - 4, left: rect.left };
+                                    } else {
+                                        this.pos = { top: rect.bottom + 4, left: rect.left };
                                     }
-                                 }"
-                                 x-init="$watch('showItems', value => { if (value) updatePosition(); })"
-                                 @click.away="showItems = false">
-                                <button x-ref="trigger"
-                                        @click="showItems = !showItems"
-                                        type="button"
+                                }
+                            }" @click.away="showItems = false" class="relative">
+                                <button x-ref="itemBtn" @click="calcPos(); showItems = !showItems" type="button"
                                         class="inline-flex items-center gap-2 text-sm text-[#035b71] hover:text-[#035b71]/80 font-medium bg-[#035b71]/5 px-3 py-1.5 rounded-lg transition whitespace-nowrap">
                                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
@@ -372,19 +488,13 @@
                                     </svg>
                                 </button>
                                 <template x-teleport="body">
-                                    <div x-show="showItems"
-                                         x-transition:enter="transition ease-out duration-100"
-                                         x-transition:enter-start="opacity-0 scale-95"
-                                         x-transition:enter-end="opacity-100 scale-100"
-                                         x-transition:leave="transition ease-in duration-75"
-                                         x-transition:leave-start="opacity-100 scale-100"
-                                         x-transition:leave-end="opacity-0 scale-95"
-                                         :style="'position: fixed; top: ' + position.top + 'px; left: ' + position.left + 'px; z-index: 9999;' + (openAbove ? ' transform: translateY(-100%);' : '')"
-                                         class="w-72 bg-white rounded-lg shadow-2xl border border-gray-200">
+                                    <div x-show="showItems" x-transition @click.away="showItems = false"
+                                         class="fixed z-[9999] w-72 bg-white rounded-lg shadow-2xl border border-gray-200"
+                                         :style="{ top: pos.top + 'px', left: pos.left + 'px' }">
                                         <div class="bg-gray-50 px-3 py-2 border-b border-gray-200 rounded-t-lg">
                                             <span class="text-xs font-semibold text-gray-500 uppercase">Daftar Item ({{ $itemCount }})</span>
                                         </div>
-                                        <div class="p-2 space-y-1 max-h-36 overflow-y-auto">
+                                        <div class="p-2 space-y-1 max-h-48 overflow-y-auto">
                                             @foreach($pinjam->items as $item)
                                                 <div class="text-sm text-gray-900 flex justify-between items-center p-2 hover:bg-gray-50 rounded">
                                                     <div class="flex-1 min-w-0 mr-2">
@@ -400,37 +510,33 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                    @if($pinjam->waktu_pinjam)
-                        <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_pinjam->format('d M Y') }}</div>
-                        <div class="text-xs text-gray-500">{{ $pinjam->waktu_pinjam->format('H:i') }} WIB</div>
+                            @if($pinjam->waktu_mulai)
+                                <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_mulai->format('d M Y') }}</div>
+                                <div class="text-xs text-gray-500">{{ $pinjam->waktu_mulai->format('H:i') }} WIB</div>
                             @else
                                 <span class="text-sm text-gray-400 italic">Belum diterima</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($pinjam->waktu_selesai)
-                                <div class="text-sm font-medium text-gray-900">{{ \Carbon\Carbon::parse($pinjam->waktu_selesai)->format('d M Y') }}</div>
-                                <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($pinjam->waktu_selesai)->format('H:i') }} WIB</div>
+                            @if($pinjam->waktu_kembali)
+                                <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_kembali->format('d M Y') }}</div>
+                                <div class="text-xs text-gray-500">{{ $pinjam->waktu_kembali->format('H:i') }} WIB</div>
                             @else
                                 <span class="text-sm text-gray-400 italic">-</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                    @if($pinjam->waktu_pinjam)
+                            @if($pinjam->waktu_mulai)
                                 @php
                                     $durationParts = [];
-                                    if ($pinjam->total_hari > 0) $durationParts[] = $pinjam->total_hari . ' hari';
-                                    if ($pinjam->total_jam > 0) $durationParts[] = $pinjam->total_jam . ' jam';
-                                    if (empty($durationParts) && isset($pinjam->total_menit)) $durationParts[] = $pinjam->total_menit . ' menit';
+                                    if (($pinjam->total_hari ?? 0) > 0) $durationParts[] = $pinjam->total_hari . ' hari';
+                                    if (($pinjam->total_jam ?? 0) > 0) $durationParts[] = $pinjam->total_jam . ' jam';
+                                    if (empty($durationParts) && ($pinjam->total_menit ?? 0) > 0) $durationParts[] = $pinjam->total_menit . ' menit';
                                     $durationText = !empty($durationParts) ? implode(', ', $durationParts) : '< 1 menit';
                                 @endphp
-                                <div class="text-sm font-medium text-gray-900">
-                                    {{ $durationText }}
-                                </div>
-                                <div class="text-xs text-gray-500">
-                                    Sejak {{ $pinjam->waktu_pinjam->format('d M Y') }}
-                                </div>
-                                @if(!$pinjam->waktu_selesai)
+                                <div class="text-sm font-medium text-gray-900">{{ $durationText }}</div>
+                                <div class="text-xs text-gray-500">Sejak {{ $pinjam->waktu_mulai->format('d M Y') }}</div>
+                                @if($pinjam->status !== 'SELESAI')
                                     <div class="text-xs text-yellow-600 font-medium mt-0.5">Masih berjalan</div>
                                 @endif
                             @else
@@ -439,68 +545,66 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
-                                {{ $pinjam->status }}
+                                {{ $statusLabel }}
                             </span>
+                            @if($pengembalianCount > 0)
+                                <button @click="expanded = !expanded" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition">
+                                    <span>{{ $pengembalianCount }}x kembali</span>
+                                    <svg class="w-3 h-3 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($pinjam->surat_jalan_kirim_id || $pinjam->surat_jalan_kembali_id)
+                            @if($pinjam->surat_jalan_kirim_id || $pengembalianCount > 0)
                                 <div x-data="{
-                                        open: false,
-                                        position: { top: 0, left: 0 },
-                                        openAbove: false,
-                                        updatePosition() {
-                                            const rect = this.$refs.trigger.getBoundingClientRect();
-                                            const spaceBelow = window.innerHeight - rect.bottom;
-                                            this.openAbove = spaceBelow < 120;
-                                            if (this.openAbove) {
-                                                this.position = { top: rect.top - 4, left: rect.right - 192 };
-                                            } else {
-                                                this.position = { top: rect.bottom + 4, left: rect.right - 192 };
-                                            }
+                                    showSJ: false,
+                                    pos: { top: 0, left: 0 },
+                                    calcPos() {
+                                        const btn = this.$refs.sjBtn;
+                                        const rect = btn.getBoundingClientRect();
+                                        const dropdownHeight = 120;
+                                        const spaceBelow = window.innerHeight - rect.bottom;
+                                        if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+                                            this.pos = { top: rect.top - dropdownHeight - 4, left: rect.right - 192 };
+                                        } else {
+                                            this.pos = { top: rect.bottom + 4, left: rect.right - 192 };
                                         }
-                                     }"
-                                     x-init="$watch('open', value => { if (value) updatePosition(); })"
-                                     @click.away="open = false">
-                                    <button x-ref="trigger"
-                                            @click="open = !open"
-                                            type="button"
+                                    }
+                                }" @click.away="showSJ = false" class="relative">
+                                    <button x-ref="sjBtn" @click="calcPos(); showSJ = !showSJ" type="button"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#035b71] bg-[#035b71]/10 rounded-lg hover:bg-[#035b71]/20 transition">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                         </svg>
-                                        Surat Jalan
-                                        <svg class="w-3 h-3 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <span>Surat Jalan</span>
+                                        <svg class="w-3 h-3 transition-transform" :class="showSJ ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                         </svg>
                                     </button>
                                     <template x-teleport="body">
-                                        <div x-show="open"
-                                             x-transition:enter="transition ease-out duration-100"
-                                             x-transition:enter-start="opacity-0 scale-95"
-                                             x-transition:enter-end="opacity-100 scale-100"
-                                             x-transition:leave="transition ease-in duration-75"
-                                             x-transition:leave-start="opacity-100 scale-100"
-                                             x-transition:leave-end="opacity-0 scale-95"
-                                             :style="'position: fixed; top: ' + position.top + 'px; left: ' + position.left + 'px; z-index: 9999;' + (openAbove ? ' transform: translateY(-100%);' : '')"
-                                             class="w-48 bg-white rounded-lg shadow-2xl border border-gray-200 py-1">
+                                        <div x-show="showSJ" x-transition @click.away="showSJ = false"
+                                             class="fixed z-[9999] w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1"
+                                             :style="{ top: pos.top + 'px', left: pos.left + 'px' }">
                                             @if($pinjam->surat_jalan_kirim_id)
                                                 <a href="{{ route('gudang.surat-jalan.show', $pinjam->surat_jalan_kirim_id) }}"
-                                                   class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                                   class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition">
                                                     <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                                     </svg>
                                                     SJ Pengiriman
                                                 </a>
                                             @endif
-                                            @if($pinjam->surat_jalan_kembali_id)
-                                                <a href="{{ route('gudang.surat-jalan.show', $pinjam->surat_jalan_kembali_id) }}"
-                                                   class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                            @foreach($pinjam->pengembalian_entries as $idx => $sjKembali)
+                                                <a href="{{ route('gudang.surat-jalan.show', $sjKembali->id) }}"
+                                                   class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition">
                                                     <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                                     </svg>
-                                                    SJ Pengembalian
+                                                    SJ Pengembalian{{ $pengembalianCount > 1 ? ' #' . ($idx + 1) : '' }}
                                                 </a>
-                                            @endif
+                                            @endforeach
                                         </div>
                                     </template>
                                 </div>
@@ -509,7 +613,120 @@
                             @endif
                         </td>
                     </tr>
-                @empty
+                    {{-- Expandable Pengembalian Sub-Rows - Same style as main entry --}}
+                    @if($pengembalianCount > 0)
+                        @foreach($pinjam->pengembalian_entries as $idx => $sjKembali)
+                            @php
+                                $durasiParts = [];
+                                if (($sjKembali->durasi_hari ?? 0) > 0) $durasiParts[] = $sjKembali->durasi_hari . ' hari';
+                                if (($sjKembali->durasi_jam ?? 0) > 0) $durasiParts[] = $sjKembali->durasi_jam . ' jam';
+                                $durasiText = !empty($durasiParts) ? implode(', ', $durasiParts) : '< 1 jam';
+                                $sjItemCount = $sjKembali->items->count();
+                                $sjTotalQty = $sjKembali->items->sum('jumlah');
+                            @endphp
+                            <tr x-show="expanded" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="bg-gray-50 hover:bg-gray-100 border-b border-gray-200">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400"></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                        </svg>
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900">{{ $sjKembali->nomor }}</div>
+                                            <div class="text-xs text-gray-500">Pengembalian #{{ $idx + 1 }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ $pinjam->gudangPeminjam?->nama ?? '-' }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ $pinjam->gudangPemilik?->nama ?? '-' }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div x-data="{
+                                        showReturnItems: false,
+                                        pos: { top: 0, left: 0 },
+                                        calcPos() {
+                                            const btn = this.$refs.returnItemBtn;
+                                            const rect = btn.getBoundingClientRect();
+                                            const dropdownHeight = 240;
+                                            const spaceBelow = window.innerHeight - rect.bottom;
+                                            if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+                                                this.pos = { top: rect.top - dropdownHeight - 4, left: rect.left };
+                                            } else {
+                                                this.pos = { top: rect.bottom + 4, left: rect.left };
+                                            }
+                                        }
+                                    }" @click.away="showReturnItems = false" class="relative">
+                                        <button x-ref="returnItemBtn" @click="calcPos(); showReturnItems = !showReturnItems" type="button"
+                                                class="inline-flex items-center gap-2 text-sm text-[#035b71] hover:text-[#035b71]/80 font-medium bg-[#035b71]/5 px-3 py-1.5 rounded-lg transition whitespace-nowrap">
+                                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                            </svg>
+                                            <span>{{ $sjItemCount }} item ({{ $sjTotalQty }} unit)</span>
+                                            <svg class="w-4 h-4 shrink-0 transition-transform" :class="showReturnItems ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </button>
+                                        <template x-teleport="body">
+                                            <div x-show="showReturnItems" x-transition @click.away="showReturnItems = false"
+                                                 class="fixed z-[9999] w-72 bg-white rounded-lg shadow-2xl border border-gray-200"
+                                                 :style="{ top: pos.top + 'px', left: pos.left + 'px' }">
+                                                <div class="bg-gray-50 px-3 py-2 border-b border-gray-200 rounded-t-lg">
+                                                    <span class="text-xs font-semibold text-gray-500 uppercase">Item Dikembalikan ({{ $sjItemCount }})</span>
+                                                </div>
+                                                <div class="p-2 space-y-1 max-h-48 overflow-y-auto">
+                                                    @foreach($sjKembali->items as $returnItem)
+                                                        <div class="text-sm text-gray-900 flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                            <div class="flex-1 min-w-0 mr-2">
+                                                                <span class="font-medium">{{ $returnItem->item->kode ?? '-' }}</span>
+                                                                <span class="text-gray-500 block text-xs truncate">{{ $returnItem->item->nama ?? '-' }}</span>
+                                                            </div>
+                                                            <span class="text-[#035b71] font-bold bg-[#035b71]/10 px-2 py-0.5 rounded shrink-0">{{ $returnItem->jumlah }}</span>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($pinjam->waktu_mulai)
+                                        <div class="text-sm font-medium text-gray-900">{{ $pinjam->waktu_mulai->format('d M Y') }}</div>
+                                        <div class="text-xs text-gray-500">{{ $pinjam->waktu_mulai->format('H:i') }} WIB</div>
+                                    @else
+                                        <span class="text-sm text-gray-400 italic">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ $sjKembali->tanggal?->format('d M Y') }}</div>
+                                    <div class="text-xs text-gray-500">Dikembalikan</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ $durasiText }}</div>
+                                    <div class="text-xs text-gray-500">Durasi pinjam</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        DIKEMBALIKAN
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="{{ route('gudang.surat-jalan.show', $sjKembali->id) }}"
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#035b71] bg-[#035b71]/10 rounded-lg hover:bg-[#035b71]/20 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        Lihat SJ
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    @endif
+                </tbody>
+            @empty
+                <tbody class="bg-white">
                     <tr>
                         <td colspan="10" class="px-6 py-12 text-center">
                             <div class="flex flex-col items-center justify-center">
@@ -520,8 +737,8 @@
                             </div>
                         </td>
                     </tr>
-                @endforelse
-            </tbody>
+                </tbody>
+            @endforelse
         </table>
     </div>
 

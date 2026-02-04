@@ -53,4 +53,41 @@ class User extends Authenticatable
     {
         return $this->appNotifications()->unread();
     }
+
+    /**
+     * Get display name for a role
+     */
+    public static function roleDisplayName(string $role): string
+    {
+        return match ($role) {
+            'admin' => 'Admin',
+            'operator_gudang' => 'Tool Man',
+            'security' => 'Security',
+            'manager' => 'Manager',
+            'penerima' => 'Penerima',
+            default => ucfirst(str_replace('_', ' ', $role)),
+        };
+    }
+
+    /**
+     * Get all role display names
+     */
+    public static function roleDisplayNames(): array
+    {
+        return [
+            'admin' => 'Admin',
+            'operator_gudang' => 'Tool Man',
+            'security' => 'Security',
+            'manager' => 'Manager',
+            'penerima' => 'Penerima',
+        ];
+    }
+
+    /**
+     * Accessor for role display name
+     */
+    public function getRoleDisplayNameAttribute(): string
+    {
+        return self::roleDisplayName($this->role);
+    }
 }

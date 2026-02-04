@@ -11,6 +11,7 @@ use App\Models\ItemUnit;
 use App\Models\Peminjaman;
 use App\Models\PeminjamanItem;
 use App\Models\StockMovement;
+use App\Models\SuratJalan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -42,19 +43,13 @@ class StokController extends Controller
         // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
         $totalBorrowed = PeminjamanItem::query()
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
-            ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
             ->where('peminjamans.gudang_peminjam_id', $gudangId)
-            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
             ->where(function ($query) {
                 $query->whereNotNull('peminjamans.waktu_diterima')
                     ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
             })
-            // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
-            ->where(function ($query) {
-                $query->whereNull('peminjamans.surat_jalan_kembali_id')
-                    ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
-            })
-            ->sum('peminjaman_items.jumlah_dipinjam');
+            ->sum(DB::raw('GREATEST(COALESCE(peminjaman_items.jumlah_diterima, peminjaman_items.jumlah_dipinjam) - COALESCE(peminjaman_items.jumlah_dikembalikan, 0), 0)'));
 
         $categories = ItemCategory::orderBy('nama')->get();
         $satuans = ItemUnit::orderBy('nama')->get();
@@ -81,10 +76,10 @@ class StokController extends Controller
 
         // Count for tab badges
         $countDipinjamkan = Peminjaman::where('gudang_pemilik_id', $gudangId)
-            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'])
             ->count();
         $countPinjaman = Peminjaman::where('gudang_peminjam_id', $gudangId)
-            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'])
             ->count();
 
         // Tab-specific data
@@ -92,10 +87,10 @@ class StokController extends Controller
             // Barang yang dipinjamkan ke gudang lain
             $peminjamans = $this->getBarangDipinjamkan($gudangId, $search, $status, $sort);
             $totalAktif = Peminjaman::where('gudang_pemilik_id', $gudangId)
-                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'])
                 ->count();
             $totalOverdue = Peminjaman::where('gudang_pemilik_id', $gudangId)
-                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'])
                 ->whereNotNull('batas_waktu_kembali')
                 ->where('batas_waktu_kembali', '<', now())
                 ->count();
@@ -109,10 +104,10 @@ class StokController extends Controller
             // Barang yang dipinjam dari gudang lain
             $peminjamans = $this->getBarangPinjaman($gudangId, $search, $status, $sort);
             $totalAktif = Peminjaman::where('gudang_peminjam_id', $gudangId)
-                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN'])
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN'])
                 ->count();
             $totalOverdue = Peminjaman::where('gudang_peminjam_id', $gudangId)
-                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN'])
+                ->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN'])
                 ->whereNotNull('batas_waktu_kembali')
                 ->where('batas_waktu_kembali', '<', now())
                 ->count();
@@ -156,19 +151,13 @@ class StokController extends Controller
             // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam (dalam proses pengembalian)
             // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
             $borrowedTotals = PeminjamanItem::query()
-                ->select('peminjaman_items.item_id', DB::raw('SUM(peminjaman_items.jumlah_dipinjam) as total'))
+                ->select('peminjaman_items.item_id', DB::raw('SUM(GREATEST(COALESCE(peminjaman_items.jumlah_diterima, peminjaman_items.jumlah_dipinjam) - COALESCE(peminjaman_items.jumlah_dikembalikan, 0), 0)) as total'))
                 ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
-                ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
                 ->where('peminjamans.gudang_peminjam_id', $gudangId)
-                ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
+                ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
                 ->where(function ($query) {
                     $query->whereNotNull('peminjamans.waktu_diterima')
                         ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
-                })
-                // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
-                ->where(function ($query) {
-                    $query->whereNull('peminjamans.surat_jalan_kembali_id')
-                        ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
                 })
                 ->whereIn('peminjaman_items.item_id', $itemIds)
                 ->groupBy('peminjaman_items.item_id')
@@ -196,9 +185,9 @@ class StokController extends Controller
      */
     private function getBarangDipinjamkan(int $gudangId, ?string $search, ?string $status, string $sort = 'terbaru')
     {
-        return Peminjaman::with(['gudangPeminjam', 'items.item'])
+        return Peminjaman::with(['gudangPeminjam', 'items.item', 'suratJalanKirim', 'suratJalanKembali'])
             ->where('gudang_pemilik_id', $gudangId)
-            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'])
             ->when($search, function ($query, $search) {
                 $searchLower = strtolower($search);
                 $query->where(function ($q) use ($searchLower) {
@@ -213,7 +202,7 @@ class StokController extends Controller
             })
             ->when($status, function ($query, $status) {
                 if ($status === 'overdue') {
-                    $query->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+                    $query->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'])
                         ->whereNotNull('batas_waktu_kembali')
                         ->where('batas_waktu_kembali', '<', now());
                 } else {
@@ -230,9 +219,9 @@ class StokController extends Controller
      */
     private function getBarangPinjaman(int $gudangId, ?string $search, ?string $status, string $sort = 'terbaru')
     {
-        return Peminjaman::with(['gudangPemilik', 'items.item'])
+        return Peminjaman::with(['gudangPemilik', 'items.item', 'suratJalanKirim', 'suratJalanKembali'])
             ->where('gudang_peminjam_id', $gudangId)
-            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'MENUNGGU_DIKEMBALIKAN'])
+            ->whereIn('status', ['DIKIRIM', 'DIPERIKSA', 'DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN', 'MENUNGGU_DIKEMBALIKAN'])
             ->when($search, function ($query, $search) {
                 $searchLower = strtolower($search);
                 $query->where(function ($q) use ($searchLower) {
@@ -247,7 +236,7 @@ class StokController extends Controller
             })
             ->when($status, function ($query, $status) {
                 if ($status === 'overdue') {
-                    $query->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN'])
+                    $query->whereIn('status', ['DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN'])
                         ->whereNotNull('batas_waktu_kembali')
                         ->where('batas_waktu_kembali', '<', now());
                 } else {
@@ -322,25 +311,16 @@ class StokController extends Controller
         // Security check
         $this->verifyStockOwnership($stock);
 
-        // Exclude:
-        // - DIKEMBALIKAN/DIPERIKSA: barang sudah OUT dari gudang peminjam
-        // - Peminjaman yang surat pengembaliannya sudah di-approve manager (stok sudah OUT)
         $borrowedQty = PeminjamanItem::query()
             ->join('peminjamans', 'peminjaman_items.peminjaman_id', '=', 'peminjamans.id')
-            ->leftJoin('surat_jalans as sj_kembali', 'peminjamans.surat_jalan_kembali_id', '=', 'sj_kembali.id')
             ->where('peminjamans.gudang_peminjam_id', $stock->gudang_id)
             ->where('peminjaman_items.item_id', $stock->item_id)
-            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK', 'DIKEMBALIKAN', 'DIPERIKSA'])
+            ->whereNotIn('peminjamans.status', ['SELESAI', 'DITOLAK'])
             ->where(function ($query) {
                 $query->whereNotNull('peminjamans.waktu_diterima')
                     ->orWhereNotNull('peminjamans.waktu_ttd_penerima');
             })
-            // Exclude jika surat pengembalian sudah di-approve manager (status bukan draft/pending/ditolak)
-            ->where(function ($query) {
-                $query->whereNull('peminjamans.surat_jalan_kembali_id')
-                    ->orWhereIn('sj_kembali.status', ['DRAFT', 'MENUNGGU_PERSETUJUAN', 'DITOLAK', 'DITOLAK_PERSETUJUAN']);
-            })
-            ->sum('peminjaman_items.jumlah_dipinjam');
+            ->sum(DB::raw('GREATEST(COALESCE(peminjaman_items.jumlah_diterima, peminjaman_items.jumlah_dipinjam) - COALESCE(peminjaman_items.jumlah_dikembalikan, 0), 0)'));
 
         $stock->borrowed_qty = (int) $borrowedQty;
         $stock->own_qty = max(0, (int) $stock->jumlah - $stock->borrowed_qty);
@@ -556,10 +536,33 @@ class StokController extends Controller
         $tanggalPinjam = $request->input('tanggal_pinjam');
         $tanggalKembali = $request->input('tanggal_kembali');
 
-        $peminjamans = Peminjaman::with(['items.item', 'gudangPeminjam', 'gudangPemilik'])
-            ->where('status', 'SELESAI') // Riwayat hanya menampilkan peminjaman yang sudah selesai
+        // Get peminjaman records with their pengembalian surat jalans
+        // Show peminjaman that:
+        // 1. Are fully completed (SELESAI)
+        // 2. Have partial returns completed (DIKEMBALIKAN_SEBAGIAN)
+        // 3. Have another return in progress BUT already have completed returns (DIKEMBALIKAN with existing SELESAI SJ)
+        $peminjamans = Peminjaman::with([
+            'items.item',
+            'gudangPeminjam',
+            'gudangPemilik',
+            'suratJalanKirim',
+            // Only load SELESAI pengembalian SJ for riwayat display
+            'suratJalanPengembalians' => function ($query) {
+                $query->where('status', 'SELESAI')->with('items.item');
+            },
+        ])
+            ->where(function ($query) {
+                $query->whereIn('status', ['SELESAI', 'DIKEMBALIKAN_SEBAGIAN'])
+                    ->orWhere(function ($q) {
+                        // Has another return in progress but already has at least one completed pengembalian SJ
+                        // Include all intermediate statuses during return process
+                        $q->whereIn('status', ['DIKEMBALIKAN', 'DIPERIKSA', 'DIPERIKSA_PENERIMA', 'MENUNGGU_DIKEMBALIKAN'])
+                            ->whereHas('suratJalanPengembalians', function ($sjq) {
+                                $sjq->where('status', 'SELESAI');
+                            });
+                    });
+            })
             ->where(function ($query) use ($gudangId, $tipePinjam) {
-                // Filter based on tipe_pinjam (dipinjamkan = owner, meminjam = borrower)
                 if ($tipePinjam === 'dipinjamkan') {
                     $query->where('gudang_pemilik_id', $gudangId);
                 } elseif ($tipePinjam === 'meminjam') {
@@ -579,65 +582,74 @@ class StokController extends Controller
                         ->orWhereHas('gudangPemilik', function ($gq) use ($searchLower) {
                             $gq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
                         })
-                        ->orWhere(function ($gq) use ($searchLower) {
-                            $gq->where('gudang_peminjam_is_custom', true)
-                                ->whereRaw('LOWER(gudang_peminjam_custom_nama) LIKE ?', ["%{$searchLower}%"]);
-                        })
                         ->orWhereHas('items.item', function ($iq) use ($searchLower) {
-                            $iq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"])
-                                ->orWhereRaw('LOWER(kode) LIKE ?', ["%{$searchLower}%"]);
+                            $iq->whereRaw('LOWER(nama) LIKE ?', ["%{$searchLower}%"]);
                         });
                 });
             })
-            ->when($status, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->when($kondisi, function ($query, $kondisi) {
-                $query->whereHas('items', function ($q) use ($kondisi) {
-                    $q->where('kondisi_kembali', $kondisi);
-                });
-            })
             ->when($tanggalPinjam, function ($query, $tanggalPinjam) {
-                $query->whereDate('waktu_diterima', '>=', $tanggalPinjam);
+                $query->whereRaw(
+                    'DATE(COALESCE(waktu_diterima, waktu_kirim, waktu_pengajuan, created_at)) >= ?',
+                    [$tanggalPinjam]
+                );
             })
             ->when($tanggalKembali, function ($query, $tanggalKembali) {
                 $query->whereDate('waktu_selesai', '<=', $tanggalKembali);
-            })
-            ->orderBy('created_at', $sort === 'terlama' ? 'asc' : 'desc')
-            ->paginate(20)
-            ->withQueryString();
+            });
 
-        // Calculate duration for each peminjaman
-        $peminjamans->getCollection()->transform(function ($peminjaman) use ($gudangId) {
-            // Determine if current gudang is owner or borrower
-            $peminjaman->is_owner = $peminjaman->gudang_pemilik_id === $gudangId;
+        // Apply sorting
+        if ($sort === 'terlama') {
+            $peminjamans = $peminjamans->orderByRaw('COALESCE(waktu_diterima, waktu_kirim, waktu_pengajuan, created_at) asc');
+        } else {
+            $peminjamans = $peminjamans->orderByRaw('COALESCE(waktu_diterima, waktu_kirim, waktu_pengajuan, created_at) desc');
+        }
 
-            $startTime = $peminjaman->waktu_diterima
-                ?? $peminjaman->waktu_kirim
-                ?? $peminjaman->waktu_pengajuan
-                ?? $peminjaman->created_at;
-            $endTime = $peminjaman->waktu_selesai
-                ?? $peminjaman->waktu_pengembalian;
+        // Paginate
+        $peminjamans = $peminjamans->paginate(20)->withQueryString();
 
-            $peminjaman->waktu_pinjam = $startTime ? \Carbon\Carbon::parse($startTime) : null;
+        // Add computed fields and prepare pengembalian data
+        $peminjamans->getCollection()->transform(function ($pinjam) use ($gudangId) {
+            $startTime = $pinjam->waktu_diterima
+                ?? $pinjam->waktu_kirim
+                ?? $pinjam->waktu_pengajuan
+                ?? $pinjam->created_at;
+            $pinjam->waktu_mulai = $startTime;
+            $waktuKembali = $pinjam->waktu_selesai
+                ?? $pinjam->waktu_pengembalian
+                ?? $pinjam->suratJalanPengembalians->first()?->updated_at;
+            $pinjam->waktu_kembali = $waktuKembali;
+            $endTime = $waktuKembali ?? now();
 
-            // Calculate duration
-            if ($peminjaman->waktu_pinjam) {
-                $start = $peminjaman->waktu_pinjam;
-                $end = $endTime ? \Carbon\Carbon::parse($endTime) : now();
-
-                // Calculate total minutes first, then convert to days and hours
+            $totalMinutes = 0;
+            if ($startTime && $endTime) {
+                $start = \Carbon\Carbon::parse($startTime);
+                $end = \Carbon\Carbon::parse($endTime);
                 $totalMinutes = $start->diffInMinutes($end);
-                $peminjaman->total_hari = (int) floor($totalMinutes / (60 * 24));
-                $peminjaman->total_jam = (int) floor(($totalMinutes % (60 * 24)) / 60);
-                $peminjaman->total_menit = (int) ($totalMinutes % 60);
-            } else {
-                $peminjaman->total_hari = 0;
-                $peminjaman->total_jam = 0;
-                $peminjaman->total_menit = 0;
             }
 
-            return $peminjaman;
+            $pinjam->is_owner = $pinjam->gudang_pemilik_id === $gudangId;
+            $pinjam->total_hari = (int) floor($totalMinutes / (60 * 24));
+            $pinjam->total_jam = (int) floor(($totalMinutes % (60 * 24)) / 60);
+            $pinjam->total_menit = (int) ($totalMinutes % 60);
+
+            // Process pengembalian entries with duration calculation
+            $pinjam->pengembalian_entries = $pinjam->suratJalanPengembalians
+                ->where('status', 'SELESAI')
+                ->map(function ($sj) use ($startTime) {
+                    $endTime = $sj->updated_at;
+                    $totalMinutes = 0;
+                    if ($startTime && $endTime) {
+                        $start = \Carbon\Carbon::parse($startTime);
+                        $end = \Carbon\Carbon::parse($endTime);
+                        $totalMinutes = $start->diffInMinutes($end);
+                    }
+                    $sj->durasi_hari = (int) floor($totalMinutes / (60 * 24));
+                    $sj->durasi_jam = (int) floor(($totalMinutes % (60 * 24)) / 60);
+                    $sj->durasi_menit = (int) ($totalMinutes % 60);
+                    return $sj;
+                });
+
+            return $pinjam;
         });
 
         // Get statistics
@@ -650,7 +662,7 @@ class StokController extends Controller
             })->where('status', 'SELESAI')->count(),
             'aktif' => Peminjaman::where(function ($q) use ($gudangId) {
                 $q->where('gudang_pemilik_id', $gudangId)->orWhere('gudang_peminjam_id', $gudangId);
-            })->whereIn('status', ['DIKIRIM', 'DITERIMA', 'DIKEMBALIKAN'])->count(),
+            })->whereIn('status', ['DIKIRIM', 'DITERIMA', 'DIKEMBALIKAN', 'DIKEMBALIKAN_SEBAGIAN'])->count(),
         ];
 
         return [

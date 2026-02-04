@@ -183,52 +183,65 @@
 {{-- Stock Table --}}
 <div class="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-lg">
     {{-- Mobile Card View --}}
-    <div class="sm:hidden">
+    <div class="sm:hidden divide-y divide-gray-100">
         @forelse($stocks as $index => $stock)
-            <div class="p-4 border-b border-gray-200 cursor-pointer transition-colors {{ $stock->jumlah < $stock->stok_minimum ? 'bg-red-50 border-l-4 border-l-red-500 hover:bg-red-100 active:bg-red-200' : 'hover:bg-[#e6f7fb] active:bg-[#cfeff7]' }}"
-                 data-row-link="{{ route('gudang.stok.show', $stock->id) }}">
-                <div class="flex items-start justify-between mb-3">
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-gray-900 text-sm">{{ $stock->item->nama }}</h3>
-                        <p class="text-xs text-gray-500">{{ ucfirst($stock->item->kategori?->nama ?? '-') }} · {{ ucfirst($stock->item->tipe ?? 'mekanik') }}</p>
+            @php
+                $isLowStock = $stock->jumlah < $stock->stok_minimum;
+                $ownQty = $stock->own_qty ?? $stock->jumlah;
+                $borrowedQty = $stock->borrowed_qty ?? 0;
+                $statusClass = $isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+                $tipeClass = ($stock->item->tipe ?? 'mekanik') === 'listrik' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800';
+            @endphp
+            <a href="{{ route('gudang.stok.show', $stock->id) }}" class="block p-4 transition-colors hover:bg-[#e6f7fb] active:bg-[#cfeff7]">
+                {{-- Header: Nama + Status --}}
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-gray-900 text-sm truncate">{{ $stock->item->nama }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ $stock->item->kode ?? '-' }}</p>
                     </div>
-                    @if($stock->jumlah < $stock->stok_minimum)
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            <svg class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                            </svg>
-                            Rendah
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $statusClass }}">
+                            {{ $isLowStock ? 'RENDAH' : 'AMAN' }}
                         </span>
-                    @else
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Aman
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium {{ $tipeClass }}">
+                            {{ strtoupper($stock->item->tipe ?? 'mekanik') }}
                         </span>
-                    @endif
-                </div>
-
-                <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
-                    <div class="bg-gray-50 rounded p-2 text-center">
-                        <p class="text-xs text-gray-500">Stok Sendiri</p>
-                        <p class="font-bold {{ $stock->jumlah < $stock->stok_minimum ? 'text-red-600' : 'text-gray-900' }}">{{ number_format($stock->own_qty ?? $stock->jumlah) }}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded p-2 text-center">
-                        <p class="text-xs text-gray-500">Stok Pinjaman</p>
-                        <p class="font-medium text-gray-700">{{ number_format($stock->borrowed_qty ?? 0) }}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded p-2 text-center">
-                        <p class="text-xs text-gray-500">Stok Minimum</p>
-                        <p class="font-medium text-gray-700">{{ number_format($stock->stok_minimum) }}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded p-2 text-center">
-                        <p class="text-xs text-gray-500">Satuan</p>
-                        <p class="font-medium text-gray-700">{{ $stock->item->satuan?->nama ?? '-' }}</p>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+                {{-- Info Grid --}}
+                <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <p class="text-gray-400">Kategori</p>
+                        <p class="text-gray-700 truncate">{{ $stock->item->kategori?->nama ?? '-' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Satuan</p>
+                        <p class="text-gray-700 truncate">{{ $stock->item->satuan?->nama ?? '-' }}</p>
+                    </div>
+                </div>
+
+                {{-- Stok Info --}}
+                <div class="mt-2 grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                        <p class="text-gray-400">Stok Sendiri</p>
+                        <p class="font-bold {{ $isLowStock ? 'text-red-600' : 'text-gray-900' }}">{{ number_format($ownQty) }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Pinjaman</p>
+                        <p class="text-gray-700">{{ number_format($borrowedQty) }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Minimum</p>
+                        <p class="text-gray-700">{{ number_format($stock->stok_minimum) }}</p>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="mt-2 flex items-center justify-between text-xs">
                     <button type="button"
                         x-data
-                        @click="$dispatch('set-edit-stock', {
+                        @click.prevent.stop="$dispatch('set-edit-stock', {
                             id: {{ $stock->id }},
                             kode: '{{ $stock->item->kode }}',
                             nama: '{{ $stock->item->nama }}',
@@ -238,32 +251,27 @@
                             stok_minimum: {{ $stock->stok_minimum }},
                             url: '{{ route('gudang.stok.update', $stock->id) }}'
                         })"
-                        class="inline-flex items-center gap-1 text-xs text-yellow-600 hover:text-yellow-900 font-medium">
+                        class="text-yellow-600 font-medium flex items-center gap-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
                         Edit
                     </button>
-                    @if($stock->jumlah == 0)
-                        <button type="button"
-                            x-data
-                            @click="$dispatch('open-delete-stock', '{{ route('gudang.stok.destroy', $stock->id) }}')"
-                            class="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-900 font-medium">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                            Hapus
-                        </button>
-                    @endif
+                    <span class="text-[#035b71] font-medium flex items-center gap-1">
+                        Detail
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </span>
                 </div>
-            </div>
+            </a>
         @empty
             <div class="p-8 text-center text-gray-500">
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                 </svg>
-                <p class="mt-2 font-medium">Tidak ada data stok</p>
-                <p class="text-sm">
+                <p class="mt-2 font-medium text-sm">Tidak ada data stok</p>
+                <p class="text-xs">
                     @if(request('search') || request('kategori'))
                         Tidak ditemukan hasil untuk pencarian Anda.
                     @else

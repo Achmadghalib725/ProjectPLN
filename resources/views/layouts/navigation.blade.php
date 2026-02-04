@@ -9,7 +9,7 @@
 
             <div class="flex items-center z-10 overflow-hidden w-full"
                 :class="sidebarOpen ? 'justify-start space-x-3' : 'justify-center'">
-                <a href="{{ route('dashboard') }}" class="shrink-0 transition-transform duration-300 hover:scale-105">
+                <a href="{{ route(Auth::check() ? 'dashboard' : 'grounding-tests.index') }}" class="shrink-0 transition-transform duration-300 hover:scale-105">
                     <img src="{{ asset('Logo_PLN.png') }}" class="h-9 w-auto" alt="Logo">
                 </a>
 
@@ -55,7 +55,8 @@
             </div>
 
             @php
-                $role = Auth::user()->role ?? '';
+                $user = Auth::user();
+                $role = $user?->role ?? '';
                 $menuByRole = [
                     'admin' => [
                         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid'],
@@ -82,7 +83,7 @@
                         ['label' => 'Surat Jalan Barang', 'route' => 'gudang.surat-jalan.index', 'icon' => 'truck'],
                     ],
                 ];
-                $navItems = $menuByRole[$role] ?? [['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid']];
+                $navItems = $user ? ($menuByRole[$role] ?? [['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'grid']]) : [];
             @endphp
 
             @foreach($navItems as $item)
@@ -187,37 +188,44 @@
     <div class="p-4 border-t border-gray-100 bg-gray-50/80">
         <div class="flex items-center transition-all duration-300"
             :class="!sidebarOpen ? 'justify-start md:justify-center flex-row md:flex-col md:space-y-3 space-x-3 md:space-x-0' : 'space-x-3'">
-            <a href="{{ route('profile.edit') }}"
-                class="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-pln-primary to-pln-light flex items-center justify-center text-white font-bold shadow-md ring-2 ring-pln-light/30 hover:scale-105 transition-transform cursor-pointer"
-                title="Profile">
-                {{ substr(Auth::user()->name, 0, 1) }}
-            </a>
+            @if($user)
+                <a href="{{ route('profile.edit') }}"
+                    class="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-pln-primary to-pln-light flex items-center justify-center text-white font-bold shadow-md ring-2 ring-pln-light/30 hover:scale-105 transition-transform cursor-pointer"
+                    title="Profile">
+                    {{ substr($user->name, 0, 1) }}
+                </a>
 
-            <a href="{{ route('profile.edit') }}" x-show="sidebarOpen"
-                class="flex-1 min-w-0 overflow-hidden hover:opacity-80 transition-opacity">
-                <p class="text-sm font-bold text-pln-primary truncate">{{ Auth::user()->name }}</p>
-                <p class="text-xs text-gray-500 truncate">{{ Auth::user()->jabatan ?? Auth::user()->role }}</p>
-            </a>
+                <a href="{{ route('profile.edit') }}" x-show="sidebarOpen"
+                    class="flex-1 min-w-0 overflow-hidden hover:opacity-80 transition-opacity">
+                    <p class="text-sm font-bold text-pln-primary truncate">{{ $user->name }}</p>
+                    <p class="text-xs text-gray-500 truncate">{{ $user->jabatan ?? $user->role_display_name }}</p>
+                </a>
 
-            {{-- Notification Bell - Desktop only, hanya untuk operator_gudang, penerima, manager --}}
-            @if(in_array(Auth::user()->role, ['operator_gudang', 'penerima', 'manager']))
-                <div class="hidden md:block">
-                    <x-notification-bell />
-                </div>
+                {{-- Notification Bell - Desktop only, hanya untuk operator_gudang, penerima, manager --}}
+                @if(in_array($user->role, ['operator_gudang', 'penerima', 'manager']))
+                    <div class="hidden md:block">
+                        <x-notification-bell />
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('logout') }}"
+                    :class="!sidebarOpen ? 'md:w-full md:flex md:justify-center ml-auto md:ml-0' : ''">
+                    @csrf
+                    <button type="submit"
+                        class="text-gray-400 hover:text-pln-red transition-colors p-1 rounded hover:bg-red-50"
+                        title="Logout">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </button>
+                </form>
+            @else
+                <a href="{{ route('login') }}"
+                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-pln-primary border border-pln-primary/30 rounded-lg hover:bg-pln-primary/10">
+                    Login
+                </a>
             @endif
-
-            <form method="POST" action="{{ route('logout') }}"
-                :class="!sidebarOpen ? 'md:w-full md:flex md:justify-center ml-auto md:ml-0' : ''">
-                @csrf
-                <button type="submit"
-                    class="text-gray-400 hover:text-pln-red transition-colors p-1 rounded hover:bg-red-50"
-                    title="Logout">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                </button>
-            </form>
         </div>
     </div>
 </nav>
