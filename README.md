@@ -2,19 +2,6 @@
 
 E-Dispatch & Tool Management System adalah aplikasi manajemen gudang dan surat jalan untuk pengiriman dan peminjaman barang antar gudang. Fokusnya adalah kontrol stok, alur persetujuan yang jelas, dan pelacakan status per peran.
 
-## Daftar isi
-- Gambaran umum
-- Fitur
-- Peran dan akses
-- Alur surat jalan (ringkas)
-- Teknologi
-- Prasyarat
-- Quick start
-- Konfigurasi .env penting
-- Data contoh
-- Perintah berguna
-- Testing
-
 ## Gambaran umum
 Aplikasi ini membantu operasional gudang dengan fitur stok, pergerakan, surat jalan, dan approval multi peran. Surat jalan dapat dipantau statusnya sampai selesai, termasuk proses penerimaan dan pengembalian.
 
