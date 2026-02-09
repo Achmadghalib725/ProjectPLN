@@ -48,92 +48,21 @@ Catatan: status detail dapat berbeda sesuai skenario, role, dan jenis transaksi.
 
 ## Teknologi
 - Laravel 12, PHP 8.2
-- Database relasional (MySQL/MariaDB/PostgreSQL sesuai .env)
-- Redis (opsional) untuk cache, queue, dan broadcast
+- Database PostgreSQL
 - Vite, Tailwind CSS, Alpine.js
 - Dompdf, Laravel Excel, Simple QR Code
-- Laravel Reverb + Echo (opsional untuk realtime)
+- Laravel Reverb + EchO
 
 ## Prasyarat
-- PHP 8.2+ dengan ekstensi umum Laravel (pdo, mbstring, openssl, tokenizer, xml)
+- PHP 8.2+ dengan ekstensi umum Laravel 
 - Composer
 - Node.js + npm
 - Database server
 
 ## Quick start
 ```
-composer run setup
-composer run dev
+php artisan serve
+npm run dev
 ```
 
-Jika ingin manual:
-1. Install dependency backend:
-   ```bash
-   composer install
-   ```
-2. Siapkan `.env`:
-   - Salin dari `.env.example` jika tersedia, atau buat `.env` sendiri.
-3. Generate key dan migrate:
-   ```bash
-   php artisan key:generate
-   php artisan migrate
-   ```
-4. (Opsional) seed data contoh:
-   ```bash
-   php artisan db:seed
-   ```
-5. Install dependency frontend:
-   ```bash
-   npm install
-   ```
-6. Jalankan aplikasi:
-   ```bash
-   php artisan serve
-   npm run dev
-   ```
 
-## Konfigurasi .env penting
-Contoh isian inti yang perlu disesuaikan:
-```
-APP_NAME=E-Dispatch & Tool Management System
-APP_ENV=local
-APP_DEBUG=true
-APP_URL=http://localhost:8000
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=project_pln
-DB_USERNAME=root
-DB_PASSWORD=
-
-CACHE_STORE=file
-QUEUE_CONNECTION=sync
-BROADCAST_CONNECTION=log
-```
-Jika memakai Redis dan realtime, atur `CACHE_STORE`, `QUEUE_CONNECTION`, dan `BROADCAST_CONNECTION` sesuai kebutuhan.
-
-## Data contoh
-Jalankan `php artisan db:seed` untuk membuat akun demo berikut (password: `password`):
-- admin
-- manager
-- budi
-- siti
-- agus
-- rizal
-
-## Perintah berguna
-- Generate signature hash surat jalan:
-  ```bash
-  php artisan surat-jalan:generate-hash --id=123
-  ```
-  Gunakan `--force` untuk regenerate hash yang sudah ada.
-- Build frontend production:
-  ```bash
-  npm run build
-  ```
-
-## Testing
-```bash
-composer test
-```
